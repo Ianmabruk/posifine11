@@ -5,15 +5,9 @@ const getBaseUrl = () => {
   // Use environment variable for backend URL
   const envUrl = import.meta.env.VITE_API_URL;
   if (envUrl) {
-    // Remove trailing slash if present
-    const cleanUrl = envUrl.replace(/\/$/, '');
-    // If envUrl already contains /api, DO NOT add it again
-    if (cleanUrl.endsWith('/api')) {
-        return cleanUrl;
-    }
-    // Otherwise add /api
-    return `${cleanUrl}/api`;
+    return envUrl;
   }
+  
   // Fallback to Flask backend development URL (port 5002)
   return 'http://localhost:5002/api';
 };
