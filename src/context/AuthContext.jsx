@@ -1,5 +1,5 @@
 import { createContext, useContext, useState, useEffect } from 'react';
-import { auth, users } from '../services/api';
+import { auth, users, BASE_API_URL } from '../services/api';
 
 const AuthContext = createContext();
 
@@ -46,33 +46,35 @@ export const AuthProvider = ({ children }) => {
       const savedUser = localStorage.getItem('user');
       
       if (token) {
-        // First verify with backend
+        // First verify with backend using a direct fetch so that the
+        // global API layer's 401 redirect behavior doesn't navigate away
+        // from public pages (like the landing page) during initialization.
         try {
-          const res = await auth.me();
-          if (res && res.id) {
-             // Backend returned valid user
-             setUser(res);
-             localStorage.setItem('user', JSON.stringify(res));
+          const resp = await fetch(`${BASE_API_URL}/auth/me`, {
+            headers: { Authorization: `Bearer ${token}`, 'Content-Type': 'application/json' }
+          });
+          if (resp.ok) {
+            const data = await resp.json();
+            setUser(data);
+            localStorage.setItem('user', JSON.stringify(data));
           } else {
-             // Token invalid or user not found
-             throw new Error("Invalid token");
+            // Token invalid or server returned error — clear token and optionally fallback
+            throw new Error('Invalid token');
           }
         } catch (err) {
-           console.warn("Auth check failed:", err);
-           // Fallback to local storage if network fails (offline mode?)
-           // but be careful about stale data. For strict security, logout.
-           // However, if we trust localStorage temporarily:
-           if (savedUser) {
-              try {
-                  const parsed = JSON.parse(savedUser);
-                  setUser(parsed);
-              } catch (e) {
-                  localStorage.removeItem('token');
-                  localStorage.removeItem('user');
-              }
-           } else {
+          console.warn('Auth check failed:', err);
+          // Fallback to local storage only if present and parseable (offline/slow networks)
+          if (savedUser) {
+            try {
+              const parsed = JSON.parse(savedUser);
+              setUser(parsed);
+            } catch (e) {
               localStorage.removeItem('token');
-           }
+              localStorage.removeItem('user');
+            }
+          } else {
+            localStorage.removeItem('token');
+          }
         }
       }
     } catch (error) {

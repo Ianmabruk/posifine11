@@ -4,7 +4,7 @@ import { useAuth } from '../../context/AuthContext';
 import { useProducts } from '../../context/ProductsContext';
 
 
-import { sales as salesApi, stats, creditRequests, discounts, BASE_API_URL } from '../../services/api';
+import { sales as salesApi, stats, creditRequests, discounts, products, BASE_API_URL } from '../../services/api';
 import { ShoppingCart, Trash2, LogOut, Plus, Minus, Search, DollarSign, TrendingUp, Package, BarChart3, Edit2, Settings, Tag } from 'lucide-react';
 import DiscountSelector from '../../components/DiscountSelector';
 import ProductCard from '../../components/ProductCard';

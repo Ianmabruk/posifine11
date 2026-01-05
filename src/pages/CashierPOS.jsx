@@ -1,6 +1,6 @@
 import { useState, useEffect } from 'react';
 import { useAuth } from '../context/AuthContext';
-import { products, sales, expenses, stats, batches } from '../services/api';
+import { products, sales, expenses, stats, batches, subscribeProducts, unsubscribeAllProductSubscriptions } from '../services/api';
 import { BASE_API_URL } from '../services/api';
 import { ShoppingCart, Trash2, LogOut, Plus, Minus, DollarSign, TrendingDown, Package, Edit2, Search, BarChart3, Camera, Upload, AlertTriangle } from 'lucide-react';
 
@@ -24,6 +24,26 @@ export default function CashierPOS() {
 
   useEffect(() => {
     loadData();
+  }, []);
+
+  // Subscribe to real-time product updates
+  useEffect(() => {
+    const unsub = subscribeProducts((msg) => {
+      try {
+        if (!msg) return;
+        if (msg.type === 'initial' || msg.type === 'products_snapshot' || msg.type === 'product_created' || msg.type === 'product_updated' || msg.type === 'product_deleted') {
+          // For snapshots and individual product events, reload product list conservatively
+          products.getAll().then(p => setProductList(p.filter(prod => prod.visibleToCashier !== false && !prod.expenseOnly))).catch(() => {});
+        }
+      } catch (e) {
+        console.error('Product subscription handler error', e);
+      }
+    });
+
+    return () => {
+      try { unsub(); } catch (e) {}
+      // If you want to fully tear down all subscriptions across the app, call unsubscribeAllProductSubscriptions()
+    };
   }, []);
 
   const loadData = async () => {

@@ -2,11 +2,19 @@
 // Updated API Service Layer - Connected to Deployed Backend
 
 const getBaseUrl = () => {
-  // Production: Use Vercel backend URL
-  if (import.meta.env.PROD) {
-    return 'https://posifine11-backend-spu4.vercel.app/api';
+  // Use environment variable for backend URL
+  const envUrl = import.meta.env.VITE_API_URL;
+  if (envUrl) {
+    // Remove trailing slash if present
+    const cleanUrl = envUrl.replace(/\/$/, '');
+    // If envUrl already contains /api, DO NOT add it again
+    if (cleanUrl.endsWith('/api')) {
+        return cleanUrl;
+    }
+    // Otherwise add /api
+    return `${cleanUrl}/api`;
   }
-  // Development: Use local backend
+  // Fallback to Flask backend development URL (port 5002)
   return 'http://localhost:5002/api';
 };
 
@@ -383,4 +391,60 @@ export const checkBackendHealth = async () => {
 
 // Export base URL for other components to use
 export { BASE_API_URL };
+
+// WebSocket-backed product subscription helper
+let __ws = null;
+let __wsCallbacks = new Set();
+
+function _getWsUrl() {
+  const wsBase = BASE_API_URL.replace(/\/api$/, '');
+  const proto = wsBase.startsWith('https') ? 'wss' : 'ws';
+  return `${proto}://${wsBase.replace(/^https?:\/\//, '')}/api/ws/products`;
+}
+
+function _ensureWs() {
+  if (__ws && (__ws.readyState === WebSocket.OPEN || __ws.readyState === WebSocket.CONNECTING)) return;
+  const token = getToken();
+  const url = _getWsUrl() + (token ? `?token=${encodeURIComponent(token)}` : '');
+  __ws = new WebSocket(url);
+  __ws.onopen = () => {
+    console.debug('Products WS connected');
+  };
+  __ws.onmessage = (ev) => {
+    let data = null;
+    try { data = JSON.parse(ev.data); } catch (e) { return; }
+    __wsCallbacks.forEach(cb => {
+      try { cb(data); } catch (e) { console.error('ws callback error', e); }
+    });
+  };
+  __ws.onclose = () => {
+    console.debug('Products WS closed');
+    __ws = null;
+  };
+  __ws.onerror = (e) => {
+    console.error('Products WS error', e);
+  };
+}
+
+export function subscribeProducts(onMessage) {
+  if (typeof onMessage !== 'function') throw new Error('subscribeProducts requires a callback');
+  __wsCallbacks.add(onMessage);
+  _ensureWs();
+  // return unsubscribe
+  return () => {
+    __wsCallbacks.delete(onMessage);
+    if (__ws && __wsCallbacks.size === 0) {
+      try { __ws.close(); } catch (e) {}
+      __ws = null;
+    }
+  };
+}
+
+export function unsubscribeAllProductSubscriptions() {
+  __wsCallbacks.clear();
+  if (__ws) {
+    try { __ws.close(); } catch (e) {}
+    __ws = null;
+  }
+}
 
