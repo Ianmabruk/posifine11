@@ -1,6 +1,7 @@
 import { createContext, useContext, useState, useEffect, useCallback } from 'react';
 import { products as productsApi } from '../services/api';
 import { useAuth } from './AuthContext';
+import { demoProducts } from '../utils/demoData';
 
 const ProductsContext = createContext();
 
@@ -49,12 +50,19 @@ export const ProductsProvider = ({ children }) => {
       setError(null);
     } catch (err) {
       console.error('Failed to fetch products:', err);
-      // Don't wipe out existing products on temporary failure if we have them
-      if (products.length === 0) {
-        setError(err.message || 'Failed to load products');
+      // Use demo data when backend returns 500 error
+      if (err.message.includes('500') || err.message.includes('Network') || err.message.includes('fetch')) {
+        console.log('Using demo products due to backend error');
+        setProducts(demoProducts);
+        setError('Using demo data - backend unavailable');
       } else {
-        // Just log the error but keep existing products
-        console.warn('Product fetch failed, keeping cached products');
+        // Don't wipe out existing products on temporary failure if we have them
+        if (products.length === 0) {
+          setError(err.message || 'Failed to load products');
+        } else {
+          // Just log the error but keep existing products
+          console.warn('Product fetch failed, keeping cached products');
+        }
       }
     } finally {
       setLoading(false);

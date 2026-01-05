@@ -14,8 +14,8 @@ const getBaseUrl = () => {
     // Otherwise add /api
     return `${cleanUrl}/api`;
   }
-  // Fallback to Flask backend development URL (port 5002)
-  return 'http://localhost:5002/api';
+  // Fallback to local development
+  return 'http://localhost:5000/api';
 };
 
 const BASE_API_URL = getBaseUrl();
@@ -83,7 +83,7 @@ const request = async (endpoint, options = {}) => {
     if (error.name === 'TypeError' && error.message.includes('fetch')) {
       console.error("API Fetch Error:", error);
       console.error("Attempted URL:", `${BASE_API_URL}${cleanEndpoint}`);
-      throw new Error('Cannot connect to server. Please ensure the backend is running on port 5002.');
+      throw new Error('Backend server unavailable. Using demo mode.');
     }
     throw error;
   }
