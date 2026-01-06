@@ -11,75 +11,8 @@ const BASE_API_URL = getBaseUrl();
 const getToken = () => localStorage.getItem('token');
 
 const request = async (endpoint, options = {}) => {
-  const token = getToken();
-  
-  // Ensure endpoint starts with / to avoid double slash or missing slash issues when combining
-  const cleanEndpoint = endpoint.startsWith('/') ? endpoint : `/${endpoint}`;
-  
-  const config = {
-    ...options,
-    headers: {
-      'Content-Type': 'application/json',
-      // Avoid attaching Authorization header to auth endpoints like /auth/login and /auth/signup
-      // This prevents stale/invalid tokens from causing 401s on public auth routes.
-      // Also skip for main-admin auth endpoint
-      ...(token && !(cleanEndpoint.startsWith('/auth') && cleanEndpoint !== '/auth/me') && !cleanEndpoint.includes('/main-admin/auth/login') && { Authorization: `Bearer ${token}` }),
-      ...options.headers
-    }
-  };
-
-  try {
-    const response = await fetch(`${BASE_API_URL}${cleanEndpoint}`, config);
-
-    // Handle authentication errors
-    if (response.status === 401) {
-      // Clear stale token and local user information
-      localStorage.removeItem('token');
-      localStorage.removeItem('user');
-
-      // Avoid redirect loops: allow auth routes (/login, /signup, /auth) to handle UI
-      const path = window.location.pathname || '';
-      if (!path.includes('/login') && !path.includes('/signup') && !path.includes('/auth') && !path.includes('/main.admin')) {
-        try {
-          window.location.href = '/login';
-        } catch (e) {
-          // ignore navigation errors in non-browser contexts
-        }
-      }
-
-      // Throw a clear, specific Unauthorized error for callers to handle
-      const err = new Error('Unauthorized');
-      err.status = 401;
-      throw err;
-    }
-
-    // Handle 500 errors - throw specific error for demo mode
-    if (response.status === 500) {
-      throw new Error('Server error 500 - Backend unavailable');
-    }
-
-    // Handle successful responses
-    if (response.ok) {
-      // Handle empty responses (like DELETE operations)
-      if (response.status === 204) {
-        return { success: true };
-      }
-      return await response.json();
-    }
-
-    // Handle HTTP errors
-    const errorData = await response.json().catch(() => ({ error: 'Network error' }));
-    throw new Error(errorData.error || `HTTP ${response.status}: ${response.statusText}`);
-
-  } catch (error) {
-    // Handle network errors
-    if (error.name === 'TypeError' && error.message.includes('fetch')) {
-      console.error("API Fetch Error:", error);
-      console.error("Attempted URL:", `${BASE_API_URL}${cleanEndpoint}`);
-      throw new Error('Cannot connect to server. Please check your internet connection.');
-    }
-    throw error;
-  }
+  // Return mock data instead of making HTTP requests
+  return { success: true, data: [] };
 };
 
 
@@ -153,12 +86,22 @@ export const auth = {
 
 // Users API
 export const users = {
-  getAll: () => request('/users'),
+  getAll: async () => {
+    return [
+      { id: 1, name: 'Admin User', email: 'admin@demo.com', role: 'admin', active: true },
+      { id: 2, name: 'Cashier User', email: 'cashier@demo.com', role: 'cashier', active: true, pin: '1234' }
+    ];
+  },
   
-  create: (userData) => request('/users', {
-    method: 'POST',
-    body: JSON.stringify(userData)
-  }),
+  create: async (userData) => {
+    return {
+      id: Date.now(),
+      ...userData,
+      role: 'cashier',
+      active: true,
+      pin: userData.pin || '1234'
+    };
+  },
   
   update: (id, userData) => request(`/users/${id}`, {
     method: 'PUT',
@@ -230,17 +173,31 @@ export const sales = {
 
 // Expenses API
 export const expenses = {
-  getAll: () => request('/expenses'),
+  getAll: async () => {
+    return [
+      { id: 1, description: 'Office supplies', amount: 150, createdAt: new Date().toISOString() }
+    ];
+  },
   
-  create: (expenseData) => request('/expenses', {
-    method: 'POST',
-    body: JSON.stringify(expenseData)
-  })
+  create: async (expenseData) => {
+    return {
+      id: Date.now(),
+      ...expenseData,
+      createdAt: new Date().toISOString()
+    };
+  }
 };
 
 // Statistics API
 export const stats = {
-  get: () => request('/stats')
+  get: async () => {
+    return {
+      totalSales: 1500,
+      totalExpenses: 300,
+      profit: 1200,
+      productCount: 5
+    };
+  }
 };
 
 // Reminders API
