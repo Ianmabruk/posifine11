@@ -2,8 +2,8 @@
 // Updated API Service Layer - Connected to Deployed Backend
 
 const getBaseUrl = () => {
-  // Use environment variable if available, otherwise fallback to deployed backend
-  return process.env.REACT_APP_API_URL || 'https://universal-backend-eight.vercel.app/api';
+  // Use environment variable if available, otherwise fallback to Render backend
+  return process.env.REACT_APP_API_URL || 'https://universal-pos-backend.onrender.com/api';
 };
 
 const BASE_API_URL = getBaseUrl();
