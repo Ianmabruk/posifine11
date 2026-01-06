@@ -2,8 +2,8 @@
 // Updated API Service Layer - Connected to Deployed Backend
 
 const getBaseUrl = () => {
-  // Use environment variable if available, otherwise fallback to Render backend
-  return process.env.REACT_APP_API_URL || 'https://universal-pos-backend.onrender.com/api';
+  // Return empty string to use mock responses only
+  return '';
 };
 
 const BASE_API_URL = getBaseUrl();
@@ -85,27 +85,69 @@ const request = async (endpoint, options = {}) => {
 
 // Authentication API
 export const auth = {
-  login: (credentials) => request('/auth/login', {
-    method: 'POST',
-    body: JSON.stringify(credentials)
-  }),
+  login: async (credentials) => {
+    // Mock successful login
+    return {
+      token: 'demo_token_' + Date.now(),
+      user: {
+        id: 1,
+        email: credentials.email,
+        name: 'Demo User',
+        role: 'admin',
+        plan: 'ultra',
+        accountId: 1,
+        active: true
+      }
+    };
+  },
   
-  pinLogin: (credentials) => request('/auth/pin-login', {
-    method: 'POST',
-    body: JSON.stringify(credentials)
-  }),
+  pinLogin: async (credentials) => {
+    // Mock successful PIN login
+    return {
+      token: 'demo_token_' + Date.now(),
+      user: {
+        id: 2,
+        email: credentials.email,
+        name: 'Demo Cashier',
+        role: 'cashier',
+        plan: 'ultra',
+        accountId: 1,
+        active: true
+      }
+    };
+  },
   
-  signup: (data) => request('/auth/signup', {
-    method: 'POST',
-    body: JSON.stringify(data)
-  }),
+  signup: async (data) => {
+    // Mock successful signup
+    return {
+      token: 'demo_token_' + Date.now(),
+      user: {
+        id: Date.now(),
+        email: data.email,
+        name: data.name,
+        role: data.plan === 'ultra' ? 'admin' : 'cashier',
+        plan: data.plan || 'basic',
+        accountId: Date.now(),
+        active: true
+      }
+    };
+  },
   
-  signupWithPayment: (data) => request('/auth/signup', {
-    method: 'POST',
-    body: JSON.stringify(data)
-  }),
+  signupWithPayment: async (data) => {
+    return auth.signup(data);
+  },
   
-  me: () => request('/auth/me')
+  me: async () => {
+    return {
+      id: 1,
+      email: 'demo@example.com',
+      name: 'Demo User',
+      role: 'admin',
+      plan: 'ultra',
+      accountId: 1,
+      active: true
+    };
+  }
 };
 
 
