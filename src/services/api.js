@@ -2,8 +2,11 @@
 // Updated API Service Layer - Connected to Deployed Backend
 
 const getBaseUrl = () => {
-  // Use Render backend URL
-  return 'https://posfine-backend11.onrender.com/api';
+  const envUrl =
+    (typeof import.meta !== 'undefined' && import.meta.env && import.meta.env.VITE_API_BASE) ||
+    (typeof process !== 'undefined' && process.env && (process.env.VITE_API_BASE || process.env.REACT_APP_API_URL));
+  // Fallback to Render backend URL
+  return envUrl || 'https://posfine-backend11.onrender.com/api';
 };
 
 const BASE_API_URL = getBaseUrl();
