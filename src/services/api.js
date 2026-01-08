@@ -473,3 +473,34 @@ export function unsubscribeAllProductSubscriptions() {
   }
 }
 
+// Recipes API
+export const recipes = {
+  getAll: () => request('/recipes'),
+  create: (data) => request('/recipes', {
+    method: 'POST',
+    body: JSON.stringify(data)
+  }),
+  update: (id, data) => request(`/recipes/${id}`, {
+    method: 'PUT',
+    body: JSON.stringify(data)
+  }),
+  delete: (id) => request(`/recipes/${id}`, {
+    method: 'DELETE'
+  })
+};
+
+// Cashier Notes API
+export const cashierNotes = {
+  getAll: () => request('/cashier-notes'),
+  create: (data) => request('/cashier-notes', {
+    method: 'POST',
+    body: JSON.stringify(data)
+  }),
+  markAsRead: (id) => request(`/cashier-notes/${id}`, {
+    method: 'PUT',
+    body: JSON.stringify({ read: true })
+  }),
+  delete: (id) => request(`/cashier-notes/${id}`, {
+    method: 'DELETE'
+  })
+};

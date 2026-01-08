@@ -63,7 +63,7 @@ class WebSocketService {
               console.log('📦 Initial products loaded via WebSocket');
               this.emit('initial', message.products);
             } else if (message.type === 'heartbeat') {
-              // Silent heartbeat
+              // Silent heartbeat - keep connection alive
               this.emit('heartbeat', message);
             }
           } catch (e) {
