@@ -139,6 +139,12 @@ export const products = {
     method: 'DELETE'
   }),
   
+  // Update product stock/inventory
+  updateStock: (id, stockData) => request(`/products/${id}/stock`, {
+    method: 'PUT',
+    body: JSON.stringify(stockData)
+  }),
+  
   getMaxProducible: (id) => request(`/products/${id}/max-producible`)
 };
 
