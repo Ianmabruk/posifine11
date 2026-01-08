@@ -1,0 +1,239 @@
+nohup: ignoring input
+
+> my-react-app@0.0.0 dev
+> vite
+
+Port 3002 is in use, trying another one...
+Port 3003 is in use, trying another one...
+Port 3004 is in use, trying another one...
+Port 3005 is in use, trying another one...
+
+  VITE v7.2.7  ready in 445 ms
+
+  ➜  Local:   http://localhost:3006/
+  ➜  Network: http://172.20.10.2:3006/
+12:59:55 PM [vite] (client) hmr update /src/context/ProductsContext.jsx, /src/index.css
+12:59:56 PM [vite] (client) hmr invalidate /src/context/ProductsContext.jsx Could not Fast Refresh ("useProducts" export is incompatible). Learn more at https://github.com/vitejs/vite-plugin-react/tree/main/packages/plugin-react#consistent-components-exports
+12:59:56 PM [vite] (client) hmr update /src/App.jsx, /src/pages/cashier/CashierPOS.jsx, /src/pages/admin/Inventory.jsx
+1:11:15 PM [vite] (client) hmr update /src/App.jsx, /src/context/AuthContext.jsx, /src/pages/admin/AdminDashboard.jsx, /src/pages/PaymentInput.jsx, /src/pages/BasicDashboard.jsx, /src/pages/Auth.jsx, /src/pages/cashier/CashierPOS.jsx, /src/pages/Subscription.jsx, /src/pages/MainAdminLogin.jsx, /src/pages/MainAdminDashboard.jsx, /src/components/ReminderModal.jsx, /src/components/ScreenLock.jsx, /src/pages/admin/Overview.jsx, /src/pages/admin/Inventory.jsx, /src/pages/admin/Recipes.jsx, /src/pages/admin/Sales.jsx, /src/pages/admin/Expenses.jsx, /src/pages/admin/UserManagement.jsx, /src/pages/admin/SettingsPage.jsx, /src/pages/admin/RemindersManager.jsx, /src/pages/admin/Discounts.jsx, /src/pages/admin/CreditRequests.jsx, /src/components/DiscountSelector.jsx, /src/context/ProductsContext.jsx, /src/index.css
+1:11:16 PM [vite] (client) hmr 1:11:17 PM [vite] (client) hmr invalidate /src/context/AuthContext.js1:11:18 PM [vite] (client) hmr invalidate /src/context/AuthContext.jsx Could not Fast Refresh ("useAuth" export is incompatible). Learn more at https://github.com/vitejs/vite-plugin-react/tree/main/packages/plugin-react#consistent-components-exports
+1:11:18 PM [vite] (client) hmr update /src/App.jsx, /src/pages/admin/AdminDashboard.jsx, /src/pages/PaymentInput.jsx, /src/pages/BasicDashboard.jsx, /src/pages/Auth.jsx, /src/pages/CashierPOS.jsx, /src/pages/admin/Inventory.jsx, /src/pages/admin/UserManagement.jsx, /src/pages/admin/SettingsPage.jsx, /src/pages/cashier/CashierPOS.jsx
+1:11:18 PM [vite] (client) hmr invalidate /src/context/ProductsContext.jsx Could not Fast Refresh ("useProducts" export is incompatible). Learn more at https://github.com/vitejs/vite-plugin-react/tree/main/packages/plugin-react#consistent-components1:37:44 PM [vite] (client) hmr update /src/App.jsx, /src/index.css
+1:37:44 PM [vite] (client) hmr update /src/context/Product1:37:44 PM [vite] (client) hm1:37:44 PM [vite] (client) hmr update /src/index.css
+1:37:44 PM [vite] (client) hmr update /src/index.css
+1:37:44 PM [vite] (client) hmr update /src/App.jsx, /src/context/AuthConte1:37:44 PM [vite] (client) hmr update /src/index.css, /src/pages/CashierPOS.jsx
+1:37:44 PM [vite] (client) hmr update /src/index.css, /src/App.jsx, /src/context/AuthContext.jsx, /src/pages/admin/AdminDashboard.jsx, /src/pages/PaymentInput.jsx, /src/pages/BasicDashboard.jsx, /src/pages/Auth.jsx, /src/pages/Subscription.jsx, /src/pages/CashierPOS.jsx, /src/pages/MainAdminLogin.jsx, /src/components/ReminderModal.jsx, /src/components/ScreenLock.jsx, /src/pages/MainAdminDashboard.jsx, /src/pages/admin/Overview.jsx, /src/pages/admin/Inventory.jsx, /src/pages/admin/Recipes.jsx, /src/pages/admin/Expenses.jsx, /src/pages/admin/Sales.jsx, /src/pages/admin/UserManagement.jsx, /src/pages/admin/SettingsPage.jsx, /src/pages/admin/RemindersManager1:37:54 PM [vite] (client) hmr invalidate /src/context/ProductsContext.jsx Could not Fast Refresh ("useProducts"1:37:57 PM [vite] (client) hmr invalidate /src/context/ProductsContext.jsx Could not Fast Refresh ("useProducts" export is incompatible). Learn more at https://github.com/vitejs/vite-plugin-react/tree/main/packages/plugin-react#consistent-components-exports
+1:37:51:38:06 PM [vite] .env.development changed, restarting server...
+1:38:07 PM [vite] (client) Re-optimizing dependencies because vite config has changed
+Port 5173 is in use, trying another one...
+Port 5174 is in use, trying another one...
+1:38:08 PM [vite] server restarted.
+
+  ➜  Local:   http://localhost:5175/
+  ➜  Network: use --host to expose
+1:38:20 PM [vite] (client) page reload index.html
+1:38:40 PM [vite] .env.development changed, restarting server...
+1:38:41 PM [vite] (client) page reload test-data-sync.html
+Port 3002 is in use, trying another one...
+1:38:41 PM [vite] server restarted.
+
+  ➜  Local:   http://localhost:3003/
+  ➜  Network: http://172.20.10.2:3003/
+1:39:54 PM [vite] .env.development changed, restarting server...
+1:39:54 PM [vite] vite.config.js changed, restarting server...
+1:39:54 PM [vite] (client) page reload index.html
+1:39:54 PM [vite] (client) page reload test-data-sync.html
+1:39:54 PM [vite] (client) Re-optimizing dependencies because vite config has changed
+Port 5173 is in use, trying another one...
+Port 5174 is in use, trying another one...
+Port 5175 is in use, trying another one...
+1:39:54 PM [vite] server restarted.
+
+  ➜  Local:   http://localhost:5176/
+  ➜  Network: use --host to expose
+
+  ➜  Local:   http://localhost:5176/
+  ➜  Network: use --host to expose
+:07 PM [vite] (client) page reload src/hooks/useInactivity.js
+1:38:07 PM [vite] (client) hmr update /src/index.css
+1:38:07 PM [vite] (client) page reload src/main.jsx
+1:38:07 PM [vite] (client) page reload src/pages/AdminDashboard.jsx
+1:38:07 PM [vite] (client) page reload src/pages/Auth.jsx
+1:38:07 PM [vite] (client) page reload src/pages/BasicDashboard.jsx
+1:38:07 PM [vite] (client) page reload src/pages/CashierPOS.jsx
+1:38:07 PM [vite] (client) page reload src/pages/Landing.jsx
+1:38:07 PM [vite] (client) page reload src/pages/MainAdmin.jsx
+1:38:07 PM [vite] (client) page reload src/pages/MainAdminDashboard.jsx
+1:38:07 PM [vite] (client) page reload src/pages/MainAdminLogin.jsx
+1:38:07 PM [vite] (client) page reload src/pages/PaymentInput.jsx
+1:38:07 PM [vite] (client) page reload src/pages/Subscription.jsx
+1:38:07 PM [vite] (client) page reload src/pages/admin/AdminDashboard.jsx
+1:38:07 PM [vite] (client) page reload src/pages/admin/AdminPaymentDashboard.jsx
+1:38:07 PM [vite] (client) page reload src/pages/admin/CreditRequests.jsx
+1:38:07 PM [vite] (client) page reload src/pages/admin/Discounts.jsx
+1:38:07 PM [vite] (client) page reload src/pages/admin/DiscountsManager.jsx
+1:38:07 PM [vite] (client) page reload src/pages/admin/Expenses.jsx
+1:38:07 PM [vite] (client) page reload src/pages/admin/Inventory.jsx
+1:38:07 PM [vite] (client) page reload src/pages/admin/Overview.jsx
+1:38:07 PM [vite] (client) page reload src/pages/admin/Recipes.jsx
+1:38:07 PM [vite] (client) page reload src/pages/admin/RemindersManager.jsx
+1:38:07 PM [vite] (client) page reload src/pages/admin/Sales.jsx
+1:38:07 PM [vite] (client) page reload src/pages/admin/ServiceFees.jsx
+1:38:07 PM [vite] (client) page reload src/pages/admin/ServiceFeesManager.jsx
+1:38:07 PM [vite] (client) page reload src/pages/admin/SettingsPage.jsx
+1:38:07 PM [vite] (client) page reload src/pages/admin/TimeTracking.jsx
+1:38:07 PM [vite] (client) page reload src/pages/admin/UserManagement.jsx
+1:38:07 PM [vite] (client) page reload src/pages/cashier/CashierPOS.jsx
+1:38:07 PM [vite] (client) page reload src/pages/cashier/CashierSettings.jsx
+1:38:07 PM [vite] (client) page reload src/services/api.js
+1:38:07 PM [vite] (client) page reload src/utils/dataSync.js
+1:38:07 PM [vite] (client) page reload src/utils/demoData.js
+1:38:07 PM [vite] (client) page reload src/utils/localStorage.js
+1:38:07 PM [vite] (client) page reload tailwind.config.js
+1:38:07 PM [vite] (client) page reload test-data-sync.html
+✘ [ERROR] Could not resolve "/home/ian-mabruk/universal/my-react-app/vite.config.js"
+
+failed to load config from /home/ian-mabruk/universal/my-react-app/vite.config.js
+1:38:07 PM [vite] Build failed with 1 error:
+error: Could not resolve "/home/ian-mabruk/universal/my-react-app/vite.config.js"
+1:38:07 PM [vite] server restart failed
+1:38:20 PM [vite] (client) page reload index.html
+1:38:20 PM [vite] (client) page reload src/App.jsx
+1:38:20 PM [vite] (client) hmr update /src/index.css
+1:38:20 PM [vite] (client) page reload src/main.jsx
+1:38:20 PM [vite] (client) page reload src/services/api.js
+1:38:20 PM [vite] (client) page reload tailwind.config.js
+1:38:20 PM [vite] vite.config.js changed, restarting server...
+1:38:20 PM [vite] (client) page reload src/components/CreditRequestForm.jsx
+1:38:20 PM [vite] (client) page reload src/components/DiscountSelector.jsx
+1:38:20 PM [vite] (client) page reload src/components/PriceAdjustment.jsx
+1:38:20 PM [vite] (client) page reload src/components/ProductCard.jsx
+1:38:20 PM [vite] (client) page reload src/components/ReminderModal.jsx
+1:38:20 PM [vite] (client) page reload src/components/ScreenLock.jsx
+1:38:20 PM [vite] (client) page reload src/components/ServiceFeeSelector.jsx
+1:38:20 PM [vite] (client) page reload src/context/AuthContext.jsx
+1:38:20 PM [vite] (client) page reload src/hooks/useInactivity.js
+1:38:20 PM [vite] (client) page reload src/pages/AdminDashboard.jsx
+1:38:20 PM [vite] (client) page reload src/pages/Auth.jsx
+1:38:20 PM [vite] (client) page reload src/pages/CashierPOS.jsx
+1:38:20 PM [vite] (client) page reload src/pages/Landing.jsx
+1:38:20 PM [vite] (client) page reload src/pages/MainAdmin.jsx
+1:38:20 PM [vite] (client) page reload src/pages/Subscription.jsx
+1:38:20 PM [vite] (client) page reload src/pages/admin/AdminDashboard.jsx
+1:38:20 PM [vite] (client) page reload src/pages/admin/CreditRequests.jsx
+1:38:20 PM [vite] (client) page reload src/pages/admin/Discounts.jsx
+1:38:20 PM [vite] (client) page reload src/pages/admin/Expenses.jsx
+1:38:20 PM [vite] (client) page reload src/pages/admin/Inventory.jsx
+1:38:20 PM [vite] (client) page reload src/pages/admin/Overview.jsx
+1:38:20 PM [vite] (client) page reload src/pages/admin/Recipes.jsx
+1:38:20 PM [vite] (client) page reload src/pages/admin/RemindersManager.jsx
+1:38:20 PM [vite] (client) page reload src/pages/admin/Sales.jsx
+1:38:20 PM [vite] (client) page reload src/pages/admin/ServiceFees.jsx
+1:38:20 PM [vite] (client) page reload src/pages/admin/SettingsPage.jsx
+1:38:20 PM [vite] (client) page reload src/pages/admin/TimeTracking.jsx
+1:38:20 PM [vite] (client) page reload src/pages/admin/UserManagement.jsx
+1:38:20 PM [vite] (client) page reload src/pages/cashier/CashierPOS.jsx
+1:38:20 PM [vite] (client) page reload src/pages/cashier/CashierSettings.jsx
+1:38:21 PM [vite] server restarted.
+1:38:31 PM [vite] vite.config.js changed, restarting server...
+✘ [ERROR] Unexpected "<<"
+
+    vite.config.js:9:2:
+      9 │ <<<<<<< HEAD
+        ╵   ~~
+
+failed to load config from /home/ian-mabruk/universal/my-react-app/vite.config.js
+1:38:31 PM [vite] Build failed with 1 error:
+vite.config.js:9:2: ERROR: Unexpected "<<"
+1:38:31 PM [vite] server restart failed
+1:38:41 PM [vite] vite.config.js changed, restarting server...
+1:38:41 PM [vite] .env.development changed, restarting server...
+1:38:41 PM [vite] (client) page reload test-data-sync.html
+1:38:41 PM [vite] server restarted.
+1:39:54 PM [vite] .env.development changed, restarting server...
+1:39:54 PM [vite] vite.config.js changed, restarting server...
+1:39:54 PM [vite] (client) page reload index.html
+1:39:54 PM [vite] (client) page reload test-data-sync.html
+1:39:54 PM [vite] server restarted.
+
+  ➜  Local:   http://localhost:5173/
+  ➜  Network: use --host to expose
+
+  ➜  Local:   http://localhost:5173/
+  ➜  Network: use --host to expose
+sal/my-react-app/node_modules/vite/dist/node/chunks/config.js:35793:24)
+    at loadConfigFromFile (file:///home/ian-mabruk/universal/my-react-app/node_modules/vite/dist/node/chunks/config.js:35762:179)
+    at resolveConfig (file:///home/ian-mabruk/universal/my-react-app/node_modules/vite/dist/node/chunks/config.js:35411:28)
+    at _createServer (file:///home/ian-mabruk/universal/my-react-app/node_modules/vite/dist/node/chunks/config.js:25361:73)
+    at restartServer (file:///home/ian-mabruk/universal/my-react-app/node_modules/vite/dist/node/chunks/config.js:25766:22)
+    at Object.restart (file:///home/ian-mabruk/universal/my-react-app/node_modules/vite/dist/node/chunks/config.js:25519:30)
+    at restartServerWithUrls (file:///home/ian-mabruk/universal/my-react-app/node_modules/vite/dist/node/chunks/config.js:25802:15)
+    at handleHMRUpdate (file:///home/ian-mabruk/universal/my-react-app/node_modules/vite/dist/node/chunks/config.js:25962:10)
+    at onHMRUpdate (file:///home/ian-mabruk/universal/my-react-app/node_modules/vite/dist/node/chunks/config.js:25555:41)
+    at onFileAddUnlink (file:///home/ian-mabruk/universal/my-react-app/node_modules/vite/dist/node/chunks/config.js:25573:9)
+    at runNextTicks (node:internal/process/task_queues:65:5)
+    at listOnTimeout (node:internal/timers:549:9)
+    at process.processTimers (node:internal/timers:523:7)
+
+1:38:07 PM [vite] vite.config.js changed, restarting server...
+1:38:07 PM [vite] (client) page reload src/pages/AdminDashboard.jsx
+1:38:07 PM [vite] (client) page reload src/pages/Auth.jsx
+1:38:07 PM [vite] (client) page reload src/pages/CashierPOS.jsx
+1:38:07 PM [vite] (client) page reload src/pages/Landing.jsx
+1:38:07 PM [vite] (client) page reload src/pages/Subscription.jsx
+1:38:07 PM [vite] (client) page reload index.html
+1:38:07 PM [vite] (client) page reload src/context/AuthContext.jsx
+1:38:07 PM [vite] (client) page reload tailwind.config.js
+1:38:07 PM [vite] (client) page reload src/App.jsx
+1:38:07 PM [vite] (client) hmr update /src/index.css
+1:38:07 PM [vite] (client) page reload src/main.jsx
+failed to load config from /home/ian-mabruk/universal/my-react-app/vite.config.js
+1:38:07 PM [vite] Build failed with 1 error:
+node_modules/esbuild/lib/main.js:1267:21: ERROR: [plugin: inject-file-scope-variables] ENOENT: no such file or directory, open '/home/ian-mabruk/universal/my-react-app/vite.config.js'
+1:38:07 PM [vite] server restart failed
+1:38:20 PM [vite] (client) page reload src/App.jsx
+1:38:20 PM [vite] (client) hmr update /src/index.css
+1:38:20 PM [vite] (client) page reload src/main.jsx
+1:38:20 PM [vite] (client) page reload src/services/api.js
+1:38:20 PM [vite] (client) page reload index.html
+1:38:20 PM [vite] (client) page reload tailwind.config.js
+1:38:20 PM [vite] vite.config.js changed, restarting server...
+1:38:20 PM [vite] (client) page reload src/context/AuthContext.jsx
+1:38:20 PM [vite] (client) page reload src/pages/AdminDashboard.jsx
+1:38:20 PM [vite] (client) page reload src/pages/Auth.jsx
+1:38:20 PM [vite] (client) page reload src/pages/CashierPOS.jsx
+1:38:20 PM [vite] (client) page reload src/pages/Landing.jsx
+1:38:20 PM [vite] (client) page reload src/pages/MainAdmin.jsx
+1:38:20 PM [vite] (client) page reload src/pages/Subscription.jsx
+1:38:20 PM [vite] (client) page reload src/pages/admin/CreditRequests.jsx
+1:38:20 PM [vite] (client) page reload src/pages/admin/Discounts.jsx
+1:38:20 PM [vite] (client) page reload src/pages/admin/RemindersManager.jsx
+1:38:20 PM [vite] (client) page reload src/pages/admin/ServiceFees.jsx
+1:38:20 PM [vite] (client) page reload src/pages/admin/TimeTracking.jsx
+1:38:20 PM [vite] (client) page reload src/pages/cashier/CashierSettings.jsx
+1:38:20 PM [vite] (client) Re-optimizing dependencies because vite config has changed
+1:38:21 PM [vite] server restarted.
+1:38:31 PM [vite] vite.config.js changed, restarting server...
+✘ [ERROR] Unexpected "<<"
+
+    vite.config.js:9:2:
+      9 │ <<<<<<< HEAD
+        ╵   ~~
+
+failed to load config from /home/ian-mabruk/universal/my-react-app/vite.config.js
+1:38:31 PM [vite] Build failed with 1 error:
+vite.config.js:9:2: ERROR: Unexpected "<<"
+1:38:31 PM [vite] server restart failed
+1:38:41 PM [vite] .env.development changed, restarting server...
+1:38:41 PM [vite] vite.config.js changed, restarting server...
+1:38:41 PM [vite] (client) page reload test-data-sync.html
+1:38:41 PM [vite] server restarted.
+1:39:54 PM [vite] .env.development changed, restarting server...
+Port 5173 is in use, trying another one...
+Port 5174 is in use, trying another one...
+Port 5175 is in use, trying another one...
+Port 5176 is in use, trying another one...
+1:39:54 PM [vite] server restarted.
+
+  ➜  Local:   http://localhost:5177/
+  ➜  Network: use --host to expose
