@@ -97,10 +97,6 @@ export default function CashierPOS() {
       console.error('Failed to load data:', error);
     }
   };
-    } catch (error) {
-      console.error('Failed to load data:', error);
-    }
-  };
 
   const handleImageUpload = (e, isNewProduct = true) => {
     const file = e.target.files[0];
