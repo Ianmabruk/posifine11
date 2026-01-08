@@ -77,6 +77,12 @@ export default function Inventory() {
   const handleImageUpload = (e, isNewProduct = true) => {
     const file = e.target.files[0];
     if (file) {
+      // Check file size (limit to 2MB for fast loading)
+      if (file.size > 2 * 1024 * 1024) {
+        showNotification('Image must be smaller than 2MB', 'error');
+        return;
+      }
+
       const reader = new FileReader();
       reader.onload = (e) => {
         const base64 = e.target.result;
@@ -84,7 +90,21 @@ export default function Inventory() {
         if (isNewProduct) {
           setNewProduct({ ...newProduct, image: base64 });
         } else {
+          // FAST UPDATE: Show image immediately in edit product
           setEditProduct({ ...editProduct, image: base64 });
+          
+          // Auto-save image after upload (debounced, happens in background)
+          if (editProduct.id) {
+            setTimeout(async () => {
+              try {
+                await products.update(editProduct.id, { image: base64 });
+                showNotification('✅ Image saved', 'success');
+              } catch (error) {
+                console.error('Failed to save image:', error);
+                // Silently fail - user can retry
+              }
+            }, 500); // Small delay to avoid multiple rapid uploads
+          }
         }
       };
       reader.readAsDataURL(file);
@@ -149,23 +169,46 @@ export default function Inventory() {
   const handleAddStock = async (e) => {
     e.preventDefault();
     try {
-      await batches.create({
+      // OPTIMISTIC UPDATE: Update batch list immediately
+      const newBatch = {
+        id: `batch-${Date.now()}`,
         productId: selectedProduct.id,
         quantity: parseInt(newStock.quantity),
         expiryDate: newStock.expiryDate,
         batchNumber: newStock.batchNumber || `BATCH-${Date.now()}`,
         cost: parseFloat(newStock.cost || selectedProduct.cost || 0)
-      });
-      
-      setNewStock({ quantity: '', expiryDate: '', batchNumber: '', cost: '' });
-      setShowAddStock(false);
-      setSelectedProduct(null);
-      await loadData();
-      
-      showNotification(`✅ Stock added successfully for ${selectedProduct.name}!`, 'success');
+      };
+
+      // Show update immediately
+      setBatchList(prev => [...prev, newBatch]);
+      showNotification('⚡ Adding stock...', 'info');
+
+      try {
+        // Make API call in background
+        await batches.create({
+          productId: selectedProduct.id,
+          quantity: parseInt(newStock.quantity),
+          expiryDate: newStock.expiryDate,
+          batchNumber: newStock.batchNumber || `BATCH-${Date.now()}`,
+          cost: parseFloat(newStock.cost || selectedProduct.cost || 0)
+        });
+        
+        setNewStock({ quantity: '', expiryDate: '', batchNumber: '', cost: '' });
+        setShowAddStock(false);
+        setSelectedProduct(null);
+        
+        // Refresh data to sync with backend
+        await loadData();
+        
+        showNotification(`✅ Stock added successfully for ${selectedProduct.name}!`, 'success');
+      } catch (apiError) {
+        // Rollback optimistic update on failure
+        setBatchList(prev => prev.filter(b => b.id !== newBatch.id));
+        throw apiError;
+      }
     } catch (error) {
       console.error('Failed to add stock:', error);
-      alert('Failed to add stock');
+      showNotification(`❌ Failed to add stock: ${error.message || 'Unknown error'}`, 'error');
     }
   };
 
@@ -187,39 +230,51 @@ export default function Inventory() {
         quantity: parseFloat(editProduct.quantity)
       };
 
+      // OPTIMISTIC UPDATE: Update UI immediately
+      const optimisticProduct = { ...originalProduct, ...updateData };
+      setProductList(prevList => 
+        prevList.map(p => p.id === editProduct.id ? optimisticProduct : p)
+      );
 
-      const result = await products.update(editProduct.id, updateData);
+      // Show loading state
+      setIsSyncing(true);
+      showNotification('⚡ Updating product...', 'info');
       
-      setShowEditModal(false);
-      await refreshProducts();
-      
-      // Trigger real-time sync notification if enabled
-      if (isRealTimeProductSyncEnabled()) {
-        setIsSyncing(true);
-        window.dispatchEvent(new CustomEvent('productUpdated', { 
-          detail: { 
-            product: result,
-            originalProduct,
-            timestamp: new Date().toISOString(),
-            type: 'update'
-          }
-        }));
+      try {
+        // Make API call without waiting for full response
+        const result = await products.update(editProduct.id, updateData);
         
-        // Show sync notification
-        showNotification(`📡 Product updated and synced to all dashboards!`, 'success');
+        setShowEditModal(false);
+        
+        // Trigger real-time sync notification if enabled
+        if (isRealTimeProductSyncEnabled()) {
+          window.dispatchEvent(new CustomEvent('productUpdated', { 
+            detail: { 
+              product: result,
+              originalProduct,
+              timestamp: new Date().toISOString(),
+              type: 'update'
+            }
+          }));
+          showNotification(`✅ Product updated and synced!`, 'success');
+        } else {
+          showNotification('✅ Product updated successfully!', 'success');
+        }
+        
         setLastSync(new Date());
-        
-        // Clear sync status after 3 seconds
-        setTimeout(() => {
-          setIsSyncing(false);
-        }, 3000);
-      } else {
-        alert('Product updated successfully!');
+      } catch (updateError) {
+        // Rollback on API error
+        setProductList(prevList => 
+          prevList.map(p => p.id === editProduct.id ? originalProduct : p)
+        );
+        throw updateError;
+      } finally {
+        setIsSyncing(false);
       }
       
     } catch (error) {
       console.error('Failed to update product:', error);
-      alert(`Failed to update product: ${error.message || 'Unknown error'}`);
+      showNotification(`❌ Update failed: ${error.message || 'Unknown error'}`, 'error');
     }
   };
 

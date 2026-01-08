@@ -10,6 +10,7 @@ import Subscription from './pages/Subscription';
 import CashierPOS from './pages/CashierPOS';
 import MainAdminLogin from './pages/MainAdminLogin';
 import MainAdminDashboard from './pages/MainAdminDashboard';
+import MainAdminEnhanced from './pages/MainAdminEnhanced';
 import ReminderModal from './components/ReminderModal';
 import ScreenLock from './components/ScreenLock';
 import useInactivity from './hooks/useInactivity';
@@ -116,7 +117,8 @@ function App() {
             
             {/* Owner Main Admin Routes - Hidden from normal users */}
             <Route path="/main.admin" element={<MainAdminLogin />} />
-            <Route path="/main.admin/dashboard" element={<ProtectedRoute ownerOnly><MainAdminDashboard /></ProtectedRoute>} />
+            <Route path="/main.admin/dashboard" element={<ProtectedRoute ownerOnly><MainAdminEnhanced /></ProtectedRoute>} />
+            <Route path="/main.admin/dashboard-legacy" element={<ProtectedRoute ownerOnly><MainAdminDashboard /></ProtectedRoute>} />
             
             {/* Regular User Routes */}
             <Route path="/dashboard" element={<ProtectedRoute><DashboardRouter /></ProtectedRoute>} />

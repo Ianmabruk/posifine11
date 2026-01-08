@@ -10,7 +10,8 @@ const BASE_API_URL = getBaseUrl();
 
 const getToken = () => localStorage.getItem('token');
 
-const request = async (endpoint, options = {}) => {
+// Retry logic for network failures (handles Render free tier spindown)
+const requestWithRetry = async (endpoint, options = {}, retryCount = 0, maxRetries = 3) => {
   const token = getToken();
   
   const cleanEndpoint = endpoint.startsWith('/') ? endpoint : `/${endpoint}`;
@@ -56,13 +57,28 @@ const request = async (endpoint, options = {}) => {
     throw new Error(errorData.error || `HTTP ${response.status}: ${response.statusText}`);
 
   } catch (error) {
+    // Retry on network errors (fetch failures)
     if (error.name === 'TypeError' && error.message.includes('fetch')) {
-      console.error("API Fetch Error:", error);
+      console.error(`API Fetch Error (attempt ${retryCount + 1}/${maxRetries + 1}):`, error);
       console.error("Attempted URL:", `${BASE_API_URL}${cleanEndpoint}`);
-      throw new Error('Cannot connect to server. Please check your internet connection.');
+      
+      // If not max retries, wait and retry
+      if (retryCount < maxRetries) {
+        const delayMs = Math.min(1000 * Math.pow(2, retryCount), 10000); // Exponential backoff: 1s, 2s, 4s
+        console.log(`Retrying in ${delayMs}ms...`);
+        await new Promise(resolve => setTimeout(resolve, delayMs));
+        return requestWithRetry(endpoint, options, retryCount + 1, maxRetries);
+      }
+      
+      // All retries failed
+      throw new Error('Cannot connect to server. The server may be waking up. Please try again in a moment.');
     }
     throw error;
   }
+};
+
+const request = (endpoint, options = {}) => {
+  return requestWithRetry(endpoint, options, 0, 3);
 };
 
 
