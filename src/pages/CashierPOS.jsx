@@ -194,6 +194,25 @@ export default function CashierPOS() {
   const handleAddStock = async (e) => {
     e.preventDefault();
     try {
+      // Get current batch list to calculate new ID
+      const currentBatches = Array.isArray(batchList) ? batchList : [];
+      const newBatchId = currentBatches.length > 0 
+        ? Math.max(...currentBatches.map(b => b.id || 0)) + 1 
+        : 1;
+      
+      // OPTIMISTIC UPDATE: Show stock immediately
+      const optimisticBatch = {
+        id: newBatchId,
+        productId: selectedProduct.id,
+        quantity: parseInt(newStock.quantity),
+        expiryDate: newStock.expiryDate,
+        batchNumber: newStock.batchNumber || `BATCH-${Date.now()}`,
+        cost: parseFloat(newStock.cost || selectedProduct.cost || 0)
+      };
+      
+      setBatchList(prev => [...prev, optimisticBatch]);
+      
+      // Make API call in background
       await batches.create({
         productId: selectedProduct.id,
         quantity: parseInt(newStock.quantity),
@@ -201,10 +220,11 @@ export default function CashierPOS() {
         batchNumber: newStock.batchNumber || `BATCH-${Date.now()}`,
         cost: parseFloat(newStock.cost || selectedProduct.cost || 0)
       });
+      
       setNewStock({ quantity: '', expiryDate: '', batchNumber: '', cost: '' });
       setShowAddStock(false);
       setSelectedProduct(null);
-      await loadData(); // Reload all data immediately
+      await loadData(); // Refresh to sync with backend
       alert('Stock added successfully!');
     } catch (error) {
       console.error('Failed to add stock:', error);
