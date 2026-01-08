@@ -22,6 +22,9 @@ export default function CashierPOS() {
   const [showAddExpense, setShowAddExpense] = useState(false);
   const [newExpense, setNewExpense] = useState({ description: '', amount: '', category: '' });
   const [imagePreview, setImagePreview] = useState('');
+  const [discountList, setDiscountList] = useState([]);
+  const [selectedDiscount, setSelectedDiscount] = useState(null);
+  const [taxType, setTaxType] = useState('exclusive');
 
   useEffect(() => {
     loadData();
@@ -38,6 +41,14 @@ export default function CashierPOS() {
           const filtered = data.allProducts.filter(p => p.visibleToCashier !== false && !p.expenseOnly);
           setProductList(filtered);
         }
+        // When discounts updated, refresh discount list
+        if (data && data.discounts) {
+          setDiscountList(data.discounts);
+        }
+        // When new sale created, reload data to show updated stats
+        if (data && data.sale) {
+          loadData();
+        }
       }).catch((error) => {
         console.warn('WebSocket connection failed:', error);
       });
@@ -47,7 +58,6 @@ export default function CashierPOS() {
       try {
         if (!msg) return;
         if (msg.type === 'initial' || msg.type === 'products_snapshot' || msg.type === 'product_created' || msg.type === 'product_updated' || msg.type === 'product_deleted') {
-          // For snapshots and individual product events, reload product list conservatively
           products.getAll().then(p => setProductList(p.filter(prod => prod.visibleToCashier !== false && !prod.expenseOnly))).catch(() => {});
         }
       } catch (e) {
@@ -73,6 +83,20 @@ export default function CashierPOS() {
       setProductList(p.filter(prod => prod.visibleToCashier !== false && !prod.expenseOnly));
       setData({ sales: s, expenses: e, stats: st });
       setBatchList(b);
+      
+      // Load discounts
+      try {
+        const discounts = await fetch(`${BASE_API_URL}/discounts`, {
+          headers: { 'Authorization': `Bearer ${localStorage.getItem('token')}` }
+        }).then(r => r.json());
+        setDiscountList(discounts || []);
+      } catch (err) {
+        console.warn('Failed to load discounts:', err);
+      }
+    } catch (error) {
+      console.error('Failed to load data:', error);
+    }
+  };
     } catch (error) {
       console.error('Failed to load data:', error);
     }
@@ -156,14 +180,31 @@ export default function CashierPOS() {
     if (cart.length === 0) return;
     
     try {
+      const discountValue = selectedDiscount 
+        ? (selectedDiscount.type === 'percentage' ? (total * selectedDiscount.value / 100) : selectedDiscount.value)
+        : 0;
+      
+      const tax = taxType === 'inclusive' 
+        ? (total * 0.16)  // Kenya standard tax 16%
+        : (total * 0.16);
+      
+      const finalTotal = taxType === 'inclusive'
+        ? (total - discountValue)
+        : (total - discountValue + tax);
+      
       await sales.create({
         items: cart.map(item => ({ productId: item.id, quantity: item.quantity, price: item.price })),
-        total,
+        total: finalTotal,
+        discount: discountValue,
+        tax: tax,
+        taxType: taxType,
         paymentMethod
       });
       
       setCart([]);
-      await loadData(); // Reload all data immediately
+      setSelectedDiscount(null);
+      setTaxType('exclusive');
+      await loadData();
       alert('Sale completed successfully!');
     } catch (error) {
       console.error('Checkout failed:', error);
@@ -452,9 +493,73 @@ export default function CashierPOS() {
             </div>
 
             <div className="border-t border-gray-200 pt-4 space-y-4">
-              <div className="flex justify-between text-xl font-bold">
-                <span>Total:</span>
-                <span className="text-green-600">KSH {total.toLocaleString()}</span>
+              <div className="space-y-2 bg-gray-50 p-3 rounded-lg">
+                <div className="flex justify-between text-sm">
+                  <span>Subtotal:</span>
+                  <span className="text-gray-700">KSH {total.toLocaleString()}</span>
+                </div>
+                {selectedDiscount && (
+                  <div className="flex justify-between text-sm text-green-600">
+                    <span>Discount:</span>
+                    <span>-KSH {(selectedDiscount.type === 'percentage' ? (total * selectedDiscount.value / 100) : selectedDiscount.value).toLocaleString()}</span>
+                  </div>
+                )}
+                <div className="flex justify-between text-sm text-orange-600">
+                  <span>Tax ({taxType === 'exclusive' ? 'Added' : 'Included'}):</span>
+                  <span>{taxType === 'exclusive' ? '+' : ''}KSH {((total - (selectedDiscount ? (selectedDiscount.type === 'percentage' ? (total * selectedDiscount.value / 100) : selectedDiscount.value) : 0)) * 0.16).toLocaleString()}</span>
+                </div>
+                <div className="border-t pt-2 flex justify-between text-lg font-bold">
+                  <span>Final Total:</span>
+                  <span className="text-green-600">
+                    KSH {
+                      (taxType === 'exclusive' 
+                        ? (total - (selectedDiscount ? (selectedDiscount.type === 'percentage' ? (total * selectedDiscount.value / 100) : selectedDiscount.value) : 0) + ((total - (selectedDiscount ? (selectedDiscount.type === 'percentage' ? (total * selectedDiscount.value / 100) : selectedDiscount.value) : 0)) * 0.16))
+                        : (total - (selectedDiscount ? (selectedDiscount.type === 'percentage' ? (total * selectedDiscount.value / 100) : selectedDiscount.value) : 0))
+                      ).toLocaleString()
+                    }
+                  </span>
+                </div>
+              </div>
+
+              <div>
+                <label className="block text-sm font-semibold mb-2">Discount (Optional)</label>
+                <select 
+                  value={selectedDiscount?.id || ''} 
+                  onChange={(e) => {
+                    if (e.target.value) {
+                      setSelectedDiscount(discountList.find(d => d.id === parseInt(e.target.value)));
+                    } else {
+                      setSelectedDiscount(null);
+                    }
+                  }} 
+                  className="input"
+                >
+                  <option value="">No Discount</option>
+                  {discountList.filter(d => d.active).map(discount => (
+                    <option key={discount.id} value={discount.id}>
+                      {discount.name} - {discount.type === 'percentage' ? `${discount.value}%` : `KSH ${discount.value}`}
+                    </option>
+                  ))}
+                </select>
+                {selectedDiscount && (
+                  <p className="text-sm text-green-600 mt-1">
+                    Discount: KSH {(selectedDiscount.type === 'percentage' ? (total * selectedDiscount.value / 100) : selectedDiscount.value).toLocaleString()}
+                  </p>
+                )}
+              </div>
+
+              <div>
+                <label className="block text-sm font-semibold mb-2">Tax Type</label>
+                <div className="flex gap-3">
+                  <label className="flex items-center gap-2 cursor-pointer">
+                    <input type="radio" value="exclusive" checked={taxType === 'exclusive'} onChange={(e) => setTaxType(e.target.value)} />
+                    <span className="text-sm">Tax Exclusive (16% added)</span>
+                  </label>
+                  <label className="flex items-center gap-2 cursor-pointer">
+                    <input type="radio" value="inclusive" checked={taxType === 'inclusive'} onChange={(e) => setTaxType(e.target.value)} />
+                    <span className="text-sm">Tax Inclusive</span>
+                  </label>
+                </div>
               </div>
 
               <div>
