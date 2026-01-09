@@ -2,6 +2,7 @@ import { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { LogOut, Users, DollarSign, TrendingUp, Lock, Unlock, Search, Filter, MoreVertical, AlertCircle, CheckCircle, Clock, Activity, ArrowUp, BarChart3, Settings } from 'lucide-react';
 import { mainAdmin } from '../services/api';
+import websocketService from '../services/websocketService';
 
 export default function MainAdminNew() {
   const [currentPage, setCurrentPage] = useState('login'); // login, dashboard
@@ -31,6 +32,24 @@ export default function MainAdminNew() {
         localStorage.removeItem('ownerUser');
       }
     }
+  }, []);
+
+  // Listen for real-time updates via custom events
+  useEffect(() => {
+    const handleDataUpdate = () => {
+      loadDashboardData();
+    };
+
+    // Listen for custom events from WebSocket or API updates
+    window.addEventListener('dataUpdated', handleDataUpdate);
+    window.addEventListener('userDeleted', handleDataUpdate);
+    window.addEventListener('saleDeleted', handleDataUpdate);
+
+    return () => {
+      window.removeEventListener('dataUpdated', handleDataUpdate);
+      window.removeEventListener('userDeleted', handleDataUpdate);
+      window.removeEventListener('saleDeleted', handleDataUpdate);
+    };
   }, []);
 
   const loadDashboardData = async () => {
@@ -237,7 +256,7 @@ export default function MainAdminNew() {
             <div className="flex items-center justify-between">
               <div>
                 <p className="text-gray-400 text-sm">Total Sales</p>
-                <p className="text-3xl font-bold text-white mt-2">KSH {(stats.totalSales || 0).toLocaleString()}</p>
+                <p className="text-3xl font-bold text-white mt-2">KSH {((stats?.totalSales ?? 0) || 0).toLocaleString()}</p>
               </div>
               <TrendingUp className="w-10 h-10 text-purple-400 opacity-50" />
             </div>
@@ -282,6 +301,7 @@ export default function MainAdminNew() {
                 <tr>
                   <th className="px-4 py-3 text-left text-gray-400 font-semibold">Name</th>
                   <th className="px-4 py-3 text-left text-gray-400 font-semibold">Email</th>
+                  <th className="px-4 py-3 text-left text-gray-400 font-semibold">Plan</th>
                   <th className="px-4 py-3 text-left text-gray-400 font-semibold">Role</th>
                   <th className="px-4 py-3 text-left text-gray-400 font-semibold">Status</th>
                   <th className="px-4 py-3 text-left text-gray-400 font-semibold">Days Used</th>
@@ -293,6 +313,15 @@ export default function MainAdminNew() {
                   <tr key={user.id} className="border-b border-purple-500/5 hover:bg-slate-700/30 transition">
                     <td className="px-4 py-3 text-white font-medium">{user.name || 'N/A'}</td>
                     <td className="px-4 py-3 text-gray-300">{user.email}</td>
+                    <td className="px-4 py-3">
+                      <span className={`px-2 py-1 rounded text-xs font-medium ${
+                        user.planType === 'paid' ? 'bg-green-500/30 text-green-300' :
+                        user.planType === 'trial' ? 'bg-yellow-500/30 text-yellow-300' :
+                        'bg-gray-500/30 text-gray-300'
+                      }`}>
+                        {(user.plan || user.planType || 'free_demo').toUpperCase()}
+                      </span>
+                    </td>
                     <td className="px-4 py-3">
                       <span className={`px-2 py-1 rounded text-xs font-medium ${
                         user.role === 'owner' ? 'bg-purple-500/30 text-purple-300' :

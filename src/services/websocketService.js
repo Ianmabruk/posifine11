@@ -13,7 +13,11 @@ class WebSocketService {
       stock_updated: [],
       heartbeat: [],
       initial: [],
-      error: []
+      error: [],
+      sale_deleted: [],
+      product_deleted: [],
+      user_deleted: [],
+      data_cleared: []
     };
     this.reconnectAttempts = 0;
     this.maxReconnectAttempts = 5;
@@ -65,6 +69,26 @@ class WebSocketService {
             } else if (message.type === 'heartbeat') {
               // Silent heartbeat - keep connection alive
               this.emit('heartbeat', message);
+            } else if (message.type === 'sale_deleted') {
+              console.log('🗑️ Sale deleted:', message.data);
+              this.emit('sale_deleted', message.data);
+              // Trigger dashboard refresh
+              window.dispatchEvent(new Event('saleDeleted'));
+            } else if (message.type === 'product_deleted') {
+              console.log('🗑️ Product deleted:', message.data);
+              this.emit('product_deleted', message.data);
+              // Trigger dashboard refresh
+              window.dispatchEvent(new Event('dataUpdated'));
+            } else if (message.type === 'user_deleted') {
+              console.log('🗑️ User deleted:', message.data);
+              this.emit('user_deleted', message.data);
+              // Trigger dashboard refresh
+              window.dispatchEvent(new Event('userDeleted'));
+            } else if (message.type === 'data_cleared') {
+              console.log('🗑️ Data cleared:', message.data);
+              this.emit('data_cleared', message.data);
+              // Trigger dashboard refresh
+              window.dispatchEvent(new Event('dataUpdated'));
             }
           } catch (e) {
             console.error('Error parsing WebSocket message:', e);
