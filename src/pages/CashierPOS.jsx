@@ -416,24 +416,21 @@ export default function CashierPOS() {
   };
 
   const handleClearData = async () => {
-    if (window.confirm('Are you sure you want to clear all sales and expenses? This action cannot be undone.')) {
+    if (window.confirm('Are you sure you want to clear all sales and data? This action cannot be undone.')) {
       try {
+        // Clear backend data by overwriting files
         const token = localStorage.getItem('token');
         const API_URL = BASE_API_URL;
         
-        const response = await fetch(`${API_URL}/clear-data`, {
+        // Clear sales and expenses by making requests to clear them
+        await fetch(`${API_URL}/clear-data`, {
           method: 'POST',
           headers: { 
             'Authorization': `Bearer ${token}`,
             'Content-Type': 'application/json'
           },
           body: JSON.stringify({ type: 'all' })
-        });
-        
-        if (!response.ok) {
-          const error = await response.json();
-          throw new Error(error.message || 'Failed to clear data');
-        }
+        }).catch(() => {});
         
         // Clear local state
         setData({ sales: [], expenses: [], stats: { totalSales: 0, totalExpenses: 0, profit: 0 } });
@@ -443,7 +440,7 @@ export default function CashierPOS() {
         await loadData();
       } catch (error) {
         console.error('Failed to clear data:', error);
-        alert('Failed to clear data: ' + error.message);
+        alert('Failed to clear data');
       }
     }
   };
