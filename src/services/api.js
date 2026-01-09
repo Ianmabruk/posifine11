@@ -411,6 +411,15 @@ export const mainAdmin = {
       body: JSON.stringify({ plan })
     });
   },
+  deleteUser: (userId) => {
+    const token = localStorage.getItem('ownerToken');
+    return request(`/main-admin/users/${userId}`, {
+      method: 'DELETE',
+      headers: {
+        'Authorization': `Bearer ${token}`
+      }
+    });
+  },
   clearData: (type) => {
     const token = localStorage.getItem('ownerToken');
     return request('/main-admin/system/clear-data', {

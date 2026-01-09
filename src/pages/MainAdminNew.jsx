@@ -151,6 +151,26 @@ export default function MainAdminNew() {
     }
   };
 
+  const handleDeleteUser = async (userId, userName) => {
+    if (!window.confirm(`Are you sure you want to delete user "${userName}"? This action cannot be undone.`)) {
+      return;
+    }
+    
+    try {
+      setActionLoading(userId);
+      await mainAdmin.deleteUser(userId);
+      
+      // Remove from local state
+      setUsers(users.filter(u => u.id !== userId));
+      alert(`User "${userName}" deleted successfully`);
+    } catch (error) {
+      console.error('Failed to delete user:', error);
+      alert('Failed to delete user: ' + (error.message || 'Unknown error'));
+    } finally {
+      setActionLoading(null);
+    }
+  };
+
   const filteredUsers = users.filter(user => {
     const matchesSearch = user.name?.toLowerCase().includes(searchTerm.toLowerCase()) ||
       user.email?.toLowerCase().includes(searchTerm.toLowerCase());
@@ -158,7 +178,8 @@ export default function MainAdminNew() {
     const matchesFilter = filterStatus === 'all' ||
       (filterStatus === 'active' && user.active && !user.locked) ||
       (filterStatus === 'locked' && user.locked) ||
-      (filterStatus === 'inactive' && !user.active);
+      (filterStatus === 'inactive' && !user.active) ||
+      (filterStatus === 'trial' && (user.plan === 'free' || user.plan === 'free_demo' || !user.plan));
 
     return matchesSearch && matchesFilter;
   });
@@ -312,6 +333,7 @@ export default function MainAdminNew() {
               >
                 <option value="all">All Users</option>
                 <option value="active">Active</option>
+                <option value="trial">Free Trial</option>
                 <option value="locked">Locked</option>
                 <option value="inactive">Inactive</option>
               </select>
@@ -367,6 +389,14 @@ export default function MainAdminNew() {
                     </td>
                     <td className="px-4 py-3">
                       <div className="flex items-center gap-2">
+                        {/* Free trial badge */}
+                        {!user.plan || user.plan === 'free' || user.plan === 'free_demo' ? (
+                          <span className="inline-flex items-center gap-1 px-2 py-1 bg-yellow-500/20 text-yellow-300 text-xs rounded font-medium">
+                            <Clock className="w-3 h-3" /> Trial
+                          </span>
+                        ) : null}
+                        
+                        {/* Status */}
                         {user.locked ? (
                           <span className="flex items-center gap-1 text-orange-300 text-xs">
                             <Lock className="w-3 h-3" /> Locked
@@ -386,14 +416,24 @@ export default function MainAdminNew() {
                       {user.daysUsed || 0} days
                     </td>
                     <td className="px-4 py-3">
-                      <button
-                        onClick={() => handleLockUser(user.id)}
-                        disabled={actionLoading === user.id || user.role === 'owner'}
-                        className="p-2 hover:bg-purple-500/20 rounded-lg text-purple-300 transition disabled:opacity-50 disabled:cursor-not-allowed"
-                        title={user.role === 'owner' ? 'Cannot lock owner' : user.locked ? 'Unlock user' : 'Lock user'}
-                      >
-                        {user.locked ? <Unlock className="w-4 h-4" /> : <Lock className="w-4 h-4" />}
-                      </button>
+                      <div className="flex items-center gap-2">
+                        <button
+                          onClick={() => handleLockUser(user.id)}
+                          disabled={actionLoading === user.id || user.role === 'owner'}
+                          className="p-2 hover:bg-purple-500/20 rounded-lg text-purple-300 transition disabled:opacity-50 disabled:cursor-not-allowed"
+                          title={user.role === 'owner' ? 'Cannot lock owner' : user.locked ? 'Unlock user' : 'Lock user'}
+                        >
+                          {user.locked ? <Unlock className="w-4 h-4" /> : <Lock className="w-4 h-4" />}
+                        </button>
+                        <button
+                          onClick={() => handleDeleteUser(user.id, user.name)}
+                          disabled={actionLoading === user.id || user.role === 'owner'}
+                          className="p-2 hover:bg-red-500/20 rounded-lg text-red-300 transition disabled:opacity-50 disabled:cursor-not-allowed"
+                          title={user.role === 'owner' ? 'Cannot delete owner' : 'Delete user'}
+                        >
+                          <span className="w-4 h-4 flex items-center justify-center">✕</span>
+                        </button>
+                      </div>
                     </td>
                   </tr>
                 ))}
