@@ -521,4 +521,3 @@ export const cashierNotes = {
   })
 };
 
-export { BASE_API_URL };
