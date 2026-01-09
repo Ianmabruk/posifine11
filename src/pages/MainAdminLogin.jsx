@@ -41,12 +41,12 @@ export default function MainAdminLogin() {
     try {
       const response = await mainAdmin.login(formData);
       
-      if (response.token && response.user && (response.user.type === 'main_admin' || response.user.type === 'owner')) {
+      if (response.token && response.user && response.user.role === 'owner') {
         localStorage.setItem('ownerToken', response.token);
         localStorage.setItem('ownerUser', JSON.stringify(response.user));
         navigate('/main.admin/dashboard');
       } else {
-        throw new Error('Invalid response from server');
+        throw new Error('Invalid response from server or insufficient permissions');
       }
     } catch (err) {
       console.error('Owner login error:', err);

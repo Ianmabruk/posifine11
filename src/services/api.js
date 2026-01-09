@@ -29,6 +29,13 @@ const requestWithRetry = async (endpoint, options = {}, retryCount = 0, maxRetri
     const response = await fetch(`${BASE_API_URL}${cleanEndpoint}`, config);
 
     if (response.status === 401) {
+      // For login endpoints, return the error response instead of throwing
+      if (cleanEndpoint.includes('/auth/login') || cleanEndpoint.includes('/main-admin/auth/login')) {
+        const errorData = await response.json().catch(() => ({ error: 'Unauthorized' }));
+        throw new Error(errorData.error || 'Invalid credentials');
+      }
+      
+      // For other endpoints, clear tokens and redirect
       localStorage.removeItem('token');
       localStorage.removeItem('user');
       const path = window.location.pathname || '';
