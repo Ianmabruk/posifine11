@@ -1,6 +1,6 @@
-import { useState, useEffect } from 'react';
-import { useNavigate, useLocation } from 'react-router-dom';
-import { Shield, Mail, Lock, AlertCircle, Eye, EyeOff } from 'lucide-react';
+import { useState, useEffect, useRef } from 'react';
+import { useNavigate } from 'react-router-dom';
+import { Mail, Lock, Eye, EyeOff, AlertCircle } from 'lucide-react';
 import { mainAdmin } from '../services/api';
 
 export default function MainAdminLogin() {
@@ -12,29 +12,28 @@ export default function MainAdminLogin() {
   const [error, setError] = useState('');
   const [showPassword, setShowPassword] = useState(false);
   const navigate = useNavigate();
-  const location = useLocation();
+  const redirectDone = useRef(false);
 
   useEffect(() => {
-    // Only check once on mount
+    // Only check redirect once
+    if (redirectDone.current) return;
+    redirectDone.current = true;
+
     const token = localStorage.getItem('ownerToken');
     const user = localStorage.getItem('ownerUser');
     
     if (token && user) {
       try {
         const userData = JSON.parse(user);
-        if (userData.role === 'owner' || userData.isMainAdmin) {
-          // Redirect after a short delay to ensure state is clean
-          const timer = setTimeout(() => {
-            navigate('/main.admin/dashboard', { replace: true });
-          }, 100);
-          return () => clearTimeout(timer);
+        if (userData.role === 'owner') {
+          navigate('/main.admin/dashboard', { replace: true });
         }
       } catch (e) {
         localStorage.removeItem('ownerToken');
         localStorage.removeItem('ownerUser');
       }
     }
-  }, []); // Empty dependency array - run once on mount only
+  }, [navigate]);
 
   const handleSubmit = async (e) => {
     e.preventDefault();
@@ -42,30 +41,16 @@ export default function MainAdminLogin() {
     setError('');
 
     try {
-      console.log('Attempting login with:', formData.email);
       const response = await mainAdmin.login(formData);
       
-      console.log('Login response:', response);
-      console.log('Response token:', response.token);
-      console.log('Response user:', response.user);
-      console.log('User role:', response.user?.role);
-      
       if (response.token && response.user && response.user.role === 'owner') {
-        console.log('Login successful, storing tokens...');
         localStorage.setItem('ownerToken', response.token);
         localStorage.setItem('ownerUser', JSON.stringify(response.user));
-        console.log('Navigating to dashboard...');
-        navigate('/main.admin/dashboard');
+        navigate('/main.admin/dashboard', { replace: true });
       } else {
-        console.log('Login validation failed', {
-          hasToken: !!response.token,
-          hasUser: !!response.user,
-          isOwner: response.user?.role === 'owner'
-        });
         throw new Error('Invalid response from server or insufficient permissions');
       }
     } catch (err) {
-      console.error('Owner login error:', err);
       setError(err.message || 'Access denied. Owner access only.');
     } finally {
       setLoading(false);
