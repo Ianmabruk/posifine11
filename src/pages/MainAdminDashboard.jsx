@@ -6,7 +6,7 @@ import {
   LogOut, Database, Settings, Crown, Clock, TrendingUp,
   UserCheck, UserX, Edit3, Eye
 } from 'lucide-react';
-import { mainAdmin } from '../services/api';
+import { mainAdmin, BASE_API_URL } from '../services/api';
 
 export default function MainAdminDashboard() {
   const [users, setUsers] = useState([]);
@@ -17,6 +17,7 @@ export default function MainAdminDashboard() {
   const [actionLoading, setActionLoading] = useState(null);
   const [selectedUser, setSelectedUser] = useState(null);
   const [showPlanModal, setShowPlanModal] = useState(false);
+  const [timeEntries, setTimeEntries] = useState([]);
   const navigate = useNavigate();
 
   useEffect(() => {
@@ -55,6 +56,20 @@ export default function MainAdminDashboard() {
       setUsers(usersData);
       setStats(statsData);
       setActivities(activitiesData);
+      
+      // Load time entries from backend
+      try {
+        const token = localStorage.getItem('ownerToken');
+        const response = await fetch(`${BASE_API_URL}/time-entries/today`, {
+          headers: { 'Authorization': `Bearer ${token}` }
+        });
+        if (response.ok) {
+          const entries = await response.json();
+          setTimeEntries(entries);
+        }
+      } catch (err) {
+        console.warn('Failed to load time entries:', err);
+      }
     } catch (error) {
       console.error('Failed to load data:', error);
     } finally {
@@ -221,6 +236,7 @@ export default function MainAdminDashboard() {
             { id: 'overview', label: 'Overview', icon: TrendingUp },
             { id: 'users', label: `Users (${users.length})`, icon: Users },
             { id: 'activities', label: `Activities (${activities.length})`, icon: Activity },
+            { id: 'time-entries', label: `Time Tracking (${timeEntries.length})`, icon: Clock },
             { id: 'system', label: 'System Control', icon: Settings }
           ].map(tab => {
             const Icon = tab.icon;
@@ -557,6 +573,100 @@ export default function MainAdminDashboard() {
                   <p>No activity recorded yet</p>
                 </div>
               )}
+            </div>
+          </div>
+        )}
+
+        {/* System Control Tab */}
+        {activeTab === 'time-entries' && (
+          <div className="space-y-6">
+            <div className="bg-black/30 backdrop-blur-lg rounded-xl p-6 border border-red-500/30">
+              <h2 className="text-xl font-bold text-white mb-4 flex items-center gap-2">
+                <Clock className="w-6 h-6 text-yellow-400" />
+                Cashier Time Tracking
+              </h2>
+              
+              <div className="overflow-x-auto">
+                <table className="w-full">
+                  <thead>
+                    <tr className="bg-black/50 border-b border-red-500/30">
+                      <th className="px-4 py-3 text-left text-sm font-semibold text-gray-300">Cashier</th>
+                      <th className="px-4 py-3 text-left text-sm font-semibold text-gray-300">Clock In Time</th>
+                      <th className="px-4 py-3 text-left text-sm font-semibold text-gray-300">Clock Out Time</th>
+                      <th className="px-4 py-3 text-left text-sm font-semibold text-gray-300">Duration</th>
+                      <th className="px-4 py-3 text-left text-sm font-semibold text-gray-300">Status</th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    {timeEntries.length === 0 ? (
+                      <tr>
+                        <td colSpan="5" className="px-4 py-8 text-center text-gray-400">
+                          No time entries today
+                        </td>
+                      </tr>
+                    ) : (
+                      timeEntries.map((entry, idx) => {
+                        const clockIn = new Date(entry.clockInTime);
+                        const clockOut = entry.clockOutTime ? new Date(entry.clockOutTime) : null;
+                        const duration = entry.duration ? `${Math.floor(entry.duration / 60)}h ${entry.duration % 60}m` : 'In Progress';
+                        
+                        return (
+                          <tr key={idx} className="border-b border-red-500/20 hover:bg-red-500/10 transition-colors">
+                            <td className="px-4 py-3 text-sm">
+                              <div>
+                                <p className="text-white font-medium">{entry.cashierName}</p>
+                                <p className="text-gray-400 text-xs">{entry.cashierEmail}</p>
+                              </div>
+                            </td>
+                            <td className="px-4 py-3 text-sm text-gray-300">
+                              {clockIn.toLocaleString()}
+                            </td>
+                            <td className="px-4 py-3 text-sm text-gray-300">
+                              {clockOut ? clockOut.toLocaleString() : '-'}
+                            </td>
+                            <td className="px-4 py-3 text-sm text-gray-300">
+                              {duration}
+                            </td>
+                            <td className="px-4 py-3 text-sm">
+                              <span className={`px-2 py-1 rounded-full text-xs font-medium ${
+                                entry.status === 'clocked_in' 
+                                  ? 'bg-green-500/30 text-green-300' 
+                                  : 'bg-blue-500/30 text-blue-300'
+                              }`}>
+                                {entry.status === 'clocked_in' ? 'Clocked In' : 'Clocked Out'}
+                              </span>
+                            </td>
+                          </tr>
+                        );
+                      })
+                    )}
+                  </tbody>
+                </table>
+              </div>
+              
+              <div className="mt-6 p-4 bg-red-500/20 rounded-lg border border-red-500/30">
+                <h3 className="text-sm font-semibold text-red-300 mb-2">Today's Summary</h3>
+                <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
+                  <div>
+                    <p className="text-xs text-gray-400">Total Cashiers</p>
+                    <p className="text-lg font-bold text-white">{new Set(timeEntries.map(e => e.cashierId)).size}</p>
+                  </div>
+                  <div>
+                    <p className="text-xs text-gray-400">Clocked In</p>
+                    <p className="text-lg font-bold text-green-400">{timeEntries.filter(e => e.status === 'clocked_in').length}</p>
+                  </div>
+                  <div>
+                    <p className="text-xs text-gray-400">Clocked Out</p>
+                    <p className="text-lg font-bold text-blue-400">{timeEntries.filter(e => e.status === 'clocked_out').length}</p>
+                  </div>
+                  <div>
+                    <p className="text-xs text-gray-400">Total Hours</p>
+                    <p className="text-lg font-bold text-yellow-400">
+                      {Math.floor(timeEntries.filter(e => e.duration).reduce((sum, e) => sum + e.duration, 0) / 60)}h
+                    </p>
+                  </div>
+                </div>
+              </div>
             </div>
           </div>
         )}

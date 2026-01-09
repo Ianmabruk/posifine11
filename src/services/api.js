@@ -366,6 +366,22 @@ export const mainAdmin = {
       }
     });
   },
+  getSalesAll: () => {
+    const token = localStorage.getItem('ownerToken');
+    return request('/main-admin/sales-all', {
+      headers: {
+        'Authorization': `Bearer ${token}`
+      }
+    });
+  },
+  getTimeEntriesAll: () => {
+    const token = localStorage.getItem('ownerToken');
+    return request('/main-admin/time-entries-all', {
+      headers: {
+        'Authorization': `Bearer ${token}`
+      }
+    });
+  },
   lockUser: (userId, locked) => {
     const token = localStorage.getItem('ownerToken');
     return request(`/main-admin/users/${userId}/lock`, {
@@ -504,3 +520,5 @@ export const cashierNotes = {
     method: 'DELETE'
   })
 };
+
+export { BASE_API_URL };

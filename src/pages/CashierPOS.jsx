@@ -3,7 +3,7 @@ import { useAuth } from '../context/AuthContext';
 import { products, sales, expenses, stats, batches, subscribeProducts, unsubscribeAllProductSubscriptions } from '../services/api';
 import websocketService from '../services/websocketService';
 import { BASE_API_URL } from '../services/api';
-import { ShoppingCart, Trash2, LogOut, Plus, Minus, DollarSign, TrendingDown, Package, Edit2, Search, BarChart3, Camera, Upload, AlertTriangle } from 'lucide-react';
+import { ShoppingCart, Trash2, LogOut, Plus, Minus, DollarSign, TrendingDown, Package, Edit2, Search, BarChart3, Camera, Upload, AlertTriangle, Clock, Play, Square } from 'lucide-react';
 
 export default function CashierPOS() {
   const { user, logout } = useAuth();
@@ -25,10 +25,47 @@ export default function CashierPOS() {
   const [discountList, setDiscountList] = useState([]);
   const [selectedDiscount, setSelectedDiscount] = useState(null);
   const [taxType, setTaxType] = useState('exclusive');
+  const [isClockedIn, setIsClockedIn] = useState(false);
+  const [currentTimeEntry, setCurrentTimeEntry] = useState(null);
+  const [clockedInTime, setClockedInTime] = useState(null);
 
   useEffect(() => {
     loadData();
-  }, []);
+    // Restore session data from localStorage
+    const savedCart = localStorage.getItem(`cart_${user?.id}`);
+    const savedPaymentMethod = localStorage.getItem(`paymentMethod_${user?.id}`);
+    const savedDiscount = localStorage.getItem(`selectedDiscount_${user?.id}`);
+    const savedTaxType = localStorage.getItem(`taxType_${user?.id}`);
+    const savedClockStatus = localStorage.getItem(`clockStatus_${user?.id}`);
+    const savedClockInTime = localStorage.getItem(`clockInTime_${user?.id}`);
+    
+    if (savedCart) {
+      try {
+        setCart(JSON.parse(savedCart));
+      } catch (e) {
+        console.warn('Failed to restore cart:', e);
+      }
+    }
+    
+    if (savedPaymentMethod) setPaymentMethod(savedPaymentMethod);
+    if (savedTaxType) setTaxType(savedTaxType);
+    
+    if (savedDiscount) {
+      try {
+        setSelectedDiscount(JSON.parse(savedDiscount));
+      } catch (e) {}
+    }
+    
+    if (savedClockStatus === 'clocked_in') {
+      setIsClockedIn(true);
+      if (savedClockInTime) {
+        setClockedInTime(new Date(savedClockInTime));
+      }
+    }
+    
+    // Check actual clock status from backend
+    checkClockStatus();
+  }, [user?.id]);
 
   // Subscribe to real-time product updates
   useEffect(() => {
@@ -70,6 +107,102 @@ export default function CashierPOS() {
       websocketService.disconnect();
     };
   }, []);
+
+  // Auto-save cart whenever it changes
+  useEffect(() => {
+    if (cart.length > 0 || paymentMethod || taxType) {
+      saveSessionData();
+    }
+  }, [cart, paymentMethod, taxType, selectedDiscount, user?.id]);
+
+  // Save session data to localStorage
+  const saveSessionData = () => {
+    localStorage.setItem(`cart_${user?.id}`, JSON.stringify(cart));
+    localStorage.setItem(`paymentMethod_${user?.id}`, paymentMethod);
+    localStorage.setItem(`taxType_${user?.id}`, taxType);
+    if (selectedDiscount) {
+      localStorage.setItem(`selectedDiscount_${user?.id}`, JSON.stringify(selectedDiscount));
+    }
+  };
+
+  // Clock in function
+  const handleClockIn = async () => {
+    try {
+      const response = await fetch(`${BASE_API_URL}/time-entries`, {
+        method: 'POST',
+        headers: {
+          'Authorization': `Bearer ${localStorage.getItem('token')}`,
+          'Content-Type': 'application/json'
+        },
+        body: JSON.stringify({ action: 'clock_in' })
+      });
+      
+      if (response.ok) {
+        const entry = await response.json();
+        setCurrentTimeEntry(entry);
+        setIsClockedIn(true);
+        const now = new Date();
+        setClockedInTime(now);
+        localStorage.setItem(`clockStatus_${user?.id}`, 'clocked_in');
+        localStorage.setItem(`clockInTime_${user?.id}`, now.toISOString());
+        alert('Clocked in successfully!');
+      }
+    } catch (error) {
+      console.error('Clock in failed:', error);
+      alert('Failed to clock in');
+    }
+  };
+
+  // Clock out function
+  const handleClockOut = async () => {
+    try {
+      const response = await fetch(`${BASE_API_URL}/time-entries`, {
+        method: 'POST',
+        headers: {
+          'Authorization': `Bearer ${localStorage.getItem('token')}`,
+          'Content-Type': 'application/json'
+        },
+        body: JSON.stringify({ action: 'clock_out' })
+      });
+      
+      if (response.ok) {
+        const entry = await response.json();
+        setCurrentTimeEntry(entry);
+        setIsClockedIn(false);
+        setClockedInTime(null);
+        localStorage.removeItem(`clockStatus_${user?.id}`);
+        localStorage.removeItem(`clockInTime_${user?.id}`);
+        const hours = Math.floor(entry.duration / 60);
+        const minutes = entry.duration % 60;
+        alert(`Clocked out successfully! Total time: ${hours}h ${minutes}m`);
+      }
+    } catch (error) {
+      console.error('Clock out failed:', error);
+      alert('Failed to clock out');
+    }
+  };
+
+  // Check clock status from backend
+  const checkClockStatus = async () => {
+    try {
+      const response = await fetch(`${BASE_API_URL}/time-entries/today`, {
+        headers: { 'Authorization': `Bearer ${localStorage.getItem('token')}` }
+      });
+      
+      if (response.ok) {
+        const entries = await response.json();
+        const activeEntry = entries.find(e => e.cashierId === user?.id && e.status === 'clocked_in');
+        
+        if (activeEntry) {
+          setCurrentTimeEntry(activeEntry);
+          setIsClockedIn(true);
+          setClockedInTime(new Date(activeEntry.clockInTime));
+        }
+      }
+    } catch (error) {
+      console.warn('Failed to check clock status:', error);
+    }
+  };
 
   const loadData = async () => {
     try {
@@ -325,14 +458,37 @@ export default function CashierPOS() {
               <p className="text-sm font-medium text-gray-900">{user?.name}</p>
               <p className="text-xs text-gray-500">{user?.email}</p>
             </div>
-            <button onClick={logout} className="btn-secondary flex items-center gap-2 hover:bg-red-50 hover:text-red-600 hover:border-red-200">
+            {isClockedIn && (
+              <div className="flex items-center gap-2">
+                <p className="text-xs text-green-600 font-semibold">🟢 Clocked In</p>
+                <button onClick={handleClockOut} className="px-4 py-2 rounded-lg font-medium transition-all bg-red-600 hover:bg-red-700 text-white flex items-center gap-2 shadow-md">
+                  <Square className="w-4 h-4" />
+                  Clock Out
+                </button>
+              </div>
+            )}
+            {!isClockedIn && (
+              <button onClick={handleClockIn} className="px-4 py-2 rounded-lg font-medium transition-all bg-green-600 hover:bg-green-700 text-white flex items-center gap-2 shadow-md">
+                <Play className="w-4 h-4" />
+                Clock In
+              </button>
+            )}
+            <button onClick={() => { saveSessionData(); logout(); }} className="px-4 py-2 rounded-lg font-medium transition-all bg-red-100 hover:bg-red-200 text-red-600 border border-red-300 flex items-center gap-2">
               <LogOut className="w-4 h-4" />
               Logout
             </button>
-            <button onClick={handleClearData} className="btn-secondary flex items-center gap-2 hover:bg-orange-50 hover:text-orange-600 hover:border-orange-200">
+            <button onClick={handleClearData} className="px-4 py-2 rounded-lg font-medium transition-all bg-orange-100 hover:bg-orange-200 text-orange-600 border border-orange-300 flex items-center gap-2">
               <Trash2 className="w-4 h-4" />
-              Clear Data
+              Clear
             </button>
+            {isClockedIn && clockedInTime && (
+              <div className="ml-auto text-right text-xs">
+                <p className="text-green-600 font-semibold flex items-center gap-1">
+                  <Clock className="w-4 h-4" />
+                  Clocked In: {clockedInTime.toLocaleTimeString()}
+                </p>
+              </div>
+            )}
           </div>
         </div>
       </nav>
