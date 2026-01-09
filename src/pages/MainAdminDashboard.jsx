@@ -32,7 +32,7 @@ export default function MainAdminDashboard() {
 
     try {
       const userData = JSON.parse(user);
-      if ((userData.type !== 'main_admin' && userData.type !== 'owner') || userData.email !== 'ianmabruk3@gmail.com') {
+      if ((userData.role !== 'owner' && !userData.isMainAdmin) || userData.email !== 'ianmabruk3@gmail.com') {
         navigate('/main.admin');
         return;
       }

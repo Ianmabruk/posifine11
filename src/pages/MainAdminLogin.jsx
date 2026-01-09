@@ -22,7 +22,7 @@ export default function MainAdminLogin() {
     if (token && user) {
       try {
         const userData = JSON.parse(user);
-        if (userData.type === 'main_admin' || userData.type === 'owner') {
+        if (userData.role === 'owner' || userData.isMainAdmin) {
           navigate('/main.admin/dashboard');
           return;
         }
@@ -39,13 +39,26 @@ export default function MainAdminLogin() {
     setError('');
 
     try {
+      console.log('Attempting login with:', formData.email);
       const response = await mainAdmin.login(formData);
       
+      console.log('Login response:', response);
+      console.log('Response token:', response.token);
+      console.log('Response user:', response.user);
+      console.log('User role:', response.user?.role);
+      
       if (response.token && response.user && response.user.role === 'owner') {
+        console.log('Login successful, storing tokens...');
         localStorage.setItem('ownerToken', response.token);
         localStorage.setItem('ownerUser', JSON.stringify(response.user));
+        console.log('Navigating to dashboard...');
         navigate('/main.admin/dashboard');
       } else {
+        console.log('Login validation failed', {
+          hasToken: !!response.token,
+          hasUser: !!response.user,
+          isOwner: response.user?.role === 'owner'
+        });
         throw new Error('Invalid response from server or insufficient permissions');
       }
     } catch (err) {
