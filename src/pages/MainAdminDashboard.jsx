@@ -26,23 +26,23 @@ export default function MainAdminDashboard() {
     const user = localStorage.getItem('ownerUser');
     
     if (!token || !user) {
-      navigate('/main.admin');
+      navigate('/main.admin', { replace: true });
       return;
     }
 
     try {
       const userData = JSON.parse(user);
       if ((userData.role !== 'owner' && !userData.isMainAdmin) || userData.email !== 'ianmabruk3@gmail.com') {
-        navigate('/main.admin');
+        navigate('/main.admin', { replace: true });
         return;
       }
     } catch (e) {
-      navigate('/main.admin');
+      navigate('/main.admin', { replace: true });
       return;
     }
 
     loadData();
-  }, [navigate]);
+  }, []);
 
   const loadData = async () => {
     try {
@@ -170,10 +170,12 @@ export default function MainAdminDashboard() {
       <header className="bg-black/50 backdrop-blur-lg border-b border-red-500/30 px-6 py-4">
         <div className="max-w-7xl mx-auto flex items-center justify-between">
           <div className="flex items-center gap-4">
-            <Shield className="w-8 h-8 text-red-400" />
+            <div className="w-12 h-12 bg-gradient-to-br from-red-600 to-red-800 rounded-2xl flex items-center justify-center border-2 border-red-400 shadow-lg">
+              <span className="text-lg font-bold text-white">MTC</span>
+            </div>
             <div>
               <h1 className="text-3xl font-bold text-red-400">MAIN.ADMIN</h1>
-              <p className="text-gray-400">Ian Mabruk - System Owner</p>
+              <p className="text-gray-400 text-sm">Mabrixel Trading Co. - System Owner</p>
             </div>
           </div>
           <button

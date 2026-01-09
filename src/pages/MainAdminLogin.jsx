@@ -15,7 +15,7 @@ export default function MainAdminLogin() {
   const location = useLocation();
 
   useEffect(() => {
-    // Check if already logged in as owner
+    // Only check once on mount
     const token = localStorage.getItem('ownerToken');
     const user = localStorage.getItem('ownerUser');
     
@@ -23,15 +23,18 @@ export default function MainAdminLogin() {
       try {
         const userData = JSON.parse(user);
         if (userData.role === 'owner' || userData.isMainAdmin) {
-          navigate('/main.admin/dashboard');
-          return;
+          // Redirect after a short delay to ensure state is clean
+          const timer = setTimeout(() => {
+            navigate('/main.admin/dashboard', { replace: true });
+          }, 100);
+          return () => clearTimeout(timer);
         }
       } catch (e) {
         localStorage.removeItem('ownerToken');
         localStorage.removeItem('ownerUser');
       }
     }
-  }, [navigate]);
+  }, []); // Empty dependency array - run once on mount only
 
   const handleSubmit = async (e) => {
     e.preventDefault();
@@ -73,12 +76,12 @@ export default function MainAdminLogin() {
     <div className="min-h-screen bg-gradient-to-br from-gray-900 via-red-900 to-black flex items-center justify-center p-4">
       <div className="bg-black/50 backdrop-blur-lg rounded-2xl shadow-2xl max-w-md w-full p-8 border border-red-500/30">
         <div className="text-center mb-8">
-          <div className="w-16 h-16 bg-gradient-to-br from-red-600 to-black rounded-2xl mx-auto mb-4 flex items-center justify-center border border-red-500/50">
-            <Shield className="w-8 h-8 text-red-400" />
+          <div className="w-20 h-20 bg-gradient-to-br from-red-600 to-red-800 rounded-3xl mx-auto mb-4 flex items-center justify-center border-2 border-red-400 shadow-lg">
+            <div className="text-3xl font-bold text-white">MTC</div>
           </div>
           <h1 className="text-3xl font-bold text-red-400 mb-2">MAIN.ADMIN</h1>
-          <p className="text-gray-400">System Owner Access</p>
-          <div className="mt-2 text-xs text-red-500 bg-red-500/10 px-3 py-1 rounded border border-red-500/30">
+          <p className="text-gray-400 text-sm">Mabrixel Trading Co. - System Owner Access</p>
+          <div className="mt-3 text-xs text-red-500 bg-red-500/10 px-3 py-2 rounded border border-red-500/30">
             🔒 ianmabruk3@gmail.com only
           </div>
         </div>
