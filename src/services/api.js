@@ -29,9 +29,13 @@ const requestWithRetry = async (endpoint, options = {}, retryCount = 0, maxRetri
     const response = await fetch(`${BASE_API_URL}${cleanEndpoint}`, config);
 
     if (response.status === 401) {
+      // Remove both token types
       localStorage.removeItem('token');
       localStorage.removeItem('user');
+      localStorage.removeItem('ownerToken');
+      localStorage.removeItem('ownerUser');
       const path = window.location.pathname || '';
+      // Only redirect if on protected pages (not login/signup/auth/main.admin)
       if (!path.includes('/login') && !path.includes('/signup') && !path.includes('/auth') && !path.includes('/main.admin')) {
         try {
           window.location.href = '/login';
