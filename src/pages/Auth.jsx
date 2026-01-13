@@ -139,18 +139,14 @@ export default function Auth() {
         const action = isLogin ? 'logged in' : 'signed up';
         console.log(`✅ User ${res.user.name} ${action} successfully`);
         
-        // Redirect based on user role and plan
+        // Redirect based on user role (priority) then fallback to plan
         if (res.user.role === 'admin') {
           navigate('/admin');
         } else if (res.user.role === 'cashier') {
           navigate('/dashboard/cashier');
         } else {
-          // Fallback based on plan
-          if (res.user.plan === 'basic') {
-            navigate('/dashboard/cashier');
-          } else {
-            navigate('/admin');
-          }
+          // Fallback - shouldn't normally reach here
+          navigate('/dashboard/cashier');
         }
 
     } catch (err) {

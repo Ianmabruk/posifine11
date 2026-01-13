@@ -29,8 +29,9 @@ export default function AdminDashboard() {
         users.getAll()
       ]);
       
-      // Load vendors from localStorage
-      const vendors = JSON.parse(localStorage.getItem('vendors') || '[]');
+      // Load vendors from localStorage - account-specific storage
+      const vendorKey = `vendors_${user?.email || 'default'}`;
+      const vendors = JSON.parse(localStorage.getItem(vendorKey) || '[]');
       
       setData({ 
         products: Array.isArray(p) ? p : [], 
@@ -81,10 +82,11 @@ export default function AdminDashboard() {
         createdAt: new Date().toISOString()
       };
       
-      // Save to localStorage for now (will integrate with API)
-      const vendors = JSON.parse(localStorage.getItem('vendors') || '[]');
+      // Save to localStorage for account - account-specific storage
+      const vendorKey = `vendors_${user?.email || 'default'}`;
+      const vendors = JSON.parse(localStorage.getItem(vendorKey) || '[]');
       vendors.push(vendor);
-      localStorage.setItem('vendors', JSON.stringify(vendors));
+      localStorage.setItem(vendorKey, JSON.stringify(vendors));
       
       setNewVendor({ supplierName: '', details: '', orderDate: '', expectedDelivery: '', amount: '' });
       setShowAddVendor(false);
@@ -115,7 +117,7 @@ export default function AdminDashboard() {
           <div>
             <h1 className="text-2xl font-bold bg-gradient-to-r from-blue-600 to-purple-600 bg-clip-text text-transparent">Admin Dashboard</h1>
             <p className="text-xs text-gray-500 mt-0.5">
-              {user?.plan === 'basic' ? 'Professional Plan - KSH 1,500/month (Up to 2 Users)' : 'Ultra Plan - KSH 3,000/month (Unlimited Users)'}
+              {user?.plan === 'basic' ? 'Professional Plan - KSH 1,500/month (Up to 3 Users)' : 'Ultra Plan - KSH 3,000/month (Unlimited Users)'}
             </p>
           </div>
           <div className="flex items-center gap-4">

@@ -16,8 +16,8 @@ export default function MainAdminLogin() {
 
   useEffect(() => {
     // Check if already logged in as owner
-    const token = localStorage.getItem('ownerToken');
-    const user = localStorage.getItem('ownerUser');
+    const token = localStorage.getItem('mainAdminToken');
+    const user = localStorage.getItem('mainAdminUser');
     
     if (token && user) {
       try {
@@ -27,8 +27,8 @@ export default function MainAdminLogin() {
           return;
         }
       } catch (e) {
-        localStorage.removeItem('ownerToken');
-        localStorage.removeItem('ownerUser');
+        localStorage.removeItem('mainAdminToken');
+        localStorage.removeItem('mainAdminUser');
       }
     }
   }, [navigate]);
@@ -42,8 +42,8 @@ export default function MainAdminLogin() {
       const response = await mainAdmin.login(formData);
       
       if (response.token && response.user && response.user.role === 'owner') {
-        localStorage.setItem('ownerToken', response.token);
-        localStorage.setItem('ownerUser', JSON.stringify(response.user));
+        localStorage.setItem('mainAdminToken', response.token);
+        localStorage.setItem('mainAdminUser', JSON.stringify(response.user));
         navigate('/main.admin/dashboard');
       } else {
         throw new Error('Invalid response from server or insufficient permissions');

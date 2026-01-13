@@ -1,8 +1,10 @@
 import { useState, useEffect } from 'react';
+import { useAuth } from '../../context/AuthContext';
 import { BASE_API_URL } from '../../services/api';
 import { Bell, Plus, Trash2, Calendar, Send, MessageSquare } from 'lucide-react';
 
 export default function RemindersManager() {
+  const { user } = useAuth();
   const [reminders, setReminders] = useState([]);
   const [products, setProducts] = useState([]);
   const [showForm, setShowForm] = useState(false);
@@ -178,7 +180,8 @@ export default function RemindersManager() {
   };
 
   const loadMessages = () => {
-    const storedMessages = JSON.parse(localStorage.getItem('adminMessages') || '[]');
+    const messageKey = `adminMessages_${user?.email || 'default'}`;
+    const storedMessages = JSON.parse(localStorage.getItem(messageKey) || '[]');
     setMessages(storedMessages);
   };
 
@@ -195,14 +198,16 @@ export default function RemindersManager() {
       read: false
     };
 
-    const allMessages = JSON.parse(localStorage.getItem('adminMessages') || '[]');
+    const messageKey = `adminMessages_${user?.email || 'default'}`;
+    const allMessages = JSON.parse(localStorage.getItem(messageKey) || '[]');
     allMessages.push(message);
-    localStorage.setItem('adminMessages', JSON.stringify(allMessages));
+    localStorage.setItem(messageKey, JSON.stringify(allMessages));
     
-    // Also save to cashier messages so they can see it
-    const cashierMessages = JSON.parse(localStorage.getItem('cashierMessages') || '[]');
+    // Also save to cashier messages so they can see it (account-specific)
+    const cashierMessageKey = `cashierMessages_${user?.email || 'default'}`;
+    const cashierMessages = JSON.parse(localStorage.getItem(cashierMessageKey) || '[]');
     cashierMessages.push(message);
-    localStorage.setItem('cashierMessages', JSON.stringify(cashierMessages));
+    localStorage.setItem(cashierMessageKey, JSON.stringify(cashierMessages));
     
     setMessages(allMessages);
     setNewMessage('');
