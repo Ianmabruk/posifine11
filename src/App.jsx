@@ -8,7 +8,7 @@ import Landing from './pages/Landing';
 import Auth from './pages/Auth';
 import Subscription from './pages/Subscription';
 import CashierPOS from './pages/CashierPOS';
-import MainAdminNew from './pages/MainAdminNew';
+import MainAdmin from './pages/MainAdmin';
 import ReminderModal from './components/ReminderModal';
 import ScreenLock from './components/ScreenLock';
 import useInactivity from './hooks/useInactivity';
@@ -113,8 +113,8 @@ function App() {
             <Route path="/auth/signup" element={<Auth />} />
             <Route path="/plans" element={<Subscription />} />
             
-            {/* Owner Main Admin Routes - New Improved Version */}
-            <Route path="/main.admin/*" element={<MainAdminNew />} />
+            {/* Owner Main Admin Routes */}
+            <Route path="/main.admin/*" element={<MainAdmin />} />
             
             {/* Regular User Routes */}
             <Route path="/dashboard" element={<ProtectedRoute><DashboardRouter /></ProtectedRoute>} />

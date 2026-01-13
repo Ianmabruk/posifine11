@@ -1,17 +1,19 @@
 import { useState, useEffect } from 'react';
 import { useAuth } from '../context/AuthContext';
 import { users, products, sales, expenses, stats } from '../services/api';
-import { Package, DollarSign, TrendingUp, TrendingDown, Plus, Edit2, Trash2, LogOut, Search, Filter, BarChart3, ShoppingBag, Layers, Users } from 'lucide-react';
+import { Package, DollarSign, TrendingUp, TrendingDown, Plus, Edit2, Trash2, LogOut, Search, Filter, BarChart3, ShoppingBag, Layers, Users, Truck } from 'lucide-react';
 
 export default function AdminDashboard() {
   const { user, logout } = useAuth();
-  const [data, setData] = useState({ products: [], sales: [], expenses: [], stats: {}, users: [] });
+  const [data, setData] = useState({ products: [], sales: [], expenses: [], stats: {}, users: [], vendors: [] });
   const [activeTab, setActiveTab] = useState('overview');
   const [showAddProduct, setShowAddProduct] = useState(false);
   const [showAddUser, setShowAddUser] = useState(false);
+  const [showAddVendor, setShowAddVendor] = useState(false);
   const [searchTerm, setSearchTerm] = useState('');
   const [newProduct, setNewProduct] = useState({ name: '', price: '', quantity: '', category: 'raw' });
   const [newUser, setNewUser] = useState({ name: '', email: '', password: 'changeme123', role: 'cashier' });
+  const [newVendor, setNewVendor] = useState({ supplierName: '', details: '', orderDate: '', expectedDelivery: '', amount: '' });
 
   useEffect(() => {
     loadData();
@@ -27,16 +29,20 @@ export default function AdminDashboard() {
         users.getAll()
       ]);
       
+      // Load vendors from localStorage
+      const vendors = JSON.parse(localStorage.getItem('vendors') || '[]');
+      
       setData({ 
         products: Array.isArray(p) ? p : [], 
         sales: Array.isArray(s) ? s : [], 
         expenses: Array.isArray(e) ? e : [], 
         stats: st || {},
-        users: Array.isArray(u) ? u : []
+        users: Array.isArray(u) ? u : [],
+        vendors: vendors
       });
     } catch (error) {
       console.error('Failed to load data:', error);
-      setData({ products: [], sales: [], expenses: [], stats: {}, users: [] });
+      setData({ products: [], sales: [], expenses: [], stats: {}, users: [], vendors: [] });
     }
   };
 
@@ -61,6 +67,34 @@ export default function AdminDashboard() {
     }
   };
 
+  const handleAddVendor = async (e) => {
+    e.preventDefault();
+    try {
+      const vendor = {
+        id: Math.random().toString(36).substr(2, 9),
+        supplierName: newVendor.supplierName,
+        details: newVendor.details,
+        orderDate: newVendor.orderDate,
+        expectedDelivery: newVendor.expectedDelivery,
+        amount: parseFloat(newVendor.amount),
+        createdBy: user?.id || user?.name,
+        createdAt: new Date().toISOString()
+      };
+      
+      // Save to localStorage for now (will integrate with API)
+      const vendors = JSON.parse(localStorage.getItem('vendors') || '[]');
+      vendors.push(vendor);
+      localStorage.setItem('vendors', JSON.stringify(vendors));
+      
+      setNewVendor({ supplierName: '', details: '', orderDate: '', expectedDelivery: '', amount: '' });
+      setShowAddVendor(false);
+      loadData();
+      alert('Vendor added successfully!');
+    } catch (error) {
+      alert('Failed to add vendor: ' + error.message);
+    }
+  };
+
   const filteredProducts = data.products.filter(p => 
     p.name?.toLowerCase().includes(searchTerm.toLowerCase())
   );
@@ -68,6 +102,7 @@ export default function AdminDashboard() {
   const tabs = [
     { id: 'overview', label: 'Overview', icon: BarChart3 },
     { id: 'inventory', label: 'Inventory', icon: Layers },
+    { id: 'vendors', label: 'Vendors', icon: Truck },
     { id: 'users', label: 'Users', icon: Users },
     { id: 'sales', label: 'Sales', icon: ShoppingBag },
     { id: 'expenses', label: 'Expenses', icon: TrendingDown }
@@ -79,7 +114,9 @@ export default function AdminDashboard() {
         <div className="flex items-center justify-between">
           <div>
             <h1 className="text-2xl font-bold bg-gradient-to-r from-blue-600 to-purple-600 bg-clip-text text-transparent">Admin Dashboard</h1>
-            <p className="text-xs text-gray-500 mt-0.5">Professional Plan - KSH 1,600/month</p>
+            <p className="text-xs text-gray-500 mt-0.5">
+              {user?.plan === 'basic' ? 'Professional Plan - KSH 1,500/month (Up to 2 Users)' : 'Ultra Plan - KSH 3,000/month (Unlimited Users)'}
+            </p>
           </div>
           <div className="flex items-center gap-4">
             <div className="text-right">
@@ -454,6 +491,138 @@ export default function AdminDashboard() {
                     ))}
                   </tbody>
                 </table>
+              </div>
+            </div>
+          )}
+
+          {activeTab === 'vendors' && (
+            <div>
+              <div className="flex justify-between items-center mb-6">
+                <h3 className="text-lg font-semibold flex items-center gap-2">
+                  <Truck className="w-5 h-5 text-blue-600" />
+                  Vendor Management
+                </h3>
+                <button 
+                  onClick={() => setShowAddVendor(true)}
+                  className="btn-primary flex items-center gap-2"
+                >
+                  <Plus className="w-4 h-4" />
+                  Add Vendor
+                </button>
+              </div>
+              <div className="overflow-x-auto">
+                <table className="w-full">
+                  <thead className="bg-gray-50">
+                    <tr>
+                      <th className="px-4 py-3 text-left text-sm font-semibold text-gray-700">Supplier Name</th>
+                      <th className="px-4 py-3 text-left text-sm font-semibold text-gray-700">Details</th>
+                      <th className="px-4 py-3 text-left text-sm font-semibold text-gray-700">Order Date</th>
+                      <th className="px-4 py-3 text-left text-sm font-semibold text-gray-700">Expected Delivery</th>
+                      <th className="px-4 py-3 text-left text-sm font-semibold text-gray-700">Amount</th>
+                      <th className="px-4 py-3 text-left text-sm font-semibold text-gray-700">Created By</th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    {data.vendors && data.vendors.length > 0 ? (
+                      data.vendors.slice().reverse().map((vendor) => (
+                        <tr key={vendor.id} className="border-t border-gray-100 hover:bg-gray-50 transition-colors">
+                          <td className="px-4 py-3 text-sm font-semibold">{vendor.supplierName}</td>
+                          <td className="px-4 py-3 text-sm text-gray-600">{vendor.details}</td>
+                          <td className="px-4 py-3 text-sm">{new Date(vendor.orderDate).toLocaleDateString()}</td>
+                          <td className="px-4 py-3 text-sm">{new Date(vendor.expectedDelivery).toLocaleDateString()}</td>
+                          <td className="px-4 py-3 text-sm font-semibold text-orange-600">KSH {vendor.amount?.toLocaleString()}</td>
+                          <td className="px-4 py-3 text-sm text-gray-600">{vendor.createdBy}</td>
+                        </tr>
+                      ))
+                    ) : (
+                      <tr>
+                        <td colSpan="6" className="px-4 py-8 text-center text-gray-500">
+                          No vendors added yet
+                        </td>
+                      </tr>
+                    )}
+                  </tbody>
+                </table>
+              </div>
+            </div>
+          )}
+
+          {/* Add Vendor Modal */}
+          {showAddVendor && (
+            <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50 p-4">
+              <div className="bg-white rounded-2xl shadow-2xl max-w-md w-full">
+                <div className="bg-gradient-to-r from-orange-600 to-red-600 p-6 text-white rounded-t-2xl">
+                  <h2 className="text-2xl font-bold">Add Vendor</h2>
+                  <p className="text-orange-100 text-sm mt-1">Add new supplier information</p>
+                </div>
+                <form onSubmit={handleAddVendor} className="p-6 space-y-4">
+                  <div>
+                    <label className="block text-sm font-medium mb-2">Supplier Name</label>
+                    <input
+                      type="text"
+                      value={newVendor.supplierName}
+                      onChange={(e) => setNewVendor({ ...newVendor, supplierName: e.target.value })}
+                      className="w-full px-4 py-3 rounded-lg border focus:ring-2 focus:ring-orange-500"
+                      required
+                    />
+                  </div>
+                  <div>
+                    <label className="block text-sm font-medium mb-2">Details</label>
+                    <textarea
+                      value={newVendor.details}
+                      onChange={(e) => setNewVendor({ ...newVendor, details: e.target.value })}
+                      className="w-full px-4 py-3 rounded-lg border focus:ring-2 focus:ring-orange-500"
+                      placeholder="Supplier details..."
+                      rows="2"
+                    />
+                  </div>
+                  <div>
+                    <label className="block text-sm font-medium mb-2">Order Date</label>
+                    <input
+                      type="date"
+                      value={newVendor.orderDate}
+                      onChange={(e) => setNewVendor({ ...newVendor, orderDate: e.target.value })}
+                      className="w-full px-4 py-3 rounded-lg border focus:ring-2 focus:ring-orange-500"
+                      required
+                    />
+                  </div>
+                  <div>
+                    <label className="block text-sm font-medium mb-2">Expected Delivery</label>
+                    <input
+                      type="date"
+                      value={newVendor.expectedDelivery}
+                      onChange={(e) => setNewVendor({ ...newVendor, expectedDelivery: e.target.value })}
+                      className="w-full px-4 py-3 rounded-lg border focus:ring-2 focus:ring-orange-500"
+                      required
+                    />
+                  </div>
+                  <div>
+                    <label className="block text-sm font-medium mb-2">Amount (KSH)</label>
+                    <input
+                      type="number"
+                      value={newVendor.amount}
+                      onChange={(e) => setNewVendor({ ...newVendor, amount: e.target.value })}
+                      className="w-full px-4 py-3 rounded-lg border focus:ring-2 focus:ring-orange-500"
+                      placeholder="0"
+                      required
+                    />
+                  </div>
+                  <div className="flex gap-3">
+                    <button
+                      type="submit"
+                      className="flex-1 bg-orange-600 text-white py-3 rounded-lg font-bold hover:bg-orange-700 transition"
+                    >
+                      Add Vendor
+                    </button>
+                    <button
+                      type="button"
+                      onClick={() => setShowAddVendor(false)}
+                      className="px-6 bg-gray-200 text-gray-700 py-3 rounded-lg font-bold hover:bg-gray-300 transition"
+                    >
+                      Cancel
+                    </button>
+                  </div>
+                </form>
               </div>
             </div>
           )}

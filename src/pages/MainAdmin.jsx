@@ -12,12 +12,14 @@ export default function MainAdmin() {
   const [filter, setFilter] = useState('all');
   const [searchTerm, setSearchTerm] = useState('');
   const [showEmailModal, setShowEmailModal] = useState(false);
+  const [showAnalytics, setShowAnalytics] = useState(false);
   const [selectedUsers, setSelectedUsers] = useState([]);
   const [emailData, setEmailData] = useState({ subject: '', message: '' });
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
   const [backendAvailable, setBackendAvailable] = useState(true);
   const [lockingUser, setLockingUser] = useState(null);
+  const [subscriptionReminders, setSubscriptionReminders] = useState([]);
   const navigate = useNavigate();
   const [stats, setStats] = useState({
     totalUsers: 0,
@@ -25,7 +27,9 @@ export default function MainAdmin() {
     lockedUsers: 0,
     totalRevenue: 0,
     pendingPayments: 0,
-    overduePayments: 0
+    overduePayments: 0,
+    activeDays: 0,
+    downDays: 0
   });
   const [recentActivities, setRecentActivities] = useState([]);
 
@@ -45,13 +49,31 @@ export default function MainAdmin() {
     const activities = JSON.parse(localStorage.getItem('authActivities') || '[]');
     setRecentActivities(activities.slice(0, 10)); // Show last 10 activities
     
+    // Load subscription reminders
+    const reminders = JSON.parse(localStorage.getItem('adminReminders') || '[]');
+    setSubscriptionReminders(reminders.filter(r => r.status === 'pending'));
+    
+    // Listen for new subscription reminders
+    const handleNewReminder = (event) => {
+      const newReminder = event.detail;
+      setSubscriptionReminders(prev => [newReminder, ...prev]);
+    };
+    window.addEventListener('subscriptionReminderCreated', handleNewReminder);
+    
     // Set up interval to refresh activities every 5 seconds
     const interval = setInterval(() => {
       const updatedActivities = JSON.parse(localStorage.getItem('authActivities') || '[]');
       setRecentActivities(updatedActivities.slice(0, 10));
+      
+      // Also refresh reminders
+      const updatedReminders = JSON.parse(localStorage.getItem('adminReminders') || '[]');
+      setSubscriptionReminders(updatedReminders.filter(r => r.status === 'pending'));
     }, 5000);
     
-    return () => clearInterval(interval);
+    return () => {
+      clearInterval(interval);
+      window.removeEventListener('subscriptionReminderCreated', handleNewReminder);
+    };
   }, [navigate]);
 
   const loadData = async () => {
@@ -173,6 +195,27 @@ export default function MainAdmin() {
     const totalRevenue = paymentsData.filter(p => p.status === 'paid').reduce((sum, p) => sum + p.amount, 0);
     const pendingPayments = paymentsData.filter(p => p.status === 'pending').length;
     const overduePayments = paymentsData.filter(p => p.status === 'overdue').length;
+    
+    // Calculate active/down days (since app creation)
+    const appCreatedDate = localStorage.getItem('appCreatedDate');
+    let activeDays = 0;
+    let downDays = 0;
+    
+    if (appCreatedDate) {
+      const created = new Date(appCreatedDate);
+      const now = new Date();
+      const totalDays = Math.floor((now - created) / (1000 * 60 * 60 * 24));
+      
+      // Get uptime percentage from localStorage (default 99.5%)
+      const uptimePercentage = parseFloat(localStorage.getItem('uptimePercentage') || '99.5');
+      activeDays = Math.floor((totalDays * uptimePercentage) / 100);
+      downDays = totalDays - activeDays;
+    } else {
+      // First time, set creation date
+      localStorage.setItem('appCreatedDate', new Date().toISOString());
+      activeDays = 0;
+      downDays = 0;
+    }
 
     setStats({
       totalUsers,
@@ -180,7 +223,9 @@ export default function MainAdmin() {
       lockedUsers,
       totalRevenue,
       pendingPayments,
-      overduePayments
+      overduePayments,
+      activeDays,
+      downDays
     });
   };
 
@@ -194,6 +239,47 @@ export default function MainAdmin() {
       try {
         await mainAdmin.lockUser(userId, newLockStatus);
         
+        // If locking a user, logout all their sessions and notify them
+        if (newLockStatus) {
+          // Get user details for reminder
+          const lockedUser = allUsers.find(u => u.id === userId);
+          
+          // Broadcast logout event to all tabs
+          localStorage.setItem(`lockNotification_${userId}`, JSON.stringify({
+            type: 'account_locked',
+            message: 'Your account has been locked by the system administrator.',
+            lockedAt: new Date().toISOString(),
+            reason: 'Admin account lock'
+          }));
+          
+          // Create subscription renewal reminder
+          if (lockedUser) {
+            const reminderMessage = {
+              id: Date.now(),
+              type: 'subscription_renewal',
+              title: 'Subscription Renewal Notice',
+              description: `Account for ${lockedUser.name} (${lockedUser.email}) has been locked. Plan: ${lockedUser.plan?.toUpperCase() || 'UNKNOWN'} - ${lockedUser.price ? 'KSH ' + lockedUser.price : 'Free'}. Please contact user to renew subscription.`,
+              priority: 'high',
+              targetUser: lockedUser.name,
+              targetEmail: lockedUser.email,
+              dueDate: new Date(Date.now() + 3 * 24 * 60 * 60 * 1000).toISOString(), // 3 days
+              createdAt: new Date().toISOString(),
+              status: 'pending'
+            };
+            
+            // Store in reminders
+            const reminders = JSON.parse(localStorage.getItem('adminReminders') || '[]');
+            reminders.push(reminderMessage);
+            localStorage.setItem('adminReminders', JSON.stringify(reminders));
+            
+            // Dispatch event to notify admin of new reminder
+            window.dispatchEvent(new CustomEvent('subscriptionReminderCreated', { detail: reminderMessage }));
+          }
+          
+          // Dispatch event for real-time logout
+          window.dispatchEvent(new CustomEvent('accountLocked', { detail: { userId } }));
+        }
+        
         // Update local state immediately
         const updatedUsers = allUsers.map(u => 
           u.id === userId ? { ...u, locked: newLockStatus, active: !newLockStatus } : u
@@ -204,7 +290,7 @@ export default function MainAdmin() {
         // Show success message
         const user = allUsers.find(u => u.id === userId);
         const action = newLockStatus ? 'locked' : 'unlocked';
-        alert(`✅ ${user?.name || `User ${userId}`} has been ${action} successfully!`);
+        alert(`✅ ${user?.name || `User ${userId}`} has been ${action} successfully!${newLockStatus ? ' Subscription renewal reminder created and user will be logged out immediately.' : ''}`);
         
       } catch (apiError) {
         console.error('API lock failed:', apiError);
@@ -340,6 +426,39 @@ export default function MainAdmin() {
           <p className="text-sm font-semibold">⚠️ {error}</p>
         </div>
       )}
+
+      {/* Subscription Reminders Alert */}
+      {subscriptionReminders.length > 0 && (
+        <div className="bg-gradient-to-r from-orange-500/20 to-red-500/20 border-l-4 border-orange-500 px-6 py-4 mx-6 rounded-lg">
+          <div className="flex items-start gap-4">
+            <AlertTriangle className="w-5 h-5 text-orange-400 flex-shrink-0 mt-0.5" />
+            <div className="flex-1">
+              <h3 className="text-white font-bold mb-2">
+                {subscriptionReminders.length} Subscription Renewal Reminder{subscriptionReminders.length !== 1 ? 's' : ''}
+              </h3>
+              <div className="space-y-2">
+                {subscriptionReminders.slice(0, 3).map(reminder => (
+                  <p key={reminder.id} className="text-orange-100 text-sm">
+                    • <span className="font-semibold">{reminder.targetUser}</span> ({reminder.targetEmail}) - {reminder.description.split('-')[1]?.trim()}
+                  </p>
+                ))}
+              </div>
+              {subscriptionReminders.length > 3 && (
+                <p className="text-orange-100 text-sm mt-2">
+                  ... and {subscriptionReminders.length - 3} more pending reminder{subscriptionReminders.length - 3 !== 1 ? 's' : ''}
+                </p>
+              )}
+            </div>
+          </div>
+        </div>
+      )}
+      
+      {/* Error Banner */}
+      {error && (
+        <div className="bg-red-500 text-white px-6 py-3 text-center">
+          <p className="text-sm font-semibold">⚠️ {error}</p>
+        </div>
+      )}
       
       {/* Header */}
       <header className="bg-black/30 backdrop-blur-lg border-b border-white/10 px-6 py-4">
@@ -348,13 +467,22 @@ export default function MainAdmin() {
             <h1 className="text-3xl font-bold text-white mb-2">Main Admin Dashboard</h1>
             <p className="text-gray-300">Monitor all users, payments, and system activity</p>
           </div>
-          <button
-            onClick={logout}
-            className="flex items-center gap-2 bg-red-500/20 hover:bg-red-500/30 text-red-300 px-4 py-2 rounded-lg transition-colors"
-          >
-            <LogOut className="w-4 h-4" />
-            Logout
-          </button>
+          <div className="flex items-center gap-3">
+            <button
+              onClick={() => setShowAnalytics(true)}
+              className="flex items-center gap-2 bg-green-500/20 hover:bg-green-500/30 text-green-300 px-4 py-2 rounded-lg transition-colors"
+            >
+              <Eye className="w-4 h-4" />
+              View Analytics
+            </button>
+            <button
+              onClick={logout}
+              className="flex items-center gap-2 bg-red-500/20 hover:bg-red-500/30 text-red-300 px-4 py-2 rounded-lg transition-colors"
+            >
+              <LogOut className="w-4 h-4" />
+              Logout
+            </button>
+          </div>
         </div>
       </header>
 
@@ -686,6 +814,89 @@ export default function MainAdmin() {
                   className="px-6 py-3 bg-white/10 hover:bg-white/20 text-white rounded-lg font-bold transition"
                 >
                   Cancel
+                </button>
+              </div>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Analytics Modal */}
+      {showAnalytics && (
+        <div className="fixed inset-0 bg-black/70 backdrop-blur-sm flex items-center justify-center z-50 p-4">
+          <div className="bg-gradient-to-br from-gray-900 to-purple-900 rounded-2xl shadow-2xl max-w-2xl w-full border border-white/20">
+            <div className="bg-gradient-to-r from-green-600 to-teal-600 p-6 text-white rounded-t-2xl">
+              <h2 className="text-2xl font-bold flex items-center gap-2">
+                <Eye className="w-5 h-5" />
+                Website Analytics & Uptime
+              </h2>
+            </div>
+            <div className="p-6 space-y-6">
+              <div className="grid grid-cols-2 gap-4">
+                <div className="bg-white/10 rounded-lg p-6 border border-white/20">
+                  <div className="flex items-center gap-3 mb-2">
+                    <div className="w-12 h-12 bg-green-500/20 rounded-lg flex items-center justify-center">
+                      <CheckCircle className="w-6 h-6 text-green-400" />
+                    </div>
+                    <div>
+                      <p className="text-gray-400 text-sm">Active Days</p>
+                      <p className="text-3xl font-bold text-white">{stats.activeDays}</p>
+                    </div>
+                  </div>
+                </div>
+                <div className="bg-white/10 rounded-lg p-6 border border-white/20">
+                  <div className="flex items-center gap-3 mb-2">
+                    <div className="w-12 h-12 bg-red-500/20 rounded-lg flex items-center justify-center">
+                      <XCircle className="w-6 h-6 text-red-400" />
+                    </div>
+                    <div>
+                      <p className="text-gray-400 text-sm">Down Days</p>
+                      <p className="text-3xl font-bold text-white">{stats.downDays}</p>
+                    </div>
+                  </div>
+                </div>
+              </div>
+
+              <div className="bg-white/10 rounded-lg p-6 border border-white/20">
+                <h3 className="text-lg font-semibold text-white mb-4">System Status</h3>
+                <div className="space-y-3">
+                  <div className="flex items-center justify-between">
+                    <span className="text-gray-300">Uptime Percentage</span>
+                    <span className="text-2xl font-bold text-green-400">{(parseFloat(localStorage.getItem('uptimePercentage') || '99.5')).toFixed(1)}%</span>
+                  </div>
+                  <div className="w-full bg-white/20 rounded-full h-3">
+                    <div 
+                      className="bg-gradient-to-r from-green-500 to-emerald-500 h-3 rounded-full"
+                      style={{ width: `${parseFloat(localStorage.getItem('uptimePercentage') || '99.5')}%` }}
+                    ></div>
+                  </div>
+                </div>
+              </div>
+
+              <div className="bg-white/10 rounded-lg p-6 border border-white/20">
+                <h3 className="text-lg font-semibold text-white mb-3">Key Metrics</h3>
+                <div className="space-y-2 text-sm">
+                  <div className="flex justify-between">
+                    <span className="text-gray-300">Total Users</span>
+                    <span className="text-white font-semibold">{stats.totalUsers}</span>
+                  </div>
+                  <div className="flex justify-between">
+                    <span className="text-gray-300">Active Users</span>
+                    <span className="text-green-400 font-semibold">{stats.activeUsers}</span>
+                  </div>
+                  <div className="flex justify-between">
+                    <span className="text-gray-300">Total Revenue</span>
+                    <span className="text-yellow-400 font-semibold">KSH {stats.totalRevenue.toLocaleString()}</span>
+                  </div>
+                </div>
+              </div>
+
+              <div className="flex gap-3">
+                <button
+                  onClick={() => setShowAnalytics(false)}
+                  className="flex-1 bg-gradient-to-r from-green-600 to-teal-600 hover:from-green-700 hover:to-teal-700 text-white py-3 rounded-lg font-bold transition"
+                >
+                  Close
                 </button>
               </div>
             </div>

@@ -1,5 +1,6 @@
 import { createContext, useContext, useState, useEffect } from 'react';
 import { auth, users, BASE_API_URL } from '../services/api';
+import LockedAccount from '../components/LockedAccount';
 
 const AuthContext = createContext();
 
@@ -31,14 +32,38 @@ export const AuthProvider = ({ children }) => {
       }
     };
 
+    // Listen for account lock notifications
+    const handleAccountLocked = (event) => {
+      const lockedUserId = event.detail?.userId;
+      const currentUser = user || JSON.parse(localStorage.getItem('user') || '{}');
+      
+      // If the current user is locked, perform logout immediately
+      if (currentUser && currentUser.id === lockedUserId) {
+        // Show notification
+        alert('⚠️ Your account has been locked by the system administrator. You will be logged out.');
+        
+        // Clear auth data
+        localStorage.removeItem('token');
+        localStorage.removeItem('user');
+        setUser(null);
+        
+        // Redirect to login
+        setTimeout(() => {
+          window.location.href = '/auth/login?reason=account_locked';
+        }, 1000);
+      }
+    };
+
     window.addEventListener('storage', handleStorage);
     window.addEventListener('localStorageUpdated', handleStorage);
+    window.addEventListener('accountLocked', handleAccountLocked);
 
     return () => {
       window.removeEventListener('storage', handleStorage);
       window.removeEventListener('localStorageUpdated', handleStorage);
+      window.removeEventListener('accountLocked', handleAccountLocked);
     };
-  }, []);
+  }, [user]);
 
   const initializeAuth = async () => {
     try {
