@@ -138,14 +138,18 @@ export default function Auth() {
         // Show success notification
         const action = isLogin ? 'logged in' : 'signed up';
         console.log(`✅ User ${res.user.name} ${action} successfully`);
+        console.log('User role:', res.user.role, 'Plan:', res.user.plan);
         
         // Redirect based on user role (priority) then fallback to plan
         if (res.user.role === 'admin') {
+          console.log('Routing to /admin (admin role detected)');
           navigate('/admin');
         } else if (res.user.role === 'cashier') {
+          console.log('Routing to /dashboard/cashier (cashier role detected)');
           navigate('/dashboard/cashier');
         } else {
           // Fallback - shouldn't normally reach here
+          console.log('No role detected, defaulting to cashier');
           navigate('/dashboard/cashier');
         }
 
