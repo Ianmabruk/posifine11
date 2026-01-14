@@ -605,6 +605,8 @@ export default function MainAdmin() {
                     </th>
                     <th className="px-4 py-4 text-left text-sm font-semibold text-gray-200">User</th>
                     <th className="px-4 py-4 text-left text-sm font-semibold text-gray-200">Plan</th>
+                    <th className="px-4 py-4 text-left text-sm font-semibold text-gray-200">Trial Status</th>
+                    <th className="px-4 py-4 text-left text-sm font-semibold text-gray-200">Signup Details</th>
                     <th className="px-4 py-4 text-left text-sm font-semibold text-gray-200">Status</th>
                     <th className="px-4 py-4 text-left text-sm font-semibold text-gray-200">Actions</th>
                   </tr>
@@ -612,7 +614,7 @@ export default function MainAdmin() {
                 <tbody>
                   {filteredUsers.length === 0 && (
                     <tr>
-                      <td colSpan="5" className="px-4 py-12 text-center">
+                      <td colSpan="7" className="px-4 py-12 text-center">
                         <Users className="w-16 h-16 text-gray-500 mx-auto mb-4" />
                         <p className="text-gray-400 text-lg">No users found</p>
                         <p className="text-gray-500 text-sm mt-2">
@@ -660,8 +662,55 @@ export default function MainAdmin() {
                           <span className={`px-3 py-1 rounded-full text-xs font-bold ${
                             user.plan === 'ultra' ? 'bg-purple-500/20 text-purple-300' : 'bg-blue-500/20 text-blue-300'
                           }`}>
-                            {user.plan?.toUpperCase()} - KSH {user.price}
+                            {user.plan?.toUpperCase() || 'FREE'} {user.price ? `- KSH ${user.price}` : ''}
                           </span>
+                        </td>
+                        <td className="px-4 py-4">
+                          <div className="flex flex-col gap-1">
+                            {(user.plan === 'trial' || !user.plan || user.isFreeTrial) ? (
+                              <>
+                                <span className="px-2 py-1 rounded text-xs font-bold bg-yellow-500/20 text-yellow-300">
+                                  FREE TRIAL
+                                </span>
+                                {user.trialDaysLeft !== undefined && (
+                                  <span className="text-xs text-gray-400">
+                                    {user.trialDaysLeft} days left
+                                  </span>
+                                )}
+                                {user.trialExpiry && (
+                                  <span className="text-xs text-gray-400">
+                                    Expires: {new Date(user.trialExpiry).toLocaleDateString()}
+                                  </span>
+                                )}
+                              </>
+                            ) : (
+                              <span className="px-2 py-1 rounded text-xs font-bold bg-green-500/20 text-green-300">
+                                PAID PLAN
+                              </span>
+                            )}
+                          </div>
+                        </td>
+                        <td className="px-4 py-4">
+                          <div className="text-xs space-y-1">
+                            <div className="font-semibold text-gray-300">
+                              Joined: {new Date(user.createdAt).toLocaleDateString()}
+                            </div>
+                            {user.signupDetails?.company && (
+                              <div className="text-gray-400">
+                                <span className="text-gray-500">Co:</span> {user.signupDetails.company}
+                              </div>
+                            )}
+                            {user.signupDetails?.industry && (
+                              <div className="text-gray-400">
+                                <span className="text-gray-500">Industry:</span> {user.signupDetails.industry}
+                              </div>
+                            )}
+                            {user.signupDetails?.country && (
+                              <div className="text-gray-400">
+                                <span className="text-gray-500">Country:</span> {user.signupDetails.country}
+                              </div>
+                            )}
+                          </div>
                         </td>
                         <td className="px-4 py-4">
                           <div className="flex items-center gap-2">

@@ -102,8 +102,25 @@ export default function CashierPOS() {
       }
     });
 
+    // Listen for product creation events
+    const handleProductCreated = () => {
+      console.log('🎉 Product created event detected - refreshing product list');
+      products.getAll().then(p => setProductList(p.filter(prod => prod.visibleToCashier !== false && !prod.expenseOnly))).catch(() => {});
+    };
+
+    // Listen for product update events
+    const handleProductUpdated = () => {
+      console.log('📝 Product updated event detected - refreshing product list');
+      products.getAll().then(p => setProductList(p.filter(prod => prod.visibleToCashier !== false && !prod.expenseOnly))).catch(() => {});
+    };
+
+    window.addEventListener('productCreated', handleProductCreated);
+    window.addEventListener('productUpdated', handleProductUpdated);
+
     return () => {
       try { unsub(); } catch (e) {}
+      window.removeEventListener('productCreated', handleProductCreated);
+      window.removeEventListener('productUpdated', handleProductUpdated);
       websocketService.disconnect();
     };
   }, []);

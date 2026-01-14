@@ -16,6 +16,8 @@ class WebSocketService {
       error: [],
       sale_deleted: [],
       product_deleted: [],
+      product_created: [],
+      product_updated: [],
       user_deleted: [],
       data_cleared: []
     };
@@ -63,6 +65,16 @@ class WebSocketService {
                 onStockUpdate(message.data);
               }
               this.emit('stock_updated', message.data);
+            } else if (message.type === 'product_created') {
+              console.log('✨ New product created:', message.data.product);
+              this.emit('product_created', message.data);
+              // Trigger dashboard refresh
+              window.dispatchEvent(new Event('productCreated'));
+            } else if (message.type === 'product_updated') {
+              console.log('📝 Product updated:', message.data.product);
+              this.emit('product_updated', message.data);
+              // Trigger dashboard refresh
+              window.dispatchEvent(new Event('productUpdated'));
             } else if (message.type === 'initial') {
               console.log('📦 Initial products loaded via WebSocket');
               this.emit('initial', message.products);

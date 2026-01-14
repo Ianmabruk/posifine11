@@ -17,6 +17,32 @@ export default function AdminDashboard() {
 
   useEffect(() => {
     loadData();
+
+    // Listen for product creation and update events
+    const handleProductCreated = () => {
+      console.log('🎉 Product created - refreshing dashboard');
+      loadData();
+    };
+
+    const handleProductUpdated = () => {
+      console.log('📝 Product updated - refreshing dashboard');
+      loadData();
+    };
+
+    const handleDataUpdated = () => {
+      console.log('🔄 Data updated - refreshing dashboard');
+      loadData();
+    };
+
+    window.addEventListener('productCreated', handleProductCreated);
+    window.addEventListener('productUpdated', handleProductUpdated);
+    window.addEventListener('dataUpdated', handleDataUpdated);
+
+    return () => {
+      window.removeEventListener('productCreated', handleProductCreated);
+      window.removeEventListener('productUpdated', handleProductUpdated);
+      window.removeEventListener('dataUpdated', handleDataUpdated);
+    };
   }, []);
 
   const loadData = async () => {
@@ -220,30 +246,38 @@ export default function AdminDashboard() {
                   <ShoppingBag className="w-5 h-5 text-blue-600" />
                   Recent Sales
                 </h3>
-                <div className="overflow-x-auto">
-                  <table className="w-full">
-                    <thead className="bg-gray-50">
-                      <tr>
-                        <th className="px-4 py-3 text-left text-sm font-semibold text-gray-700">Date</th>
-                        <th className="px-4 py-3 text-left text-sm font-semibold text-gray-700">Items</th>
-                        <th className="px-4 py-3 text-left text-sm font-semibold text-gray-700">Payment</th>
-                        <th className="px-4 py-3 text-left text-sm font-semibold text-gray-700">Total</th>
-                      </tr>
-                    </thead>
-                    <tbody>
-                      {data.sales.slice(-10).reverse().map((sale, i) => (
-                        <tr key={i} className="border-t border-gray-100 hover:bg-gray-50 transition-colors">
-                          <td className="px-4 py-3 text-sm">{new Date(sale.createdAt).toLocaleDateString()}</td>
-                          <td className="px-4 py-3 text-sm">{sale.items?.length || 0} items</td>
-                          <td className="px-4 py-3 text-sm">
-                            <span className="badge badge-success">{sale.paymentMethod || 'cash'}</span>
-                          </td>
-                          <td className="px-4 py-3 text-sm font-semibold text-green-600">KSH {sale.total?.toLocaleString()}</td>
+                {data.sales.length === 0 ? (
+                  <div className="flex flex-col items-center justify-center p-12 bg-gray-50 rounded-xl border-2 border-dashed border-gray-200">
+                    <ShoppingBag className="w-16 h-16 text-gray-300 mb-4" />
+                    <p className="text-gray-600 font-medium text-lg">No sales yet</p>
+                    <p className="text-gray-500 text-sm mt-2">Your sales will appear here once you start processing transactions from the cashier dashboard</p>
+                  </div>
+                ) : (
+                  <div className="overflow-x-auto">
+                    <table className="w-full">
+                      <thead className="bg-gray-50">
+                        <tr>
+                          <th className="px-4 py-3 text-left text-sm font-semibold text-gray-700">Date</th>
+                          <th className="px-4 py-3 text-left text-sm font-semibold text-gray-700">Items</th>
+                          <th className="px-4 py-3 text-left text-sm font-semibold text-gray-700">Payment</th>
+                          <th className="px-4 py-3 text-left text-sm font-semibold text-gray-700">Total</th>
                         </tr>
-                      ))}
-                    </tbody>
-                  </table>
-                </div>
+                      </thead>
+                      <tbody>
+                        {data.sales.slice(-10).reverse().map((sale, i) => (
+                          <tr key={i} className="border-t border-gray-100 hover:bg-gray-50 transition-colors">
+                            <td className="px-4 py-3 text-sm">{new Date(sale.createdAt).toLocaleDateString()}</td>
+                            <td className="px-4 py-3 text-sm">{sale.items?.length || 0} items</td>
+                            <td className="px-4 py-3 text-sm">
+                              <span className="badge badge-success">{sale.paymentMethod || 'cash'}</span>
+                            </td>
+                            <td className="px-4 py-3 text-sm font-semibold text-green-600">KSH {sale.total?.toLocaleString()}</td>
+                          </tr>
+                        ))}
+                      </tbody>
+                    </table>
+                  </div>
+                )}
               </div>
             </div>
           )}
@@ -318,37 +352,49 @@ export default function AdminDashboard() {
                     </tr>
                   </thead>
                   <tbody>
-                    {filteredProducts.map((product) => (
-                      <tr key={product.id} className="border-t border-gray-100 hover:bg-gray-50 transition-colors">
-                        <td className="px-4 py-3 text-sm font-medium">{product.name}</td>
-                        <td className="px-4 py-3 text-sm font-semibold text-blue-600">KSH {product.price?.toLocaleString()}</td>
-                        <td className="px-4 py-3 text-sm">
-                          <span className={`font-medium ${product.quantity < 10 ? 'text-red-600' : 'text-gray-900'}`}>
-                            {product.quantity || 0}
-                          </span>
-                        </td>
-                        <td className="px-4 py-3 text-sm">
-                          <span className={`badge ${product.recipe ? 'badge-success' : 'badge-warning'}`}>
-                            {product.recipe ? 'Composite' : 'Raw'}
-                          </span>
-                        </td>
-                        <td className="px-4 py-3 text-sm">
-                          <span className={`badge ${product.quantity > 10 ? 'badge-success' : product.quantity > 0 ? 'badge-warning' : 'badge-danger'}`}>
-                            {product.quantity > 10 ? 'In Stock' : product.quantity > 0 ? 'Low Stock' : 'Out of Stock'}
-                          </span>
-                        </td>
-                        <td className="px-4 py-3 text-sm">
-                          <div className="flex items-center gap-2">
-                            <button className="p-2 hover:bg-blue-50 rounded-lg text-blue-600 transition-colors">
-                              <Edit2 className="w-4 h-4" />
-                            </button>
-                            <button className="p-2 hover:bg-red-50 rounded-lg text-red-600 transition-colors">
-                              <Trash2 className="w-4 h-4" />
-                            </button>
+                    {filteredProducts.length === 0 ? (
+                      <tr>
+                        <td colSpan="6" className="px-4 py-12 text-center">
+                          <div className="flex flex-col items-center justify-center">
+                            <Package className="w-16 h-16 text-gray-300 mb-4" />
+                            <p className="text-gray-600 font-medium text-lg">No products added yet</p>
+                            <p className="text-gray-500 text-sm mt-2">Start by adding your first product using the form above</p>
                           </div>
                         </td>
                       </tr>
-                    ))}
+                    ) : (
+                      filteredProducts.map((product) => (
+                        <tr key={product.id} className="border-t border-gray-100 hover:bg-gray-50 transition-colors">
+                          <td className="px-4 py-3 text-sm font-medium">{product.name}</td>
+                          <td className="px-4 py-3 text-sm font-semibold text-blue-600">KSH {product.price?.toLocaleString()}</td>
+                          <td className="px-4 py-3 text-sm">
+                            <span className={`font-medium ${product.quantity < 10 ? 'text-red-600' : 'text-gray-900'}`}>
+                              {product.quantity || 0}
+                            </span>
+                          </td>
+                          <td className="px-4 py-3 text-sm">
+                            <span className={`badge ${product.recipe ? 'badge-success' : 'badge-warning'}`}>
+                              {product.recipe ? 'Composite' : 'Raw'}
+                            </span>
+                          </td>
+                          <td className="px-4 py-3 text-sm">
+                            <span className={`badge ${product.quantity > 10 ? 'badge-success' : product.quantity > 0 ? 'badge-warning' : 'badge-danger'}`}>
+                              {product.quantity > 10 ? 'In Stock' : product.quantity > 0 ? 'Low Stock' : 'Out of Stock'}
+                            </span>
+                          </td>
+                          <td className="px-4 py-3 text-sm">
+                            <div className="flex items-center gap-2">
+                              <button className="p-2 hover:bg-blue-50 rounded-lg text-blue-600 transition-colors">
+                                <Edit2 className="w-4 h-4" />
+                              </button>
+                              <button className="p-2 hover:bg-red-50 rounded-lg text-red-600 transition-colors">
+                                <Trash2 className="w-4 h-4" />
+                              </button>
+                            </div>
+                          </td>
+                        </tr>
+                      ))
+                    )}
                   </tbody>
                 </table>
               </div>
@@ -422,25 +468,37 @@ export default function AdminDashboard() {
                     </tr>
                   </thead>
                   <tbody>
-                    {data.users.map((user) => (
-                      <tr key={user.id} className="border-t border-gray-100 hover:bg-gray-50 transition-colors">
-                        <td className="px-4 py-3 text-sm font-medium">{user.name}</td>
-                        <td className="px-4 py-3 text-sm text-gray-600">{user.email}</td>
-                        <td className="px-4 py-3 text-sm">
-                          <span className={`badge ${user.role === 'admin' ? 'badge-success' : 'badge-warning'}`}>
-                            {user.role}
-                          </span>
-                        </td>
-                        <td className="px-4 py-3 text-sm">
-                          <span className={`badge ${user.active ? 'badge-success' : 'badge-danger'}`}>
-                            {user.active ? 'Active' : 'Inactive'}
-                          </span>
-                        </td>
-                        <td className="px-4 py-3 text-sm text-gray-600">
-                          {new Date(user.createdAt).toLocaleDateString()}
+                    {data.users.length === 0 ? (
+                      <tr>
+                        <td colSpan="5" className="px-4 py-12 text-center">
+                          <div className="flex flex-col items-center justify-center">
+                            <Users className="w-16 h-16 text-gray-300 mb-4" />
+                            <p className="text-gray-600 font-medium text-lg">No users added yet</p>
+                            <p className="text-gray-500 text-sm mt-2">Add team members using the form above</p>
+                          </div>
                         </td>
                       </tr>
-                    ))}
+                    ) : (
+                      data.users.map((user) => (
+                        <tr key={user.id} className="border-t border-gray-100 hover:bg-gray-50 transition-colors">
+                          <td className="px-4 py-3 text-sm font-medium">{user.name}</td>
+                          <td className="px-4 py-3 text-sm text-gray-600">{user.email}</td>
+                          <td className="px-4 py-3 text-sm">
+                            <span className={`badge ${user.role === 'admin' ? 'badge-success' : 'badge-warning'}`}>
+                              {user.role}
+                            </span>
+                          </td>
+                          <td className="px-4 py-3 text-sm">
+                            <span className={`badge ${user.active ? 'badge-success' : 'badge-danger'}`}>
+                              {user.active ? 'Active' : 'Inactive'}
+                            </span>
+                          </td>
+                          <td className="px-4 py-3 text-sm text-gray-600">
+                            {new Date(user.createdAt).toLocaleDateString()}
+                          </td>
+                        </tr>
+                      ))
+                    )}
                   </tbody>
                 </table>
               </div>
@@ -461,16 +519,28 @@ export default function AdminDashboard() {
                     </tr>
                   </thead>
                   <tbody>
-                    {data.sales.slice().reverse().map((sale, i) => (
-                      <tr key={i} className="border-t border-gray-100 hover:bg-gray-50 transition-colors">
-                        <td className="px-4 py-3 text-sm">{new Date(sale.createdAt).toLocaleString()}</td>
-                        <td className="px-4 py-3 text-sm">{sale.items?.length || 0} items</td>
-                        <td className="px-4 py-3 text-sm">
-                          <span className="badge badge-success">{sale.paymentMethod || 'cash'}</span>
+                    {data.sales.length === 0 ? (
+                      <tr>
+                        <td colSpan="4" className="px-4 py-12 text-center">
+                          <div className="flex flex-col items-center justify-center">
+                            <ShoppingBag className="w-16 h-16 text-gray-300 mb-4" />
+                            <p className="text-gray-600 font-medium text-lg">No sales recorded</p>
+                            <p className="text-gray-500 text-sm mt-2">Sales from the cashier dashboard will appear here</p>
+                          </div>
                         </td>
-                        <td className="px-4 py-3 text-sm font-semibold text-green-600">KSH {sale.total?.toLocaleString()}</td>
                       </tr>
-                    ))}
+                    ) : (
+                      data.sales.slice().reverse().map((sale, i) => (
+                        <tr key={i} className="border-t border-gray-100 hover:bg-gray-50 transition-colors">
+                          <td className="px-4 py-3 text-sm">{new Date(sale.createdAt).toLocaleString()}</td>
+                          <td className="px-4 py-3 text-sm">{sale.items?.length || 0} items</td>
+                          <td className="px-4 py-3 text-sm">
+                            <span className="badge badge-success">{sale.paymentMethod || 'cash'}</span>
+                          </td>
+                          <td className="px-4 py-3 text-sm font-semibold text-green-600">KSH {sale.total?.toLocaleString()}</td>
+                        </tr>
+                      ))
+                    )}
                   </tbody>
                 </table>
               </div>
@@ -497,16 +567,28 @@ export default function AdminDashboard() {
                     </tr>
                   </thead>
                   <tbody>
-                    {data.expenses.slice().reverse().map((expense, i) => (
-                      <tr key={i} className="border-t border-gray-100 hover:bg-gray-50 transition-colors">
-                        <td className="px-4 py-3 text-sm">{new Date(expense.createdAt).toLocaleDateString()}</td>
-                        <td className="px-4 py-3 text-sm">{expense.description}</td>
-                        <td className="px-4 py-3 text-sm">
-                          <span className="badge badge-warning">{expense.category || 'General'}</span>
+                    {data.expenses.length === 0 ? (
+                      <tr>
+                        <td colSpan="4" className="px-4 py-12 text-center">
+                          <div className="flex flex-col items-center justify-center">
+                            <TrendingDown className="w-16 h-16 text-gray-300 mb-4" />
+                            <p className="text-gray-600 font-medium text-lg">No expenses recorded</p>
+                            <p className="text-gray-500 text-sm mt-2">Add your first expense to track spending</p>
+                          </div>
                         </td>
-                        <td className="px-4 py-3 text-sm font-semibold text-red-600">KSH {expense.amount?.toLocaleString()}</td>
                       </tr>
-                    ))}
+                    ) : (
+                      data.expenses.slice().reverse().map((expense, i) => (
+                        <tr key={i} className="border-t border-gray-100 hover:bg-gray-50 transition-colors">
+                          <td className="px-4 py-3 text-sm">{new Date(expense.createdAt).toLocaleDateString()}</td>
+                          <td className="px-4 py-3 text-sm">{expense.description}</td>
+                          <td className="px-4 py-3 text-sm">
+                            <span className="badge badge-warning">{expense.category || 'General'}</span>
+                          </td>
+                          <td className="px-4 py-3 text-sm font-semibold text-red-600">KSH {expense.amount?.toLocaleString()}</td>
+                        </tr>
+                      ))
+                    )}
                   </tbody>
                 </table>
               </div>

@@ -82,25 +82,39 @@ export default function Sales() {
               </tr>
             </thead>
             <tbody>
-              {filteredSales.map((sale) => (
-                <tr key={sale.id} className="border-t border-gray-100 hover:bg-gray-50">
-                  <td className="px-4 py-3 text-sm font-medium">#{sale.id}</td>
-                  <td className="px-4 py-3 text-sm">{new Date(sale.createdAt).toLocaleString()}</td>
-                  <td className="px-4 py-3 text-sm">{sale.items?.length || 0} items</td>
-                  <td className="px-4 py-3 text-sm">
-                    <span className="badge badge-success">{sale.paymentMethod}</span>
-                  </td>
-                  <td className="px-4 py-3 text-sm font-semibold text-green-600">
-                    KSH {sale.total?.toLocaleString()}
-                  </td>
-                  <td className="px-4 py-3 text-sm text-orange-600">
-                    KSH {sale.cogs?.toLocaleString() || 0}
-                  </td>
-                  <td className="px-4 py-3 text-sm font-semibold text-blue-600">
-                    KSH {sale.profit?.toLocaleString() || 0}
+              {filteredSales.length === 0 ? (
+                <tr>
+                  <td colSpan="7" className="px-4 py-12 text-center">
+                    <div className="flex flex-col items-center justify-center">
+                      <div className="w-16 h-16 bg-gray-100 rounded-full flex items-center justify-center mb-4">
+                        <Download className="w-8 h-8 text-gray-400" />
+                      </div>
+                      <p className="text-gray-600 font-medium text-lg">No sales yet</p>
+                      <p className="text-gray-500 text-sm mt-2">Your sales transactions will appear here once processed</p>
+                    </div>
                   </td>
                 </tr>
-              ))}
+              ) : (
+                filteredSales.map((sale) => (
+                  <tr key={sale.id} className="border-t border-gray-100 hover:bg-gray-50">
+                    <td className="px-4 py-3 text-sm font-medium">#{sale.id}</td>
+                    <td className="px-4 py-3 text-sm">{new Date(sale.createdAt).toLocaleString()}</td>
+                    <td className="px-4 py-3 text-sm">{sale.items?.length || 0} items</td>
+                    <td className="px-4 py-3 text-sm">
+                      <span className="badge badge-success">{sale.paymentMethod}</span>
+                    </td>
+                    <td className="px-4 py-3 text-sm font-semibold text-green-600">
+                      KSH {sale.total?.toLocaleString()}
+                    </td>
+                    <td className="px-4 py-3 text-sm text-orange-600">
+                      KSH {sale.cogs?.toLocaleString() || 0}
+                    </td>
+                    <td className="px-4 py-3 text-sm font-semibold text-blue-600">
+                      KSH {sale.profit?.toLocaleString() || 0}
+                    </td>
+                  </tr>
+                ))
+              )}
             </tbody>
           </table>
         </div>
