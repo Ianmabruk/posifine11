@@ -1,7 +1,7 @@
 import { useState, useEffect } from 'react';
 import { useAuth } from '../context/AuthContext';
-import { users, products, sales, expenses, stats } from '../services/api';
-import { Package, DollarSign, TrendingUp, TrendingDown, Plus, Edit2, Trash2, LogOut, Search, Filter, BarChart3, ShoppingBag, Layers, Users, Truck } from 'lucide-react';
+import { users, products, sales, expenses, stats, admin } from '../services/api';
+import { Package, DollarSign, TrendingUp, TrendingDown, Plus, Edit2, Trash2, LogOut, Search, Filter, BarChart3, ShoppingBag, Layers, Users, Truck, Trash } from 'lucide-react';
 
 export default function AdminDashboard() {
   const { user, logout } = useAuth();
@@ -14,6 +14,24 @@ export default function AdminDashboard() {
   const [newProduct, setNewProduct] = useState({ name: '', price: '', quantity: '', category: 'raw' });
   const [newUser, setNewUser] = useState({ name: '', email: '', password: '', role: 'cashier' });
   const [newVendor, setNewVendor] = useState({ supplierName: '', details: '', orderDate: '', expectedDelivery: '', amount: '' });
+  
+  const handleClearData = async () => {
+    if (window.confirm('⚠️ Are you sure you want to clear ALL data?\n\nThis will delete:\n- All products\n- All sales\n- All expenses\n\nThis action CANNOT be undone!')) {
+      try {
+        await admin.clearData('all');
+        // Refresh all data
+        loadData();
+        // Clear localStorage cache
+        localStorage.removeItem('products');
+        localStorage.removeItem('sales');
+        localStorage.removeItem('expenses');
+        alert('✅ All data cleared successfully!');
+      } catch (error) {
+        console.error('Failed to clear data:', error);
+        alert('❌ Failed to clear data: ' + error.message);
+      }
+    }
+  };
 
   useEffect(() => {
     loadData();
@@ -187,6 +205,10 @@ export default function AdminDashboard() {
               <p className="text-sm font-medium text-gray-900">{user?.name}</p>
               <p className="text-xs text-gray-500">{user?.email}</p>
             </div>
+            <button onClick={handleClearData} className="btn-secondary flex items-center gap-2 hover:bg-red-50 hover:text-red-600 hover:border-red-200" title="Clear all data">
+              <Trash className="w-4 h-4" />
+              Clear Data
+            </button>
             <button onClick={logout} className="btn-secondary flex items-center gap-2 hover:bg-red-50 hover:text-red-600 hover:border-red-200">
               <LogOut className="w-4 h-4" />
               Logout

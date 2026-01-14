@@ -45,6 +45,7 @@ export const ProductsProvider = ({ children }) => {
     } catch (err) {
       console.error('Failed to fetch products:', err);
       setError(`Failed to load products: ${err.message}`);
+      // Set empty array instead of keeping old data
       setProducts([]);
     } finally {
       setLoading(false);

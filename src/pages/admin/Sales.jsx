@@ -1,6 +1,6 @@
 import { useState, useEffect } from 'react';
-import { sales as salesApi } from '../../services/api';
-import { Calendar, Download, Filter } from 'lucide-react';
+import { sales as salesApi, admin } from '../../services/api';
+import { Calendar, Download, Filter, Trash } from 'lucide-react';
 
 export default function Sales() {
   const [sales, setSales] = useState([]);
@@ -13,6 +13,19 @@ export default function Sales() {
   const loadSales = async () => {
     const data = await salesApi.getAll();
     setSales(data.reverse());
+  };
+
+  const handleClearSales = async () => {
+    if (window.confirm('⚠️ Are you sure you want to clear ALL sales data?\n\nThis action CANNOT be undone!')) {
+      try {
+        await admin.clearData('sales');
+        setSales([]);
+        alert('✅ All sales cleared successfully!');
+      } catch (error) {
+        console.error('Failed to clear sales:', error);
+        alert('❌ Failed to clear sales: ' + error.message);
+      }
+    }
   };
 
   const filteredSales = sales.filter(sale => {
@@ -45,10 +58,16 @@ export default function Sales() {
             <option value="week">This Week</option>
           </select>
         </div>
-        <button className="btn-secondary flex items-center gap-2">
-          <Download className="w-4 h-4" />
-          Export
-        </button>
+        <div className="flex gap-2">
+          <button onClick={handleClearSales} className="btn-secondary flex items-center gap-2 hover:bg-red-50 hover:text-red-600 hover:border-red-200">
+            <Trash className="w-4 h-4" />
+            Clear All Sales
+          </button>
+          <button className="btn-secondary flex items-center gap-2">
+            <Download className="w-4 h-4" />
+            Export
+          </button>
+        </div>
       </div>
 
       <div className="grid grid-cols-1 md:grid-cols-3 gap-6">

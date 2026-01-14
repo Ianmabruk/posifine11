@@ -1,6 +1,6 @@
 import { useState, useEffect } from 'react';
-import { expenses as expensesApi } from '../../services/api';
-import { Plus, TrendingDown } from 'lucide-react';
+import { expenses as expensesApi, admin } from '../../services/api';
+import { Plus, TrendingDown, Trash } from 'lucide-react';
 
 export default function Expenses() {
   const [expenses, setExpenses] = useState([]);
@@ -14,6 +14,19 @@ export default function Expenses() {
   const loadExpenses = async () => {
     const data = await expensesApi.getAll();
     setExpenses(data.reverse());
+  };
+
+  const handleClearExpenses = async () => {
+    if (window.confirm('⚠️ Are you sure you want to clear ALL expenses data?\n\nThis action CANNOT be undone!')) {
+      try {
+        await admin.clearData('expenses');
+        setExpenses([]);
+        alert('✅ All expenses cleared successfully!');
+      } catch (error) {
+        console.error('Failed to clear expenses:', error);
+        alert('❌ Failed to clear expenses: ' + error.message);
+      }
+    }
   };
 
   const handleAddExpense = async (e) => {
@@ -35,13 +48,22 @@ export default function Expenses() {
           <h2 className="text-2xl font-bold">Expense Management</h2>
           <p className="text-sm text-gray-600 mt-1">Track manual and automatic ingredient-based expenses</p>
         </div>
-        <button 
-          onClick={() => setShowAddModal(true)}
-          className="btn-primary flex items-center gap-2"
-        >
-          <Plus className="w-4 h-4" />
-          Add Expense
-        </button>
+        <div className="flex gap-2">
+          <button 
+            onClick={handleClearExpenses}
+            className="btn-secondary flex items-center gap-2 hover:bg-red-50 hover:text-red-600 hover:border-red-200"
+          >
+            <Trash className="w-4 h-4" />
+            Clear All
+          </button>
+          <button 
+            onClick={() => setShowAddModal(true)}
+            className="btn-primary flex items-center gap-2"
+          >
+            <Plus className="w-4 h-4" />
+            Add Expense
+          </button>
+        </div>
       </div>
 
       <div className="grid grid-cols-1 md:grid-cols-3 gap-6">

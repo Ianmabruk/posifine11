@@ -345,6 +345,14 @@ export const categories = {
   })
 };
 
+// Admin Data Management API
+export const admin = {
+  clearData: (type = 'all') => request('/clear-data', {
+    method: 'POST',
+    body: JSON.stringify({ type })
+  })
+};
+
 // Image Upload API
 export const uploadImage = (imageData) => request('/upload-image', {
   method: 'POST',

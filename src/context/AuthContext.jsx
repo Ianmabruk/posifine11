@@ -65,8 +65,34 @@ export const AuthProvider = ({ children }) => {
     };
   }, [user]);
 
+  const clearOldData = () => {
+    // Clear all product, sales, and expense related cache on app initialization
+    const keysToRemove = [
+      'products',
+      'sales', 
+      'expenses',
+      'activities',
+      'timeEntries',
+      'dashboardCache',
+      'inventoryCache',
+      'analyticsCache'
+    ];
+    
+    keysToRemove.forEach(key => {
+      try {
+        localStorage.removeItem(key);
+        sessionStorage.removeItem(key);
+      } catch (e) {
+        console.warn(`Failed to clear ${key}`, e);
+      }
+    });
+  };
+
   const initializeAuth = async () => {
     try {
+      // Clear old cached data on every app initialization
+      clearOldData();
+      
       const token = localStorage.getItem('token');
       const savedUser = localStorage.getItem('user');
       
