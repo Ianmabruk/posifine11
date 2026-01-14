@@ -139,6 +139,25 @@ export default function Inventory() {
     return batchList.filter(b => b.productId === productId && b.quantity > 0);
   };
 
+  // Format quantity display based on unit type
+  const formatQuantity = (quantity, unit) => {
+    if (!unit || !quantity) return quantity;
+    
+    const isWeightUnit = ['kg', 'g', 'gram', 'grams', 'kilogram', 'kilograms'].includes(unit.toLowerCase());
+    
+    if (isWeightUnit) {
+      // For weight units, show with proper decimal places
+      if (quantity >= 1) {
+        return `${quantity.toFixed(2)}`;
+      } else {
+        return `${quantity.toFixed(3)}`.replace(/\.?0+$/, '');
+      }
+    }
+    
+    // For non-weight units, show as integer
+    return Math.round(quantity).toString();
+  };
+
   const showNotification = (message, type = 'success') => {
     setNotification({ message, type });
     setTimeout(() => setNotification(null), 5000);
@@ -208,11 +227,29 @@ export default function Inventory() {
   const handleAddStock = async (e) => {
     e.preventDefault();
     try {
+      // Support both integer and fractional quantities (for grams/kg)
+      const quantityValue = parseFloat(newStock.quantity);
+      
+      // Validate quantity
+      if (isNaN(quantityValue) || quantityValue <= 0) {
+        showNotification('❌ Please enter a valid quantity', 'error');
+        return;
+      }
+
+      // Determine minimum increment based on unit
+      const isWeightUnit = selectedProduct.unit && ['kg', 'g', 'gram', 'grams', 'kilogram', 'kilograms'].includes(selectedProduct.unit.toLowerCase());
+      const minIncrement = isWeightUnit ? 0.01 : 1;
+      
+      if (quantityValue < minIncrement) {
+        showNotification(`❌ Minimum quantity is ${minIncrement} ${selectedProduct.unit}`, 'error');
+        return;
+      }
+
       // OPTIMISTIC UPDATE: Update batch list immediately
       const newBatch = {
         id: `batch-${Date.now()}`,
         productId: selectedProduct.id,
-        quantity: parseInt(newStock.quantity),
+        quantity: quantityValue,
         expiryDate: newStock.expiryDate,
         batchNumber: newStock.batchNumber || `BATCH-${Date.now()}`,
         cost: parseFloat(newStock.cost || selectedProduct.cost || 0)
@@ -226,7 +263,7 @@ export default function Inventory() {
         // Make API call in background
         await batches.create({
           productId: selectedProduct.id,
-          quantity: parseInt(newStock.quantity),
+          quantity: quantityValue,
           expiryDate: newStock.expiryDate,
           batchNumber: newStock.batchNumber || `BATCH-${Date.now()}`,
           cost: parseFloat(newStock.cost || selectedProduct.cost || 0)
@@ -590,7 +627,7 @@ export default function Inventory() {
                             getProductStock(product.id) === 0 ? 'text-red-600' : 
                             getProductStock(product.id) < 10 ? 'text-yellow-600' : 'text-gray-900'
                           }`}>
-                            {getProductStock(product.id)} {product.unit}
+                            {formatQuantity(getProductStock(product.id), product.unit)} {product.unit}
                           </span>
                           {getProductStock(product.id) < 10 && getProductStock(product.id) > 0 && (
                             <AlertTriangle className="w-4 h-4 text-yellow-500" />
@@ -711,16 +748,29 @@ export default function Inventory() {
       {showAddStock && selectedProduct && (
         <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50">
           <div className="bg-white rounded-xl p-6 w-full max-w-md">
-            <h3 className="text-xl font-bold mb-4">Add Stock for {selectedProduct.name}</h3>
+            <h3 className="text-xl font-bold mb-2">Add Stock for {selectedProduct.name}</h3>
+            <p className="text-xs text-gray-600 mb-4">
+              Unit: <span className="font-semibold">{selectedProduct.unit}</span>
+              {['kg', 'g', 'gram', 'grams', 'kilogram', 'kilograms'].includes(selectedProduct.unit?.toLowerCase()) && (
+                <span className="ml-2 text-blue-600">🔹 Supports decimals (e.g., 0.5 kg, 250 g)</span>
+              )}
+            </p>
             <form onSubmit={handleAddStock} className="space-y-4">
-              <input
-                type="number"
-                placeholder="Quantity"
-                className="input"
-                value={newStock.quantity}
-                onChange={(e) => setNewStock({ ...newStock, quantity: e.target.value })}
-                required
-              />
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-1">
+                  Quantity {['kg', 'g', 'gram', 'grams', 'kilogram', 'kilograms'].includes(selectedProduct.unit?.toLowerCase()) ? '(decimal allowed)' : '(whole numbers)'}
+                </label>
+                <input
+                  type="number"
+                  step={['kg', 'g', 'gram', 'grams', 'kilogram', 'kilograms'].includes(selectedProduct.unit?.toLowerCase()) ? "0.01" : "1"}
+                  min={['kg', 'g', 'gram', 'grams', 'kilogram', 'kilograms'].includes(selectedProduct.unit?.toLowerCase()) ? "0.01" : "1"}
+                  placeholder={['kg', 'g', 'gram', 'grams', 'kilogram', 'kilograms'].includes(selectedProduct.unit?.toLowerCase()) ? "e.g., 0.5, 1.25" : "e.g., 100, 500"}
+                  className="input"
+                  value={newStock.quantity}
+                  onChange={(e) => setNewStock({ ...newStock, quantity: e.target.value })}
+                  required
+                />
+              </div>
               <input
                 type="date"
                 placeholder="Expiry Date (Optional)"
@@ -738,6 +788,7 @@ export default function Inventory() {
               <input
                 type="number"
                 step="0.01"
+                min="0"
                 placeholder="Cost per Unit"
                 className="input"
                 value={newStock.cost}

@@ -34,14 +34,42 @@ export default function AdminDashboard() {
       loadData();
     };
 
+    const handleSaleCreated = (event) => {
+      console.log('💰 Sale recorded - refreshing sales');
+      // Immediately refresh only sales instead of everything
+      sales.getAll().then(s => {
+        setData(prev => ({ ...prev, sales: Array.isArray(s) ? s : [] }));
+      });
+    };
+
+    const handleCashierClockIn = (event) => {
+      console.log('⏰ Cashier clocked in - refreshing users');
+      users.getAll().then(u => {
+        setData(prev => ({ ...prev, users: Array.isArray(u) ? u : [] }));
+      });
+    };
+
+    const handleCashierClockOut = (event) => {
+      console.log('⏰ Cashier clocked out - refreshing users');
+      users.getAll().then(u => {
+        setData(prev => ({ ...prev, users: Array.isArray(u) ? u : [] }));
+      });
+    };
+
     window.addEventListener('productCreated', handleProductCreated);
     window.addEventListener('productUpdated', handleProductUpdated);
     window.addEventListener('dataUpdated', handleDataUpdated);
+    window.addEventListener('saleCreated', handleSaleCreated);
+    window.addEventListener('cashierClockIn', handleCashierClockIn);
+    window.addEventListener('cashierClockOut', handleCashierClockOut);
 
     return () => {
       window.removeEventListener('productCreated', handleProductCreated);
       window.removeEventListener('productUpdated', handleProductUpdated);
       window.removeEventListener('dataUpdated', handleDataUpdated);
+      window.removeEventListener('saleCreated', handleSaleCreated);
+      window.removeEventListener('cashierClockIn', handleCashierClockIn);
+      window.removeEventListener('cashierClockOut', handleCashierClockOut);
     };
   }, []);
 

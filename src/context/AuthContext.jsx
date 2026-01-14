@@ -70,25 +70,49 @@ export const AuthProvider = ({ children }) => {
       const token = localStorage.getItem('token');
       const savedUser = localStorage.getItem('user');
       
-      if (token) {
-        // First verify with backend using a direct fetch so that the
-        // global API layer's 401 redirect behavior doesn't navigate away
-        // from public pages (like the landing page) during initialization.
+      if (token && savedUser) {
         try {
-          const resp = await fetch(`${BASE_API_URL}/auth/me`, {
-            headers: { Authorization: `Bearer ${token}`, 'Content-Type': 'application/json' }
-          });
-          if (resp.ok) {
-            const data = await resp.json();
-            setUser(data);
-            localStorage.setItem('user', JSON.stringify(data));
-          } else {
-            // Token invalid or server returned error — clear token and optionally fallback
-            throw new Error('Invalid token');
+          // Parse saved user first - faster than API call
+          const parsed = JSON.parse(savedUser);
+          
+          // If user is locked, immediately redirect
+          if (parsed.locked) {
+            localStorage.removeItem('token');
+            localStorage.removeItem('user');
+            setUser(null);
+            setIsInitialized(true);
+            setLoading(false);
+            return;
           }
+          
+          setUser(parsed);
+          
+          // Verify token asynchronously in background (non-blocking)
+          fetch(`${BASE_API_URL}/auth/me`, {
+            headers: { Authorization: `Bearer ${token}`, 'Content-Type': 'application/json' }
+          }).then(resp => {
+            if (resp.ok) {
+              return resp.json().then(data => {
+                // If user became locked, update state
+                if (data.locked) {
+                  localStorage.removeItem('token');
+                  localStorage.removeItem('user');
+                  setUser(null);
+                } else {
+                  setUser(data);
+                  localStorage.setItem('user', JSON.stringify(data));
+                }
+              });
+            } else {
+              throw new Error('Invalid token');
+            }
+          }).catch(err => {
+            console.warn('Auth check failed:', err);
+            localStorage.removeItem('token');
+            localStorage.removeItem('user');
+          });
         } catch (err) {
-          console.warn('Auth check failed:', err);
-          // Clear invalid tokens
+          console.warn('Auth initialization failed:', err);
           localStorage.removeItem('token');
           localStorage.removeItem('user');
         }
@@ -98,6 +122,11 @@ export const AuthProvider = ({ children }) => {
       localStorage.removeItem('token');
       localStorage.removeItem('user');
       setUser(null);
+    } finally {
+      setIsInitialized(true);
+      setLoading(false);
+    }
+  };
     } finally {
       setLoading(false);
       setIsInitialized(true);

@@ -232,6 +232,21 @@ export const reminders = {
   }
 };
 
+// Time Entries API (Clock-in/Clock-out)
+export const timeEntries = {
+  getAll: () => request('/time-entries'),
+  
+  clockIn: (notes) => request('/clock-in', {
+    method: 'POST',
+    body: JSON.stringify({ notes: notes || '' })
+  }),
+  
+  clockOut: () => request('/clock-out', {
+    method: 'POST',
+    body: JSON.stringify({})
+  })
+};
+
 // Price History API
 export const priceHistory = {
   getAll: () => request('/price-history'),

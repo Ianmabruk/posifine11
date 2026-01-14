@@ -28,6 +28,7 @@ export default function CashierPOS() {
   const [isClockedIn, setIsClockedIn] = useState(false);
   const [currentTimeEntry, setCurrentTimeEntry] = useState(null);
   const [clockedInTime, setClockedInTime] = useState(null);
+  const [isScreenLocked, setIsScreenLocked] = useState(false);
 
   useEffect(() => {
     loadData();
@@ -114,13 +115,48 @@ export default function CashierPOS() {
       products.getAll().then(p => setProductList(p.filter(prod => prod.visibleToCashier !== false && !prod.expenseOnly))).catch(() => {});
     };
 
+    // Listen for screen lock events from admin
+    const handleScreenLocked = (event) => {
+      const lockedUserId = event.detail?.userId;
+      const currentUserId = user?.id;
+      
+      if (lockedUserId === currentUserId) {
+        console.log('🔒 Screen locked by admin');
+        setIsScreenLocked(true);
+      }
+    };
+
+    // Listen for screen unlock events
+    const handleScreenUnlocked = (event) => {
+      const unlockedUserId = event.detail?.userId;
+      const currentUserId = user?.id;
+      
+      if (unlockedUserId === currentUserId) {
+        console.log('🔓 Screen unlocked');
+        setIsScreenLocked(false);
+      }
+    };
+
+    // Listen for sale events to update inventory in real-time
+    const handleSaleCreated = (event) => {
+      console.log('💰 Sale created - refreshing inventory');
+      products.getAll().then(p => setProductList(p.filter(prod => prod.visibleToCashier !== false && !prod.expenseOnly))).catch(() => {});
+      loadData();
+    };
+
     window.addEventListener('productCreated', handleProductCreated);
     window.addEventListener('productUpdated', handleProductUpdated);
+    window.addEventListener('screenLocked', handleScreenLocked);
+    window.addEventListener('screenUnlocked', handleScreenUnlocked);
+    window.addEventListener('saleCreated', handleSaleCreated);
 
     return () => {
       try { unsub(); } catch (e) {}
       window.removeEventListener('productCreated', handleProductCreated);
       window.removeEventListener('productUpdated', handleProductUpdated);
+      window.removeEventListener('screenLocked', handleScreenLocked);
+      window.removeEventListener('screenUnlocked', handleScreenUnlocked);
+      window.removeEventListener('saleCreated', handleSaleCreated);
       websocketService.disconnect();
     };
   }, []);
@@ -145,13 +181,13 @@ export default function CashierPOS() {
   // Clock in function
   const handleClockIn = async () => {
     try {
-      const response = await fetch(`${BASE_API_URL}/time-entries`, {
+      const response = await fetch(`${BASE_API_URL}/clock-in`, {
         method: 'POST',
         headers: {
           'Authorization': `Bearer ${localStorage.getItem('token')}`,
           'Content-Type': 'application/json'
         },
-        body: JSON.stringify({ action: 'clock_in' })
+        body: JSON.stringify({})
       });
       
       if (response.ok) {
@@ -162,24 +198,27 @@ export default function CashierPOS() {
         setClockedInTime(now);
         localStorage.setItem(`clockStatus_${user?.id}`, 'clocked_in');
         localStorage.setItem(`clockInTime_${user?.id}`, now.toISOString());
-        alert('Clocked in successfully!');
+        alert('⏰ Clocked in successfully! Your shift has started.');
+      } else {
+        const error = await response.json();
+        alert(`❌ Clock-in failed: ${error.error}`);
       }
     } catch (error) {
       console.error('Clock in failed:', error);
-      alert('Failed to clock in');
+      alert('Failed to clock in. Please check your connection.');
     }
   };
 
   // Clock out function
   const handleClockOut = async () => {
     try {
-      const response = await fetch(`${BASE_API_URL}/time-entries`, {
+      const response = await fetch(`${BASE_API_URL}/clock-out`, {
         method: 'POST',
         headers: {
           'Authorization': `Bearer ${localStorage.getItem('token')}`,
           'Content-Type': 'application/json'
         },
-        body: JSON.stringify({ action: 'clock_out' })
+        body: JSON.stringify({})
       });
       
       if (response.ok) {
@@ -191,11 +230,14 @@ export default function CashierPOS() {
         localStorage.removeItem(`clockInTime_${user?.id}`);
         const hours = Math.floor(entry.duration / 60);
         const minutes = entry.duration % 60;
-        alert(`Clocked out successfully! Total time: ${hours}h ${minutes}m`);
+        alert(`⏰ Clocked out successfully! Total time: ${hours}h ${minutes}m`);
+      } else {
+        const error = await response.json();
+        alert(`❌ Clock-out failed: ${error.error}`);
       }
     } catch (error) {
       console.error('Clock out failed:', error);
-      alert('Failed to clock out');
+      alert('Failed to clock out. Please check your connection.');
     }
   };
 
@@ -275,6 +317,30 @@ export default function CashierPOS() {
     return productBatches[0] || null;
   };
 
+  // Format quantity display based on unit type
+  const formatQuantity = (quantity, unit) => {
+    if (!unit || !quantity) return quantity;
+    
+    const isWeightUnit = ['kg', 'g', 'gram', 'grams', 'kilogram', 'kilograms'].includes(unit.toLowerCase());
+    
+    if (isWeightUnit) {
+      // For weight units, show with proper decimal places
+      if (quantity >= 1) {
+        return `${quantity.toFixed(2)}`;
+      } else {
+        return `${quantity.toFixed(3)}`.replace(/\.?0+$/, '');
+      }
+    }
+    
+    // For non-weight units, show as integer
+    return Math.round(quantity).toString();
+  };
+
+  // Check if product is weight-based
+  const isWeightProduct = (product) => {
+    return product.unit && ['kg', 'g', 'gram', 'grams', 'kilogram', 'kilograms'].includes(product.unit.toLowerCase());
+  };
+
   const addToCart = (product) => {
     const availableStock = getProductStock(product.id);
     if (availableStock <= 0) {
@@ -285,35 +351,92 @@ export default function CashierPOS() {
     const existing = cart.find(item => item.id === product.id);
     const currentCartQty = existing ? existing.quantity : 0;
     
-    if (currentCartQty >= availableStock) {
-      alert(`Only ${availableStock} units available in stock!`);
-      return;
-    }
-    
-    if (existing) {
-      setCart(cart.map(item => 
-        item.id === product.id ? { ...item, quantity: item.quantity + 1 } : item
-      ));
+    // For weight-based products, show input dialog for fractional quantity
+    if (isWeightProduct(product)) {
+      const quantityToAdd = prompt(
+        `Enter quantity to add (${product.unit}):\n\nAvailable: ${formatQuantity(availableStock, product.unit)} ${product.unit}\nCurrent in cart: ${formatQuantity(currentCartQty, product.unit)} ${product.unit}`,
+        '0.1'
+      );
+      
+      if (quantityToAdd === null) return; // User cancelled
+      
+      const qty = parseFloat(quantityToAdd);
+      if (isNaN(qty) || qty <= 0) {
+        alert('Please enter a valid quantity');
+        return;
+      }
+      
+      if (currentCartQty + qty > availableStock) {
+        alert(`Only ${formatQuantity(availableStock - currentCartQty, product.unit)} ${product.unit} more available!`);
+        return;
+      }
+      
+      if (existing) {
+        setCart(cart.map(item => 
+          item.id === product.id ? { ...item, quantity: item.quantity + qty } : item
+        ));
+      } else {
+        setCart([...cart, { ...product, quantity: qty }]);
+      }
     } else {
-      setCart([...cart, { ...product, quantity: 1 }]);
+      // For regular products, add 1 unit at a time
+      if (currentCartQty >= availableStock) {
+        alert(`Only ${availableStock} units available in stock!`);
+        return;
+      }
+      
+      if (existing) {
+        setCart(cart.map(item => 
+          item.id === product.id ? { ...item, quantity: item.quantity + 1 } : item
+        ));
+      } else {
+        setCart([...cart, { ...product, quantity: 1 }]);
+      }
     }
   };
 
   const updateQuantity = (id, delta) => {
     const product = productList.find(p => p.id === id);
     const availableStock = getProductStock(id);
+    const cartItem = cart.find(item => item.id === id);
     
-    setCart(cart.map(item => {
-      if (item.id === id) {
-        const newQty = item.quantity + delta;
-        if (newQty > availableStock) {
-          alert(`Only ${availableStock} units available!`);
-          return item;
-        }
-        return { ...item, quantity: Math.max(1, newQty) };
+    // For weight-based products, allow manual input
+    if (isWeightProduct(product)) {
+      const newQuantityStr = prompt(
+        `Update quantity (${product.unit}):\n\nAvailable: ${formatQuantity(availableStock, product.unit)} ${product.unit}`,
+        formatQuantity(cartItem?.quantity || 0, product.unit)
+      );
+      
+      if (newQuantityStr === null) return; // User cancelled
+      
+      const newQty = parseFloat(newQuantityStr);
+      if (isNaN(newQty) || newQty <= 0) {
+        alert('Please enter a valid quantity');
+        return;
       }
-      return item;
-    }).filter(item => item.quantity > 0));
+      
+      if (newQty > availableStock) {
+        alert(`Only ${formatQuantity(availableStock, product.unit)} ${product.unit} available!`);
+        return;
+      }
+      
+      setCart(cart.map(item => 
+        item.id === id ? { ...item, quantity: newQty } : item
+      ).filter(item => item.quantity > 0));
+    } else {
+      // For regular products, use delta increments
+      setCart(cart.map(item => {
+        if (item.id === id) {
+          const newQty = item.quantity + delta;
+          if (newQty > availableStock) {
+            alert(`Only ${availableStock} units available!`);
+            return item;
+          }
+          return { ...item, quantity: Math.max(1, newQty) };
+        }
+        return item;
+      }).filter(item => item.quantity > 0));
+    }
   };
 
   const removeFromCart = (id) => {
@@ -464,6 +587,28 @@ export default function CashierPOS() {
 
   return (
     <div className="min-h-screen bg-gradient-to-br from-gray-50 to-gray-100 flex flex-col">
+      {/* Screen Lock Overlay */}
+      {isScreenLocked && (
+        <div className="fixed inset-0 bg-black bg-opacity-95 flex items-center justify-center z-50 backdrop-blur-sm">
+          <div className="text-center">
+            <div className="w-20 h-20 bg-red-600 rounded-full flex items-center justify-center mx-auto mb-6">
+              <svg className="w-12 h-12 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 15v2m-6 4h12a2 2 0 002-2v-6a2 2 0 00-2-2H6a2 2 0 00-2 2v6a2 2 0 002 2zm6-10V7a3 3 0 00-3-3m3 3V7a3 3 0 013 3m-6-3a3 3 0 013-3m0 0V7m0 0a3 3 0 00-3 3m6-3V7m0 0a3 3 0 00-3 3" />
+              </svg>
+            </div>
+            <h1 className="text-4xl font-bold text-white mb-4">Screen Locked</h1>
+            <p className="text-xl text-gray-300 mb-2">Your account has been locked by the administrator</p>
+            <p className="text-gray-400 mb-8">Please contact your administrator to unlock your account</p>
+            <button
+              onClick={logout}
+              className="px-6 py-3 bg-white text-red-600 font-bold rounded-lg hover:bg-gray-100 transition"
+            >
+              Logout
+            </button>
+          </div>
+        </div>
+      )}
+
       <nav className="bg-white/80 backdrop-blur-md border-b border-gray-200 px-6 py-4 sticky top-0 z-50 shadow-sm">
         <div className="flex items-center justify-between">
           <div>
@@ -648,7 +793,10 @@ export default function CashierPOS() {
                           <button onClick={() => updateQuantity(item.id, -1)} className="w-8 h-8 rounded-lg bg-white shadow-sm flex items-center justify-center hover:bg-gray-100 transition-colors">
                             <Minus className="w-4 h-4" />
                           </button>
-                          <span className="w-10 text-center font-semibold">{item.quantity}</span>
+                          <span className="w-12 text-center font-semibold text-sm">
+                            {formatQuantity(item.quantity, item.unit)}
+                          </span>
+                          <span className="text-xs text-gray-600 w-8">{item.unit}</span>
                           <button onClick={() => updateQuantity(item.id, 1)} className="w-8 h-8 rounded-lg bg-white shadow-sm flex items-center justify-center hover:bg-gray-100 transition-colors">
                             <Plus className="w-4 h-4" />
                           </button>

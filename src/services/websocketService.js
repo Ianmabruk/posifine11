@@ -15,11 +15,14 @@ class WebSocketService {
       initial: [],
       error: [],
       sale_deleted: [],
+      sale_created: [],
       product_deleted: [],
       product_created: [],
       product_updated: [],
       user_deleted: [],
-      data_cleared: []
+      data_cleared: [],
+      cashier_clocked_in: [],
+      cashier_clocked_out: []
     };
     this.reconnectAttempts = 0;
     this.maxReconnectAttempts = 5;
@@ -101,6 +104,21 @@ class WebSocketService {
               this.emit('data_cleared', message.data);
               // Trigger dashboard refresh
               window.dispatchEvent(new Event('dataUpdated'));
+            } else if (message.type === 'sale_created') {
+              console.log('💰 New sale recorded:', message.data.sale);
+              this.emit('sale_created', message.data);
+              // Trigger dashboard refresh for sales
+              window.dispatchEvent(new CustomEvent('saleCreated', { detail: message.data }));
+            } else if (message.type === 'cashier_clocked_in') {
+              console.log('⏰ Cashier clocked in:', message.data.entry);
+              this.emit('cashier_clocked_in', message.data);
+              // Trigger admin dashboard refresh
+              window.dispatchEvent(new CustomEvent('cashierClockIn', { detail: message.data }));
+            } else if (message.type === 'cashier_clocked_out') {
+              console.log('⏰ Cashier clocked out:', message.data.entry);
+              this.emit('cashier_clocked_out', message.data);
+              // Trigger admin dashboard refresh
+              window.dispatchEvent(new CustomEvent('cashierClockOut', { detail: message.data }));
             }
           } catch (e) {
             console.error('Error parsing WebSocket message:', e);

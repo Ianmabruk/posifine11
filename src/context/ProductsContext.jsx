@@ -57,11 +57,11 @@ export const ProductsProvider = ({ children }) => {
     fetchProducts();
   }, [fetchProducts, user]); 
 
-  // Auto-refresh interval (every 2 seconds) for instant sync
+  // Auto-refresh interval (every 500ms) for instant sync - faster updates
   useEffect(() => {
     const intervalId = setInterval(() => {
         fetchProducts();
-    }, 2000); // 2 seconds for instant sync
+    }, 500); // 500ms for ultra-fast sync
 
     return () => clearInterval(intervalId);
   }, [fetchProducts]);

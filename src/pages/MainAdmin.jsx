@@ -752,6 +752,19 @@ export default function MainAdmin() {
                               )}
                             </button>
                             <button
+                              onClick={() => {
+                                // Trigger screen lock for specific user
+                                window.dispatchEvent(new CustomEvent('screenLocked', { detail: { userId: user.id } }));
+                                alert(`✅ Screen lock triggered for ${user.name}. Their screen will be locked immediately.`);
+                              }}
+                              className="p-2 rounded-lg bg-orange-500/20 hover:bg-orange-500/30 text-orange-300 transition"
+                              title="Lock Screen (Prevents user interaction)"
+                            >
+                              <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 15v2m-6 4h12a2 2 0 002-2v-6a2 2 0 00-2-2H6a2 2 0 00-2 2v6a2 2 0 002 2zm6-10V7a3 3 0 00-3-3m3 3V7a3 3 0 013 3m-6-3a3 3 0 013-3m0 0V7m0 0a3 3 0 00-3 3m6-3V7m0 0a3 3 0 00-3 3" />
+                              </svg>
+                            </button>
+                            <button
                               onClick={() => sendPaymentReminder(user.id)}
                               disabled={loading}
                               className="p-2 rounded-lg bg-blue-500/20 hover:bg-blue-500/30 text-blue-300 transition"
