@@ -12,7 +12,7 @@ export default function AdminDashboard() {
   const [showAddVendor, setShowAddVendor] = useState(false);
   const [searchTerm, setSearchTerm] = useState('');
   const [newProduct, setNewProduct] = useState({ name: '', price: '', quantity: '', category: 'raw' });
-  const [newUser, setNewUser] = useState({ name: '', email: '', password: 'changeme123', role: 'cashier' });
+  const [newUser, setNewUser] = useState({ name: '', email: '', password: '', role: 'cashier' });
   const [newVendor, setNewVendor] = useState({ supplierName: '', details: '', orderDate: '', expectedDelivery: '', amount: '' });
 
   useEffect(() => {
@@ -58,11 +58,19 @@ export default function AdminDashboard() {
   const handleAddUser = async (e) => {
     e.preventDefault();
     try {
+      if (!newUser.password) {
+        alert('Password is required');
+        return;
+      }
+      if (newUser.password.length < 6) {
+        alert('Password must be at least 6 characters');
+        return;
+      }
       await users.create(newUser);
-      setNewUser({ name: '', email: '', password: 'changeme123', role: 'cashier' });
+      setNewUser({ name: '', email: '', password: '', role: 'cashier' });
       setShowAddUser(false);
       loadData();
-      alert(`User created successfully! Login: ${newUser.email} / ${newUser.password}`);
+      alert(`✅ User created successfully!\n\n📧 Email: ${newUser.email}\n🔑 Password: ${newUser.password}\n👤 Role: ${newUser.role}\n\nUser can now login with these credentials.`);
     } catch (error) {
       alert('Failed to create user: ' + error.message);
     }
@@ -360,7 +368,7 @@ export default function AdminDashboard() {
               {showAddUser && (
                 <div className="mb-6 p-6 bg-gradient-to-br from-green-50 to-blue-50 rounded-xl border-2 border-green-200">
                   <h4 className="font-semibold mb-4 text-lg">Add New User</h4>
-                  <form onSubmit={handleAddUser} className="grid grid-cols-1 md:grid-cols-4 gap-4">
+                  <form onSubmit={handleAddUser} className="grid grid-cols-1 md:grid-cols-5 gap-4">
                     <input
                       type="text"
                       placeholder="Full Name"
@@ -377,6 +385,15 @@ export default function AdminDashboard() {
                       onChange={(e) => setNewUser({ ...newUser, email: e.target.value })}
                       required
                     />
+                    <input
+                      type="password"
+                      placeholder="Password (min 6 chars)"
+                      className="input"
+                      value={newUser.password}
+                      onChange={(e) => setNewUser({ ...newUser, password: e.target.value })}
+                      required
+                      minLength={6}
+                    />
                     <select
                       className="input"
                       value={newUser.role}
@@ -390,7 +407,6 @@ export default function AdminDashboard() {
                       <button type="button" onClick={() => setShowAddUser(false)} className="btn-secondary">Cancel</button>
                     </div>
                   </form>
-                  <p className="text-xs text-gray-600 mt-2">Default password: changeme123</p>
                 </div>
               )}
 
