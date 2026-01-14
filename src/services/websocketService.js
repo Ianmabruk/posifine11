@@ -21,6 +21,7 @@ class WebSocketService {
       product_updated: [],
       user_deleted: [],
       data_cleared: [],
+      products_cleared: [],
       cashier_clocked_in: [],
       cashier_clocked_out: []
     };
@@ -104,6 +105,11 @@ class WebSocketService {
               this.emit('data_cleared', message.data);
               // Trigger dashboard refresh
               window.dispatchEvent(new Event('dataUpdated'));
+            } else if (message.type === 'products_cleared') {
+              console.log('🗑️ Products cleared:', message.data);
+              this.emit('products_cleared', message.data);
+              // Force immediate product refresh
+              window.dispatchEvent(new CustomEvent('productsCleared', { detail: message.data }));
             } else if (message.type === 'sale_created') {
               console.log('💰 New sale recorded:', message.data.sale);
               this.emit('sale_created', message.data);

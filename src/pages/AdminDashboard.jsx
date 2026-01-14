@@ -52,6 +52,11 @@ export default function AdminDashboard() {
       loadData();
     };
 
+    const handleProductsCleared = () => {
+      console.log('🗑️ Products cleared - refreshing all data');
+      loadData();
+    };
+
     const handleSaleCreated = (event) => {
       console.log('💰 Sale recorded - refreshing sales');
       // Immediately refresh only sales instead of everything
@@ -77,6 +82,7 @@ export default function AdminDashboard() {
     window.addEventListener('productCreated', handleProductCreated);
     window.addEventListener('productUpdated', handleProductUpdated);
     window.addEventListener('dataUpdated', handleDataUpdated);
+    window.addEventListener('productsCleared', handleProductsCleared);
     window.addEventListener('saleCreated', handleSaleCreated);
     window.addEventListener('cashierClockIn', handleCashierClockIn);
     window.addEventListener('cashierClockOut', handleCashierClockOut);
@@ -85,6 +91,7 @@ export default function AdminDashboard() {
       window.removeEventListener('productCreated', handleProductCreated);
       window.removeEventListener('productUpdated', handleProductUpdated);
       window.removeEventListener('dataUpdated', handleDataUpdated);
+      window.removeEventListener('productsCleared', handleProductsCleared);
       window.removeEventListener('saleCreated', handleSaleCreated);
       window.removeEventListener('cashierClockIn', handleCashierClockIn);
       window.removeEventListener('cashierClockOut', handleCashierClockOut);
