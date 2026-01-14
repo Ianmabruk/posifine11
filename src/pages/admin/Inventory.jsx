@@ -158,7 +158,19 @@ export default function Inventory() {
 
   const handleAddProduct = async (e) => {
     e.preventDefault();
+    console.log('🔵 handleAddProduct triggered', { newProduct });
+    
     try {
+      // Validate required fields
+      if (!newProduct.name || !newProduct.name.trim()) {
+        showNotification('❌ Product name is required', 'error');
+        return;
+      }
+      if (!newProduct.price || isNaN(parseFloat(newProduct.price))) {
+        showNotification('❌ Valid product price is required', 'error');
+        return;
+      }
+
       const productData = {
         ...newProduct,
         price: parseFloat(newProduct.price),
@@ -167,7 +179,9 @@ export default function Inventory() {
         visibleToCashier: !newProduct.expenseOnly && newProduct.visibleToCashier !== false
       };
       
+      console.log('📝 Sending product data to API:', productData);
       const result = await products.create(productData);
+      console.log('✅ Product created successfully:', result);
       
       // Reset form and close modal
       setNewProduct({ name: '', price: '', cost: '', category: 'finished', unit: 'pcs', expenseOnly: false, image: '', visibleToCashier: true });
@@ -175,13 +189,19 @@ export default function Inventory() {
       setShowAddModal(false);
       
       // Refresh data
+      console.log('🔄 Refreshing product list...');
       await loadData();
       
       showNotification(`✅ Product "${result.name}" added successfully! ${result.visibleToCashier ? 'Cashiers can now see this product.' : 'This product is hidden from cashiers.'}`, 'success');
       
     } catch (error) {
-      console.error('Failed to create product:', error);
-      alert(`Failed to create product: ${error.message || 'Unknown error'}`);
+      console.error('❌ Failed to create product:', error);
+      console.error('Error details:', { 
+        message: error.message, 
+        status: error.status,
+        stack: error.stack
+      });
+      showNotification(`❌ Failed to create product: ${error.message || 'Unknown error'}`, 'error');
     }
   };
 
