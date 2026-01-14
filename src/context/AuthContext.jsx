@@ -127,11 +127,6 @@ export const AuthProvider = ({ children }) => {
       setLoading(false);
     }
   };
-    } finally {
-      setLoading(false);
-      setIsInitialized(true);
-    }
-  };
 
   const login = async (payload) => {
     try {
