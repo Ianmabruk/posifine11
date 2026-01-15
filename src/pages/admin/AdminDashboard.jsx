@@ -144,12 +144,6 @@ export default function AdminDashboard() {
       }
     }
   };
-      } catch (error) {
-        console.error('Failed to clear data:', error);
-        alert('Failed to clear data: ' + error.message);
-      }
-    }
-  };
 
   const menuItems = [
     { id: 'overview', label: 'Dashboard', icon: LayoutDashboard, path: '/admin' },

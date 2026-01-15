@@ -608,12 +608,6 @@ export default function CashierPOS() {
       }
     }
   };
-      } catch (error) {
-        console.error('Failed to clear data:', error);
-        alert('Failed to clear data');
-      }
-    }
-  };
 
   return (
     <div className="min-h-screen bg-gradient-to-br from-gray-50 to-gray-100 flex flex-col">
