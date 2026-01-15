@@ -67,6 +67,24 @@ export const ProductsProvider = ({ children }) => {
     return () => clearInterval(intervalId);
   }, [fetchProducts]);
 
+  // Listen for clear-data events and force immediate refetch
+  useEffect(() => {
+    const handleDataCleared = () => {
+      console.log('🔄 Data cleared event received - forcing products refresh');
+      setProducts([]);
+      setError(null);
+      fetchProducts();
+    };
+
+    window.addEventListener('dataCleared', handleDataCleared);
+    window.addEventListener('productsCleared', handleDataCleared);
+    
+    return () => {
+      window.removeEventListener('dataCleared', handleDataCleared);
+      window.removeEventListener('productsCleared', handleDataCleared);
+    };
+  }, [fetchProducts]);
+
   const refreshProducts = async () => {
     setLoading(true);
     await fetchProducts();

@@ -5,14 +5,37 @@ import { Calendar, Download, Filter, Trash } from 'lucide-react';
 export default function Sales() {
   const [sales, setSales] = useState([]);
   const [filter, setFilter] = useState('all');
+  const [loading, setLoading] = useState(true);
 
   useEffect(() => {
     loadSales();
+    
+    // Listen for clear-data and tab switch events
+    const handleDataCleared = () => {
+      console.log('Sales data cleared - refreshing');
+      setSales([]);
+    };
+
+    window.addEventListener('dataCleared', handleDataCleared);
+    window.addEventListener('storage', loadSales);
+    
+    return () => {
+      window.removeEventListener('dataCleared', handleDataCleared);
+      window.removeEventListener('storage', loadSales);
+    };
   }, []);
 
   const loadSales = async () => {
-    const data = await salesApi.getAll();
-    setSales(data.reverse());
+    try {
+      setLoading(true);
+      const data = await salesApi.getAll();
+      setSales(Array.isArray(data) ? data.reverse() : []);
+    } catch (error) {
+      console.error('Failed to load sales:', error);
+      setSales([]);
+    } finally {
+      setLoading(false);
+    }
   };
 
   const handleClearSales = async () => {

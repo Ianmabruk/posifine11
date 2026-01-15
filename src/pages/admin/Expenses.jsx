@@ -9,11 +9,30 @@ export default function Expenses() {
 
   useEffect(() => {
     loadExpenses();
+    
+    // Listen for clear-data events
+    const handleDataCleared = () => {
+      console.log('Expenses data cleared - refreshing');
+      setExpenses([]);
+    };
+
+    window.addEventListener('dataCleared', handleDataCleared);
+    window.addEventListener('storage', loadExpenses);
+    
+    return () => {
+      window.removeEventListener('dataCleared', handleDataCleared);
+      window.removeEventListener('storage', loadExpenses);
+    };
   }, []);
 
   const loadExpenses = async () => {
-    const data = await expensesApi.getAll();
-    setExpenses(data.reverse());
+    try {
+      const data = await expensesApi.getAll();
+      setExpenses(Array.isArray(data) ? data.reverse() : []);
+    } catch (error) {
+      console.error('Failed to load expenses:', error);
+      setExpenses([]);
+    }
   };
 
   const handleClearExpenses = async () => {

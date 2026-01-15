@@ -168,49 +168,61 @@ export const products = {
   getMaxProducible: (id) => request(`/products/${id}/max-producible`)
 };
 
-// Sales API
+// Sales API - FIXED: Now calls actual backend instead of hardcoded demo
 export const sales = {
-  getAll: async () => {
-    return [
-      { id: 1, total: 450, items: [{ name: 'Coffee', quantity: 2 }], createdAt: new Date().toISOString() }
-    ];
-  },
+  getAll: () => request('/sales'),
   
-  create: async (saleData) => {
-    return {
-      id: Date.now(),
-      ...saleData,
-      createdAt: new Date().toISOString()
-    };
-  }
+  create: (saleData) => request('/sales', {
+    method: 'POST',
+    body: JSON.stringify(saleData)
+  }),
+  
+  delete: (id) => request(`/sales/${id}`, {
+    method: 'DELETE'
+  })
 };
 
-// Expenses API
+// Expenses API - FIXED: Now calls actual backend instead of hardcoded demo
 export const expenses = {
-  getAll: async () => {
-    return [
-      { id: 1, description: 'Office supplies', amount: 150, createdAt: new Date().toISOString() }
-    ];
-  },
+  getAll: () => request('/expenses'),
   
-  create: async (expenseData) => {
-    return {
-      id: Date.now(),
-      ...expenseData,
-      createdAt: new Date().toISOString()
-    };
-  }
+  create: (expenseData) => request('/expenses', {
+    method: 'POST',
+    body: JSON.stringify(expenseData)
+  }),
+  
+  update: (id, expenseData) => request(`/expenses/${id}`, {
+    method: 'PUT',
+    body: JSON.stringify(expenseData)
+  }),
+  
+  delete: (id) => request(`/expenses/${id}`, {
+    method: 'DELETE'
+  })
 };
 
 // Statistics API
 export const stats = {
-  get: async () => {
-    return {
-      totalExpenses: 300,
-      profit: 1200,
-      productCount: 5
-    };
-  }
+  get: () => request('/stats')
+};
+
+// Raw Materials API - For composite product system
+export const rawMaterials = {
+  getAll: () => request('/raw-materials'),
+  
+  create: (materialData) => request('/raw-materials', {
+    method: 'POST',
+    body: JSON.stringify(materialData)
+  }),
+  
+  update: (id, materialData) => request(`/raw-materials/${id}`, {
+    method: 'PUT',
+    body: JSON.stringify(materialData)
+  }),
+  
+  delete: (id) => request(`/raw-materials/${id}`, {
+    method: 'DELETE'
+  })
 };
 
 // Reminders API
@@ -530,9 +542,12 @@ export function unsubscribeAllProductSubscriptions() {
   }
 }
 
-// Recipes API
+// Recipes API - Composite product recipes/BOMs with ingredient deduction support
 export const recipes = {
   getAll: () => request('/recipes'),
+  
+  getByProduct: (productId) => request(`/recipes/${productId}`),
+  
   create: (data) => request('/recipes', {
     method: 'POST',
     body: JSON.stringify(data)
