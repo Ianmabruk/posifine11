@@ -46,6 +46,16 @@ const requestWithRetry = async (endpoint, options = {}, retryCount = 0, maxRetri
       throw err;
     }
 
+    if (response.status === 423) {
+      // Screen locked - don't throw immediately, return the response
+      // Components will handle showing the unlock dialog
+      const errorData = await response.json().catch(() => ({ error: 'Screen locked' }));
+      const err = new Error(errorData.error || 'Screen locked');
+      err.status = 423;
+      err.isScreenLocked = true;
+      throw err;
+    }
+
     if (response.status === 500) {
       throw new Error('Server error 500 - Backend unavailable');
     }
@@ -108,7 +118,42 @@ export const auth = {
     body: JSON.stringify(data)
   }),
   
-  me: () => request('/auth/me')
+  me: () => request('/auth/me'),
+  
+  // Subscription management
+  getSubscriptionStatus: () => request('/user/subscription-status'),
+  
+  renewSubscription: (durationDays = 30) => request('/subscriptions/renew', {
+    method: 'POST',
+    body: JSON.stringify({ duration_days: durationDays })
+  })
+};
+
+
+// Subscriptions API
+export const subscriptions = {
+  getPlans: () => request('/subscriptions/plans'),
+  
+  getOverview: () => {
+    const token = localStorage.getItem('ownerToken');
+    return request('/subscriptions/overview', {
+      headers: token ? { 'Authorization': `Bearer ${token}` } : {}
+    });
+  },
+  
+  checkExpiry: () => {
+    const token = localStorage.getItem('ownerToken');
+    return request('/subscriptions/check-expiry', {
+      headers: token ? { 'Authorization': `Bearer ${token}` } : {}
+    });
+  },
+  
+  getUserSubscriptionStatus: (userId) => {
+    const token = localStorage.getItem('ownerToken');
+    return request(`/user/subscription-status`, {
+      headers: token ? { 'Authorization': `Bearer ${token}` } : {}
+    });
+  }
 };
 
 
@@ -165,7 +210,10 @@ export const products = {
     body: JSON.stringify(stockData)
   }),
   
-  getMaxProducible: (id) => request(`/products/${id}/max-producible`)
+  getMaxProducible: (id) => request(`/products/${id}/max-producible`),
+  
+  // Get detailed stock status for all products
+  getStockStatus: () => request('/products/stock-status')
 };
 
 // Sales API - FIXED: Now calls actual backend instead of hardcoded demo
@@ -463,6 +511,15 @@ export const mainAdmin = {
         'Authorization': `Bearer ${token}`
       },
       body: JSON.stringify({ type })
+    });
+  },
+  lockUserScreen: (userId) => {
+    const token = localStorage.getItem('ownerToken');
+    return request(`/admin/lock-user-screen/${userId}`, {
+      method: 'POST',
+      headers: {
+        'Authorization': `Bearer ${token}`
+      }
     });
   }
 };

@@ -4,6 +4,7 @@ import {
   AlertTriangle, TrendingUp, Calendar, Search, Filter, Send, Eye, LogOut
 } from 'lucide-react';
 import { mainAdmin, users, BASE_API_URL } from '../services/api';
+import SubscriptionManagement from '../components/SubscriptionManagement';
 import { useNavigate } from 'react-router-dom';
 
 export default function MainAdmin() {
@@ -13,6 +14,7 @@ export default function MainAdmin() {
   const [searchTerm, setSearchTerm] = useState('');
   const [showEmailModal, setShowEmailModal] = useState(false);
   const [showAnalytics, setShowAnalytics] = useState(false);
+  const [activeTab, setActiveTab] = useState('users'); // users or subscriptions
   const [selectedUsers, setSelectedUsers] = useState([]);
   const [emailData, setEmailData] = useState({ subject: '', message: '' });
   const [loading, setLoading] = useState(true);
@@ -358,6 +360,29 @@ export default function MainAdmin() {
     }
   };
 
+  const lockUserScreen = async (userId, userName) => {
+    try {
+      setLockingUser(userId);
+      
+      // Call backend endpoint to lock user's screen
+      const response = await mainAdmin.lockUserScreen(userId);
+      
+      if (response.success || response.message) {
+        alert(`✅ Screen locked for ${userName}. They will see the PIN unlock screen immediately.`);
+        
+        // Optionally refresh user list to show updated status
+        setTimeout(() => {
+          loadData();
+        }, 1000);
+      }
+    } catch (error) {
+      console.error('Failed to lock screen:', error);
+      alert(`❌ Failed to lock screen: ${error.message}`);
+    } finally {
+      setLockingUser(null);
+    }
+  };
+
   const sendPaymentReminder = async (userId) => {
     const user = allUsers.find(u => u.id === userId);
     if (!user) return;
@@ -537,6 +562,49 @@ export default function MainAdmin() {
             <p className="text-gray-300 text-sm">Overdue Payments</p>
           </div>
         </div>
+
+        {/* Tab Switcher */}
+        <div className="border-b border-white/10">
+          <div className="flex gap-6">
+            <button
+              onClick={() => setActiveTab('users')}
+              className={`px-4 py-3 font-medium border-b-2 transition ${
+                activeTab === 'users'
+                  ? 'border-blue-500 text-blue-400'
+                  : 'border-transparent text-gray-400 hover:text-gray-300'
+              }`}
+            >
+              <div className="flex items-center gap-2">
+                <Users className="w-4 h-4" />
+                Users & Management
+              </div>
+            </button>
+            <button
+              onClick={() => setActiveTab('subscriptions')}
+              className={`px-4 py-3 font-medium border-b-2 transition ${
+                activeTab === 'subscriptions'
+                  ? 'border-blue-500 text-blue-400'
+                  : 'border-transparent text-gray-400 hover:text-gray-300'
+              }`}
+            >
+              <div className="flex items-center gap-2">
+                <TrendingUp className="w-4 h-4" />
+                Subscriptions
+              </div>
+            </button>
+          </div>
+        </div>
+
+        {/* Subscriptions Tab */}
+        {activeTab === 'subscriptions' && (
+          <div className="bg-white/10 backdrop-blur-lg rounded-xl p-6 border border-white/20">
+            <SubscriptionManagement />
+          </div>
+        )}
+
+        {/* Users Tab */}
+        {activeTab === 'users' && (
+          <>
 
         {/* Filters and Actions */}
         <div className="bg-white/10 backdrop-blur-lg rounded-xl p-6 border border-white/20">
@@ -752,17 +820,18 @@ export default function MainAdmin() {
                               )}
                             </button>
                             <button
-                              onClick={() => {
-                                // Trigger screen lock for specific user
-                                window.dispatchEvent(new CustomEvent('screenLocked', { detail: { userId: user.id } }));
-                                alert(`✅ Screen lock triggered for ${user.name}. Their screen will be locked immediately.`);
-                              }}
-                              className="p-2 rounded-lg bg-orange-500/20 hover:bg-orange-500/30 text-orange-300 transition"
-                              title="Lock Screen (Prevents user interaction)"
+                              onClick={() => lockUserScreen(user.id, user.name)}
+                              disabled={lockingUser === user.id}
+                              className={`p-2 rounded-lg bg-orange-500/20 hover:bg-orange-500/30 text-orange-300 transition ${lockingUser === user.id ? 'opacity-50 cursor-not-allowed' : ''}`}
+                              title="Lock Screen (Prevents user interaction until PIN is entered)"
                             >
-                              <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 15v2m-6 4h12a2 2 0 002-2v-6a2 2 0 00-2-2H6a2 2 0 00-2 2v6a2 2 0 002 2zm6-10V7a3 3 0 00-3-3m3 3V7a3 3 0 013 3m-6-3a3 3 0 013-3m0 0V7m0 0a3 3 0 00-3 3m6-3V7m0 0a3 3 0 00-3 3" />
-                              </svg>
+                              {lockingUser === user.id ? (
+                                <div className="w-4 h-4 border-2 border-current border-t-transparent rounded-full animate-spin" />
+                              ) : (
+                                <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 15v2m-6 4h12a2 2 0 002-2v-6a2 2 0 00-2-2H6a2 2 0 00-2 2v6a2 2 0 002 2zm6-10V7a3 3 0 00-3-3m3 3V7a3 3 0 013 3m-6-3a3 3 0 013-3m0 0V7m0 0a3 3 0 00-3 3m6-3V7m0 0a3 3 0 00-3 3" />
+                                </svg>
+                              )}
                             </button>
                             <button
                               onClick={() => sendPaymentReminder(user.id)}
@@ -831,7 +900,6 @@ export default function MainAdmin() {
             </div>
           </div>
         </div>
-      </div>
 
       {/* Email Modal */}
       {showEmailModal && (
@@ -882,6 +950,10 @@ export default function MainAdmin() {
           </div>
         </div>
       )}
+
+        </>
+        )}
+      </div>
 
       {/* Analytics Modal */}
       {showAnalytics && (

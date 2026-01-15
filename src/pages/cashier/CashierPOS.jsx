@@ -8,6 +8,7 @@ import { sales as salesApi, stats, creditRequests, discounts, products, BASE_API
 import { ShoppingCart, Trash2, LogOut, Plus, Minus, Search, DollarSign, TrendingUp, Package, BarChart3, Edit2, Settings, Tag } from 'lucide-react';
 import DiscountSelector from '../../components/DiscountSelector';
 import ProductCard from '../../components/ProductCard';
+import StockDeductionSummary from '../../components/StockDeductionSummary';
 
 
 
@@ -43,6 +44,10 @@ export default function CashierPOS() {
     items: []
   });
   const [isAutoRefreshing, setIsAutoRefreshing] = useState(false);
+
+  // Stock deduction tracking
+  const [showDeductionSummary, setShowDeductionSummary] = useState(false);
+  const [lastDeductions, setLastDeductions] = useState(null);
 
   // Track last products update time and update count to display refresh info
   const [lastProductUpdate, setLastProductUpdate] = useState(Date.now());
@@ -281,8 +286,14 @@ export default function CashierPOS() {
       setCart([]);
       loadData();
       
-      // Show success message with sale details
-      alert(`✅ Sale completed successfully!\n\n💰 Total: KSH ${total.toLocaleString()}\n📋 Payment: ${paymentMethod}\n🧾 Receipt #: ${result.id || 'N/A'}\n\nThank you for your purchase!`);
+      // Display stock deductions if available
+      if (result.stockDeductions) {
+        setLastDeductions(result.stockDeductions);
+        setShowDeductionSummary(true);
+      } else {
+        // Show success message with sale details
+        alert(`✅ Sale completed successfully!\n\n💰 Total: KSH ${total.toLocaleString()}\n📋 Payment: ${paymentMethod}\n🧾 Receipt #: ${result.id || 'N/A'}\n\nThank you for your purchase!`);
+      }
     } catch (error) {
       console.error('Checkout error:', error);
       let errorMessage = 'Failed to complete sale';
@@ -1242,6 +1253,13 @@ export default function CashierPOS() {
           </div>
         </div>
       )}
+
+      {/* Stock Deduction Summary Modal */}
+      <StockDeductionSummary 
+        deductions={lastDeductions}
+        isOpen={showDeductionSummary}
+        onClose={() => setShowDeductionSummary(false)}
+      />
     </div>
   );
 }
