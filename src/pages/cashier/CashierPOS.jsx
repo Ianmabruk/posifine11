@@ -220,10 +220,28 @@ export default function CashierPOS() {
     }
   };
 
-  const updateQuantity = (id, delta) => {
+  const updateQuantity = (id, newQuantity) => {
+    const quantity = parseFloat(newQuantity);
+    if (isNaN(quantity) || quantity <= 0) return;
+    
     setCart(cart.map(item => 
-      item.id === id ? { ...item, quantity: Math.max(1, item.quantity + delta) } : item
+      item.id === id ? { ...item, quantity } : item
     ).filter(item => item.quantity > 0));
+  };
+
+  const handleQuantityChange = (id) => {
+    const product = cart.find(item => item.id === id);
+    if (!product) return;
+    
+    // Determine step size based on unit
+    const isWeightBased = ['kg', 'g', 'gram', 'grams', 'kilogram', 'kilograms', 'L', 'ml', 'liter', 'liters'].includes(product.unit?.toLowerCase());
+    const currentQty = product.quantity;
+    const prompt_text = `Enter quantity (${product.unit || 'pcs'})\n${isWeightBased ? 'Supports decimals e.g., 0.1, 0.5, 1.2' : 'Whole numbers only'}`;
+    
+    const newQty = prompt(prompt_text, currentQty.toString());
+    if (newQty !== null) {
+      updateQuantity(id, newQty);
+    }
   };
 
 
@@ -528,28 +546,54 @@ export default function CashierPOS() {
                 </div>
               ) : (
                 <div className="space-y-3">
-                  {cart.map(item => (
+                  {cart.map(item => {
+                    const isWeightBased = ['kg', 'g', 'gram', 'grams', 'kilogram', 'kilograms', 'L', 'ml', 'liter', 'liters'].includes(item.unit?.toLowerCase());
+                    const step = isWeightBased ? 0.1 : 1;
+                    
+                    return (
                     <div key={item.id} className="bg-gradient-to-br from-gray-50 to-gray-100 rounded-xl p-4 shadow-sm">
                       <div className="flex justify-between items-start mb-3">
-                        <h4 className="font-semibold text-gray-900">{item.name}</h4>
+                        <div>
+                          <h4 className="font-semibold text-gray-900">{item.name}</h4>
+                          {isWeightBased && <p className="text-xs text-gray-500">Decimal quantities supported</p>}
+                        </div>
                         <button onClick={() => removeFromCart(item.id)} className="text-red-600 hover:bg-red-50 p-1 rounded">
                           <Trash2 className="w-4 h-4" />
                         </button>
                       </div>
-                      <div className="flex items-center justify-between">
-                        <div className="flex items-center gap-2">
-                          <button onClick={() => updateQuantity(item.id, -1)} className="w-8 h-8 rounded-lg bg-white shadow-sm flex items-center justify-center hover:bg-gray-100">
+                      <div className="flex items-center justify-between gap-2">
+                        <div className="flex items-center gap-2 flex-1">
+                          <button 
+                            onClick={() => updateQuantity(item.id, Math.max(step, item.quantity - step))} 
+                            className="w-8 h-8 rounded-lg bg-white shadow-sm flex items-center justify-center hover:bg-gray-100 transition-colors"
+                            title={`Decrease by ${step}`}
+                          >
                             <Minus className="w-4 h-4" />
                           </button>
-                          <span className="w-10 text-center font-semibold">{item.quantity}</span>
-                          <button onClick={() => updateQuantity(item.id, 1)} className="w-8 h-8 rounded-lg bg-white shadow-sm flex items-center justify-center hover:bg-gray-100">
+                          <input 
+                            type="number"
+                            step={step}
+                            min={step}
+                            value={item.quantity}
+                            onChange={(e) => updateQuantity(item.id, e.target.value)}
+                            onClick={() => handleQuantityChange(item.id)}
+                            className="w-16 text-center font-semibold px-2 py-1 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:outline-none"
+                            title={`Click to edit quantity (${item.unit || 'pcs'})`}
+                          />
+                          <span className="text-xs text-gray-600 w-12">{item.unit || 'pcs'}</span>
+                          <button 
+                            onClick={() => updateQuantity(item.id, item.quantity + step)} 
+                            className="w-8 h-8 rounded-lg bg-white shadow-sm flex items-center justify-center hover:bg-gray-100 transition-colors"
+                            title={`Increase by ${step}`}
+                          >
                             <Plus className="w-4 h-4" />
                           </button>
                         </div>
-                        <span className="font-bold text-green-600">KSH {(item.price * item.quantity).toLocaleString()}</span>
+                        <span className="font-bold text-green-600 whitespace-nowrap">KSH {(item.price * item.quantity).toLocaleString()}</span>
                       </div>
                     </div>
-                  ))}
+                    );
+                  })}
                 </div>
               )}
             </div>
