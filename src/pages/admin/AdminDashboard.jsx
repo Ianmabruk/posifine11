@@ -35,71 +35,56 @@ export default function AdminDashboard() {
   const [appSettings, setAppSettings] = useState({});
   const [isLocked, unlock] = useInactivity(45000); // 45 seconds
 
+  // Prevent navigation when locked
+  useEffect(() => {
+    if (isLocked) {
+      console.log('🔒 Screen locked - navigation disabled');
+    }
+  }, [isLocked]);
 
   useEffect(() => {
-    // CRITICAL: Ensure user data is correct and prevent unnecessary redirects
-    const ensureUserData = () => {
-      const storedUser = localStorage.getItem('user');
-      if (storedUser) {
-        const userData = JSON.parse(storedUser);
-        let needsUpdate = false;
-        
-        // If user has ultra plan or admin role, ensure they stay here
-        if (userData.plan === 'ultra' || userData.role === 'admin') {
-          // Ensure active flag is set
-          if (!userData.active) {
-            userData.active = true;
-            needsUpdate = true;
-          }
-          // Ensure role matches plan
-          if (userData.plan === 'ultra' && userData.role !== 'admin') {
-            userData.role = 'admin';
-            needsUpdate = true;
-          }
-          // Ensure price is set
-          if (userData.plan === 'ultra' && (!userData.price || userData.price !== 1600)) {
-            userData.price = 1600;
-            needsUpdate = true;
-          }
-          
-          if (needsUpdate) {
-            localStorage.setItem('user', JSON.stringify(userData));
-            // Force context to update by dispatching storage event
-            window.dispatchEvent(new Event('storage'));
-            window.dispatchEvent(new Event('localStorageUpdated'));
-          }
+    // Only run once on mount
+    const initializeDashboard = async () => {
+      try {
+        // Verify user is authenticated
+        const storedUser = localStorage.getItem('user');
+        if (!storedUser) {
+          navigate('/auth/login');
+          return;
         }
+
+        const userData = JSON.parse(storedUser);
+        
+        // Verify user has admin access
+        if (userData.role !== 'admin' && userData.plan !== 'ultra') {
+          console.warn('⚠️ User does not have admin access');
+          navigate('/dashboard');
+          return;
+        }
+
+        // Load settings
+        try {
+          const data = await settingsApi.get();
+          setAppSettings(data);
+        } catch (error) {
+          console.error('Failed to load settings:', error);
+        }
+
+        // Show reminder modal once per session
+        const reminderShown = sessionStorage.getItem('adminReminderShown');
+        if (!reminderShown) {
+          setTimeout(() => {
+            setShowReminderModal(true);
+            sessionStorage.setItem('adminReminderShown', 'true');
+          }, 1000);
+        }
+      } catch (error) {
+        console.error('Dashboard initialization error:', error);
       }
     };
-    
-    // Run immediately and also after a short delay to catch any async updates
-    ensureUserData();
-    setTimeout(ensureUserData, 100);
-    
-    // Note: Reminder modal is now shown manually via button click to prevent duplicate displays
-    // Only show reminder once per session if first login
-    const reminderShown = sessionStorage.getItem('adminReminderShown');
-    if (!reminderShown) {
-      const timer = setTimeout(() => {
-        setShowReminderModal(true);
-        sessionStorage.setItem('adminReminderShown', 'true');
-      }, 1000);
-      loadSettings();
-      return () => clearTimeout(timer);
-    }
-    
-    loadSettings();
-  }, []);
 
-  const loadSettings = async () => {
-    try {
-      const data = await settingsApi.get();
-      setAppSettings(data);
-    } catch (error) {
-      console.error('Failed to load settings:', error);
-    }
-  };
-
+    initializeDashboard();
+  }, []); // Empty dependency array - run only once
 
   const handleClearData = async () => {
     if (window.confirm('Are you sure you want to clear all sales and expenses data? This action cannot be undone.')) {
@@ -127,10 +112,6 @@ export default function AdminDashboard() {
         localStorage.removeItem('sales');
         localStorage.removeItem('expenses');
         localStorage.removeItem('users');
-        
-        // Reset component state
-        setData({ products: [], sales: [], expenses: [], stats: {}, users: [], vendors: [] });
-        setActiveTab('overview');
         
         // Broadcast to all listeners
         window.dispatchEvent(new Event('storage'));
