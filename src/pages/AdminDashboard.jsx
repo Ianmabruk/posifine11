@@ -36,65 +36,27 @@ export default function AdminDashboard() {
   useEffect(() => {
     loadData();
 
-    // Listen for product creation and update events
+    // Note: Event listeners have been disabled to prevent excessive dashboard refreshes.
+    // The new admin dashboard at /pages/admin/AdminDashboard.jsx handles event-based updates
+    // more efficiently and should be used instead of this legacy component.
+    
+    // Old event listeners (DISABLED - causes excessive refreshes):
+    /*
     const handleProductCreated = () => {
       console.log('🎉 Product created - refreshing dashboard');
       loadData();
     };
-
-    const handleProductUpdated = () => {
-      console.log('📝 Product updated - refreshing dashboard');
-      loadData();
-    };
-
-    const handleDataUpdated = () => {
-      console.log('🔄 Data updated - refreshing dashboard');
-      loadData();
-    };
-
-    const handleProductsCleared = () => {
-      console.log('🗑️ Products cleared - refreshing all data');
-      loadData();
-    };
-
-    const handleSaleCreated = (event) => {
-      console.log('💰 Sale recorded - refreshing sales');
-      // Immediately refresh only sales instead of everything
-      sales.getAll().then(s => {
-        setData(prev => ({ ...prev, sales: Array.isArray(s) ? s : [] }));
-      });
-    };
-
-    const handleCashierClockIn = (event) => {
-      console.log('⏰ Cashier clocked in - refreshing users');
-      users.getAll().then(u => {
-        setData(prev => ({ ...prev, users: Array.isArray(u) ? u : [] }));
-      });
-    };
-
-    const handleCashierClockOut = (event) => {
-      console.log('⏰ Cashier clocked out - refreshing users');
-      users.getAll().then(u => {
-        setData(prev => ({ ...prev, users: Array.isArray(u) ? u : [] }));
-      });
-    };
-
+    // ... other handlers ...
     window.addEventListener('productCreated', handleProductCreated);
-    window.addEventListener('productUpdated', handleProductUpdated);
-    window.addEventListener('dataUpdated', handleDataUpdated);
-    window.addEventListener('productsCleared', handleProductsCleared);
-    window.addEventListener('saleCreated', handleSaleCreated);
-    window.addEventListener('cashierClockIn', handleCashierClockIn);
-    window.addEventListener('cashierClockOut', handleCashierClockOut);
+    // ... more listeners ...
+    */
 
     return () => {
+      // Old cleanup (DISABLED)
+      /*
       window.removeEventListener('productCreated', handleProductCreated);
-      window.removeEventListener('productUpdated', handleProductUpdated);
-      window.removeEventListener('dataUpdated', handleDataUpdated);
-      window.removeEventListener('productsCleared', handleProductsCleared);
-      window.removeEventListener('saleCreated', handleSaleCreated);
-      window.removeEventListener('cashierClockIn', handleCashierClockIn);
-      window.removeEventListener('cashierClockOut', handleCashierClockOut);
+      // ... other cleanup ...
+      */
     };
   }, []);
 
