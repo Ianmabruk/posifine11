@@ -26,12 +26,9 @@ export const ProductsProvider = ({ children }) => {
       // Ensure we always get an array
       const productList = Array.isArray(data) ? data : [];
       
-      // Filter visible products for cashiers
+      // Filter visible products
       const visibleProducts = productList.filter(p => {
-        // Show all products to admins
-        if (user?.role === 'admin') return true;
-        // For cashiers, hide expense-only and deleted products
-        return !p.expenseOnly && !p.pendingDelete && p.visibleToCashier !== false;
+        return !p.pendingDelete;
       });
       
       setProducts(visibleProducts);
@@ -51,21 +48,21 @@ export const ProductsProvider = ({ children }) => {
       setLoading(false);
       setLastUpdated(Date.now());
     }
-  }, [user]);
+  }, []); // REMOVED user dependency - prevents infinite loop
 
-  // Initial fetch
+  // Initial fetch only
   useEffect(() => {
     fetchProducts();
-  }, [fetchProducts, user]); 
+  }, []); // Only run on mount
 
-  // Auto-refresh interval (every 30 seconds) for background sync
+  // Auto-refresh interval (every 60 seconds) for background sync
   useEffect(() => {
     const intervalId = setInterval(() => {
         fetchProducts();
-    }, 30000); // 30 seconds for background sync
+    }, 60000); // 60 seconds - minimal polling
 
     return () => clearInterval(intervalId);
-  }, [fetchProducts]);
+  }, []); // No dependencies
 
   // Listen for clear-data events and force immediate refetch
   useEffect(() => {
@@ -83,7 +80,7 @@ export const ProductsProvider = ({ children }) => {
       window.removeEventListener('dataCleared', handleDataCleared);
       window.removeEventListener('productsCleared', handleDataCleared);
     };
-  }, [fetchProducts]);
+  }, []); // No dependencies
 
   const refreshProducts = async () => {
     setLoading(true);

@@ -10,18 +10,16 @@ export default function Sales() {
   useEffect(() => {
     loadSales();
     
-    // Listen for clear-data and tab switch events
+    // Listen for clear-data events only (NOT storage events - causes excessive refreshes)
     const handleDataCleared = () => {
       console.log('Sales data cleared - refreshing');
       setSales([]);
     };
 
     window.addEventListener('dataCleared', handleDataCleared);
-    window.addEventListener('storage', loadSales);
-    
+
     return () => {
       window.removeEventListener('dataCleared', handleDataCleared);
-      window.removeEventListener('storage', loadSales);
     };
   }, []);
 

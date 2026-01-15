@@ -10,18 +10,16 @@ export default function Expenses() {
   useEffect(() => {
     loadExpenses();
     
-    // Listen for clear-data events
+    // Listen for clear-data events only (NOT storage events - causes excessive refreshes)
     const handleDataCleared = () => {
       console.log('Expenses data cleared - refreshing');
       setExpenses([]);
     };
 
     window.addEventListener('dataCleared', handleDataCleared);
-    window.addEventListener('storage', loadExpenses);
     
     return () => {
       window.removeEventListener('dataCleared', handleDataCleared);
-      window.removeEventListener('storage', loadExpenses);
     };
   }, []);
 
