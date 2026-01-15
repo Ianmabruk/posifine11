@@ -49,9 +49,14 @@ export default function BasicDashboard() {
     if (window.confirm('Are you sure you want to clear all sales and data? This action cannot be undone.')) {
       try {
         const token = localStorage.getItem('token');
+        if (!token) {
+          alert('❌ Not authenticated. Please login again.');
+          return;
+        }
+        
         const API_URL = BASE_API_URL;
         
-        await fetch(`${API_URL}/clear-data`, {
+        const response = await fetch(`${API_URL}/clear-data`, {
           method: 'POST',
           headers: { 
             'Authorization': `Bearer ${token}`,
@@ -60,13 +65,30 @@ export default function BasicDashboard() {
           body: JSON.stringify({ type: 'all' })
         });
         
+        if (!response.ok) {
+          const error = await response.json();
+          throw new Error(error.message || 'Failed to clear data');
+        }
+        
+        // Clear localStorage
+        localStorage.removeItem('products');
+        localStorage.removeItem('sales');
+        localStorage.removeItem('expenses');
+        
         setStats({ products: 0, sales: 0, revenue: 0, profit: 0 });
         setRecentSales([]);
-        alert('Data cleared successfully!');
-        await loadData();
+        
+        // Broadcast
+        window.dispatchEvent(new Event('dataCleared'));
+        
+        alert('✅ Data cleared successfully! Refreshing...');
+        
+        setTimeout(() => {
+          window.location.href = '/dashboard';
+        }, 500);
       } catch (error) {
         console.error('Failed to clear data:', error);
-        alert('Failed to clear data');
+        alert('❌ Failed to clear data: ' + error.message);
       }
     }
   };

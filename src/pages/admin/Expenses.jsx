@@ -19,8 +19,21 @@ export default function Expenses() {
   const handleClearExpenses = async () => {
     if (window.confirm('⚠️ Are you sure you want to clear ALL expenses data?\n\nThis action CANNOT be undone!')) {
       try {
+        const token = localStorage.getItem('token');
+        if (!token) {
+          alert('❌ Not authenticated. Please login again.');
+          return;
+        }
+        
         await admin.clearData('expenses');
+        
+        // Immediately clear UI and localStorage
         setExpenses([]);
+        localStorage.removeItem('expenses');
+        
+        // Broadcast change
+        window.dispatchEvent(new Event('expensesCleared'));
+        
         alert('✅ All expenses cleared successfully!');
       } catch (error) {
         console.error('Failed to clear expenses:', error);

@@ -113,11 +113,37 @@ export default function AdminDashboard() {
         
         if (!response.ok) {
           const error = await response.json();
+          console.error('Clear data error:', error);
           throw new Error(error.message || 'Failed to clear data');
         }
         
-        alert('Data cleared successfully!');
-        window.location.reload();
+        // Clear all frontend state immediately
+        localStorage.removeItem('products');
+        localStorage.removeItem('sales');
+        localStorage.removeItem('expenses');
+        localStorage.removeItem('users');
+        
+        // Reset component state
+        setData({ products: [], sales: [], expenses: [], stats: {}, users: [], vendors: [] });
+        setActiveTab('overview');
+        
+        // Broadcast to all listeners
+        window.dispatchEvent(new Event('storage'));
+        window.dispatchEvent(new CustomEvent('dataCleared'));
+        
+        alert('✅ Data cleared successfully! Refreshing...');
+        
+        // Reload after short delay to ensure all UI updates
+        setTimeout(() => {
+          window.location.href = '/admin';
+        }, 500);
+        
+      } catch (error) {
+        console.error('Failed to clear data:', error);
+        alert('❌ Failed to clear data: ' + error.message);
+      }
+    }
+  };
       } catch (error) {
         console.error('Failed to clear data:', error);
         alert('Failed to clear data: ' + error.message);

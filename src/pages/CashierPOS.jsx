@@ -558,26 +558,56 @@ export default function CashierPOS() {
   const handleClearData = async () => {
     if (window.confirm('Are you sure you want to clear all sales and data? This action cannot be undone.')) {
       try {
-        // Clear backend data by overwriting files
         const token = localStorage.getItem('token');
+        if (!token) {
+          alert('❌ Not authenticated. Please login again.');
+          return;
+        }
+        
         const API_URL = BASE_API_URL;
         
-        // Clear sales and expenses by making requests to clear them
-        await fetch(`${API_URL}/clear-data`, {
+        const response = await fetch(`${API_URL}/clear-data`, {
           method: 'POST',
           headers: { 
             'Authorization': `Bearer ${token}`,
             'Content-Type': 'application/json'
           },
           body: JSON.stringify({ type: 'all' })
-        }).catch(() => {});
+        });
         
-        // Clear local state
-        setData({ sales: [], expenses: [], stats: { totalSales: 0, totalExpenses: 0, profit: 0 } });
+        if (!response.ok) {
+          const error = await response.json();
+          throw new Error(error.message || 'Failed to clear data');
+        }
+        
+        // Clear all local storage
+        localStorage.removeItem('sales');
+        localStorage.removeItem('expenses');
+        localStorage.removeItem('products');
+        localStorage.removeItem('cart');
+        
+        // Clear local state immediately
+        setData({ sales: [], expenses: [], stats: { totalSales: 0, totalExpenses: 0, profit: 0 }, products: [] });
         setCart([]);
+        setActiveTab('dashboard');
         
-        alert('Data cleared successfully!');
-        await loadData();
+        // Broadcast events
+        window.dispatchEvent(new Event('dataCleared'));
+        window.dispatchEvent(new Event('storage'));
+        
+        alert('✅ Data cleared successfully! Refreshing...');
+        
+        // Reload after short delay
+        setTimeout(() => {
+          window.location.href = '/dashboard/cashier';
+        }, 500);
+        
+      } catch (error) {
+        console.error('Failed to clear data:', error);
+        alert('❌ Failed to clear data: ' + error.message);
+      }
+    }
+  };
       } catch (error) {
         console.error('Failed to clear data:', error);
         alert('Failed to clear data');
