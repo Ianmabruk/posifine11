@@ -5,56 +5,83 @@ export default function StockUpdateListener() {
   const [updates, setUpdates] = useState([]);
   const [isVisible, setIsVisible] = useState(false);
   const [autoHideTimeout, setAutoHideTimeout] = useState(null);
+  const [reconnectAttempts, setReconnectAttempts] = useState(0);
+  const MAX_RECONNECT_ATTEMPTS = 3;
 
   useEffect(() => {
-    // Subscribe to real-time stock updates via Server-Sent Events or WebSocket
-    const ws = new WebSocket(`${window.location.protocol === 'https:' ? 'wss' : 'ws'}://${window.location.host}/api/live`);
-    
-    ws.onopen = () => {
-      console.log('✅ Real-time stock listener connected');
-    };
+    let ws = null;
+    let reconnectTimeout = null;
 
-    ws.onmessage = (event) => {
+    const connectWebSocket = () => {
       try {
-        const data = JSON.parse(event.data);
-        
-        if (data.type === 'STOCK_UPDATED') {
-          console.log('📦 Stock updated:', data.deductions);
-          setUpdates(data.deductions || []);
-          setIsVisible(true);
-
-          // Auto-hide after 8 seconds
-          if (autoHideTimeout) {
-            clearTimeout(autoHideTimeout);
-          }
-          const timeout = setTimeout(() => {
-            setIsVisible(false);
-          }, 8000);
-          setAutoHideTimeout(timeout);
+        // Only attempt connection if not too many failures
+        if (reconnectAttempts >= MAX_RECONNECT_ATTEMPTS) {
+          console.warn('⚠️ Max reconnection attempts reached - giving up');
+          return;
         }
+
+        ws = new WebSocket(`${window.location.protocol === 'https:' ? 'wss' : 'ws'}://${window.location.host}/api/live`);
+        
+        ws.onopen = () => {
+          console.log('✅ Real-time stock listener connected');
+          setReconnectAttempts(0); // Reset on successful connection
+        };
+
+        ws.onmessage = (event) => {
+          try {
+            const data = JSON.parse(event.data);
+            
+            if (data.type === 'STOCK_UPDATED') {
+              console.log('📦 Stock updated:', data.deductions);
+              setUpdates(data.deductions || []);
+              setIsVisible(true);
+
+              // Auto-hide after 8 seconds
+              if (autoHideTimeout) {
+                clearTimeout(autoHideTimeout);
+              }
+              const timeout = setTimeout(() => {
+                setIsVisible(false);
+              }, 8000);
+              setAutoHideTimeout(timeout);
+            }
+          } catch (err) {
+            console.error('Error parsing WebSocket message:', err);
+          }
+        };
+
+        ws.onerror = (error) => {
+          console.error('WebSocket error:', error);
+        };
+
+        ws.onclose = () => {
+          console.log('⚠️ Real-time stock listener disconnected');
+          // Try to reconnect after delay (NO PAGE RELOAD!)
+          if (reconnectAttempts < MAX_RECONNECT_ATTEMPTS) {
+            const delay = Math.min(1000 * Math.pow(2, reconnectAttempts), 30000); // Exponential backoff
+            console.log(`🔄 Reconnecting in ${delay}ms... (attempt ${reconnectAttempts + 1})`);
+            reconnectTimeout = setTimeout(() => {
+              setReconnectAttempts(prev => prev + 1);
+              connectWebSocket();
+            }, delay);
+          }
+        };
       } catch (err) {
-        console.error('Error parsing WebSocket message:', err);
+        console.error('Failed to create WebSocket:', err);
+        // Silently fail - don't break the app
       }
     };
 
-    ws.onerror = (error) => {
-      console.error('WebSocket error:', error);
-    };
-
-    ws.onclose = () => {
-      console.log('⚠️ Real-time stock listener disconnected');
-      // Try to reconnect after 3 seconds
-      setTimeout(() => {
-        console.log('🔄 Attempting to reconnect...');
-        window.location.reload();
-      }, 3000);
-    };
+    connectWebSocket();
 
     return () => {
       if (autoHideTimeout) {
         clearTimeout(autoHideTimeout);
       }
-      if (ws.readyState === WebSocket.OPEN) {
+      if (reconnectTimeout) {
+        clearTimeout(reconnectTimeout);
+      }
+      if (ws && ws.readyState === WebSocket.OPEN) {
         ws.close();
       }
     };
