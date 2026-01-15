@@ -76,14 +76,19 @@ export default function AdminDashboard() {
     ensureUserData();
     setTimeout(ensureUserData, 100);
     
-    // Show reminder modal on login (with delay to ensure everything is loaded)
-    const timer = setTimeout(() => {
-      setShowReminderModal(true);
-    }, 1000);
+    // Note: Reminder modal is now shown manually via button click to prevent duplicate displays
+    // Only show reminder once per session if first login
+    const reminderShown = sessionStorage.getItem('adminReminderShown');
+    if (!reminderShown) {
+      const timer = setTimeout(() => {
+        setShowReminderModal(true);
+        sessionStorage.setItem('adminReminderShown', 'true');
+      }, 1000);
+      loadSettings();
+      return () => clearTimeout(timer);
+    }
     
     loadSettings();
-    
-    return () => clearTimeout(timer);
   }, []);
 
   const loadSettings = async () => {

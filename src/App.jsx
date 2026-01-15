@@ -49,7 +49,12 @@ function ProtectedRoute({ children, adminOnly = false, ultraOnly = false, ownerO
     
     if (user && !ownerOnly) {
       loadSettings();
-      setShowReminders(true);
+      // Only show reminders once per session to avoid duplicate displays
+      const reminderShown = sessionStorage.getItem('reminderShown');
+      if (!reminderShown) {
+        setShowReminders(true);
+        sessionStorage.setItem('reminderShown', 'true');
+      }
     }
   }, [user, ownerOnly]);
 
