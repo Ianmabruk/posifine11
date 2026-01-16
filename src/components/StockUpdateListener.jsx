@@ -30,11 +30,18 @@ export default function StockUpdateListener() {
         ws.onmessage = (event) => {
           try {
             const data = JSON.parse(event.data);
+            console.log('📡 WebSocket message received:', data.type);
             
+            // Handle STOCK_UPDATED events
             if (data.type === 'STOCK_UPDATED') {
-              console.log('📦 Stock updated:', data.deductions);
-              setUpdates(data.deductions || []);
+              console.log('📦 Stock updated:', data.data);
+              setUpdates(data.data?.deductions || []);
               setIsVisible(true);
+
+              // Dispatch custom event for ProductsContext to listen to
+              window.dispatchEvent(new CustomEvent('STOCK_UPDATED', { 
+                detail: data.data 
+              }));
 
               // Auto-hide after 8 seconds
               if (autoHideTimeout) {
@@ -44,6 +51,44 @@ export default function StockUpdateListener() {
                 setIsVisible(false);
               }, 8000);
               setAutoHideTimeout(timeout);
+            }
+            
+            // Handle product creation events
+            else if (data.type === 'product_created') {
+              console.log('➕ Product created:', data.data?.product?.name);
+              window.dispatchEvent(new CustomEvent('productCreated', { 
+                detail: data.data 
+              }));
+              window.dispatchEvent(new CustomEvent('PRODUCT_ADDED', { 
+                detail: data.data 
+              }));
+            }
+            
+            // Handle product update events
+            else if (data.type === 'product_updated') {
+              console.log('✏️ Product updated:', data.data?.product?.name);
+              window.dispatchEvent(new CustomEvent('productUpdated', { 
+                detail: data.data 
+              }));
+              window.dispatchEvent(new CustomEvent('PRODUCT_UPDATED', { 
+                detail: data.data 
+              }));
+            }
+            
+            // Handle stock update events
+            else if (data.type === 'stock_updated') {
+              console.log('📦 Stock updated (via update_stock endpoint):', data.data?.product?.name);
+              window.dispatchEvent(new CustomEvent('STOCK_UPDATED', { 
+                detail: data.data 
+              }));
+            }
+            
+            // Handle product deletion events
+            else if (data.type === 'product_deleted') {
+              console.log('🗑️ Product deleted');
+              window.dispatchEvent(new CustomEvent('productDeleted', { 
+                detail: data.data 
+              }));
             }
           } catch (err) {
             console.error('Error parsing WebSocket message:', err);

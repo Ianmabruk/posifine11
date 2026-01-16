@@ -82,6 +82,41 @@ export const ProductsProvider = ({ children }) => {
     };
   }, []); // No dependencies
 
+  // Listen for STOCK_UPDATED events from backend broadcasts and refresh immediately
+  useEffect(() => {
+    const handleStockUpdated = (event) => {
+      console.log('📦 STOCK_UPDATED event received - refreshing products');
+      // Immediately refresh to get latest stock quantities
+      fetchProducts();
+    };
+
+    window.addEventListener('STOCK_UPDATED', handleStockUpdated);
+    
+    return () => {
+      window.removeEventListener('STOCK_UPDATED', handleStockUpdated);
+    };
+  }, [fetchProducts]);
+
+  // Listen for PRODUCT_ADDED/PRODUCT_UPDATED events
+  useEffect(() => {
+    const handleProductChanged = (event) => {
+      console.log('📝 Product changed - refreshing products');
+      fetchProducts();
+    };
+
+    window.addEventListener('PRODUCT_ADDED', handleProductChanged);
+    window.addEventListener('PRODUCT_UPDATED', handleProductChanged);
+    window.addEventListener('productCreated', handleProductChanged);
+    window.addEventListener('productUpdated', handleProductChanged);
+    
+    return () => {
+      window.removeEventListener('PRODUCT_ADDED', handleProductChanged);
+      window.removeEventListener('PRODUCT_UPDATED', handleProductChanged);
+      window.removeEventListener('productCreated', handleProductChanged);
+      window.removeEventListener('productUpdated', handleProductChanged);
+    };
+  }, [fetchProducts]);
+
   const refreshProducts = async () => {
     setLoading(true);
     await fetchProducts();
