@@ -2,12 +2,24 @@
 // Updated API Service Layer - Connected to Deployed Backend
 
 const getBaseUrl = () => {
-  // Use environment variable if available, otherwise use Render backend URL
-  return import.meta.env.VITE_API_BASE || 'https://posifine22.onrender.com/api';
+  // Priority 1: Environment variable
+  if (import.meta.env.VITE_API_BASE) {
+    return import.meta.env.VITE_API_BASE;
+  }
+  
+  // Priority 2: If running on localhost/127.0.0.1, use local backend
+  const hostname = window.location.hostname;
+  if (hostname === 'localhost' || hostname === '127.0.0.1' || hostname === '0.0.0.0') {
+    return 'http://127.0.0.1:5000/api';
+  }
+  
+  // Priority 3: Production Render URL
+  return 'https://posifine22.onrender.com/api';
 };
 
 const BASE_API_URL = getBaseUrl();
 
+console.log('🌐 API Base URL:', BASE_API_URL);
 const getToken = () => localStorage.getItem('token');
 
 // Retry logic for network failures (handles Render free tier spindown)
