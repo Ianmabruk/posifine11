@@ -28,6 +28,7 @@ export default function CashierPOS() {
   const [isClockedIn, setIsClockedIn] = useState(false);
   const [currentTimeEntry, setCurrentTimeEntry] = useState(null);
   const [clockedInTime, setClockedInTime] = useState(null);
+  const [cartItemUnits, setCartItemUnits] = useState({});  // Track units for each cart item
 
   useEffect(() => {
     loadData();
@@ -128,24 +129,26 @@ export default function CashierPOS() {
   // Clock in function
   const handleClockIn = async () => {
     try {
-      const response = await fetch(`${BASE_API_URL}/time-entries`, {
+      const response = await fetch(`${BASE_API_URL}/clock-in`, {
         method: 'POST',
         headers: {
           'Authorization': `Bearer ${localStorage.getItem('token')}`,
           'Content-Type': 'application/json'
-        },
-        body: JSON.stringify({ action: 'clock_in' })
+        }
       });
       
       if (response.ok) {
-        const entry = await response.json();
-        setCurrentTimeEntry(entry);
+        const data = await response.json();
+        setCurrentTimeEntry(data.entry);
         setIsClockedIn(true);
-        const now = new Date();
+        const now = new Date(data.entry.clockIn);
         setClockedInTime(now);
         localStorage.setItem(`clockStatus_${user?.id}`, 'clocked_in');
         localStorage.setItem(`clockInTime_${user?.id}`, now.toISOString());
-        alert('Clocked in successfully!');
+        alert('✅ ' + data.message);
+      } else {
+        const error = await response.json();
+        alert('⚠️ ' + (error.message || 'Failed to clock in'));
       }
     } catch (error) {
       console.error('Clock in failed:', error);
@@ -156,25 +159,25 @@ export default function CashierPOS() {
   // Clock out function
   const handleClockOut = async () => {
     try {
-      const response = await fetch(`${BASE_API_URL}/time-entries`, {
+      const response = await fetch(`${BASE_API_URL}/clock-out`, {
         method: 'POST',
         headers: {
           'Authorization': `Bearer ${localStorage.getItem('token')}`,
           'Content-Type': 'application/json'
-        },
-        body: JSON.stringify({ action: 'clock_out' })
+        }
       });
       
       if (response.ok) {
-        const entry = await response.json();
-        setCurrentTimeEntry(entry);
+        const data = await response.json();
+        setCurrentTimeEntry(data.entry);
         setIsClockedIn(false);
         setClockedInTime(null);
         localStorage.removeItem(`clockStatus_${user?.id}`);
         localStorage.removeItem(`clockInTime_${user?.id}`);
-        const hours = Math.floor(entry.duration / 60);
-        const minutes = entry.duration % 60;
-        alert(`Clocked out successfully! Total time: ${hours}h ${minutes}m`);
+        alert('✅ ' + data.message);
+      } else {
+        const error = await response.json();
+        alert('⚠️ ' + (error.message || 'Failed to clock out'));
       }
     } catch (error) {
       console.error('Clock out failed:', error);
@@ -185,18 +188,15 @@ export default function CashierPOS() {
   // Check clock status from backend
   const checkClockStatus = async () => {
     try {
-      const response = await fetch(`${BASE_API_URL}/time-entries/today`, {
+      const response = await fetch(`${BASE_API_URL}/clock-status`, {
         headers: { 'Authorization': `Bearer ${localStorage.getItem('token')}` }
       });
       
       if (response.ok) {
-        const entries = await response.json();
-        const activeEntry = entries.find(e => e.cashierId === user?.id && e.status === 'clocked_in');
-        
-        if (activeEntry) {
-          setCurrentTimeEntry(activeEntry);
+        const data = await response.json();
+        if (data.isClockedIn) {
           setIsClockedIn(true);
-          setClockedInTime(new Date(activeEntry.clockInTime));
+          setClockedInTime(new Date(data.clockInTime));
         }
       }
     } catch (error) {
@@ -321,8 +321,16 @@ export default function CashierPOS() {
         ? (total - discountValue)
         : (total - discountValue + tax);
       
-      await sales.create({
-        items: cart.map(item => ({ productId: item.id, quantity: item.quantity, price: item.price })),
+      // Include unit information for each item
+      const cartItemsWithUnits = cart.map(item => ({
+        productId: item.id,
+        quantity: item.quantity,
+        unit: cartItemUnits[item.id] || item.unit || 'piece',  // Use selected unit or default
+        price: item.price
+      }));
+      
+      const saleResponse = await sales.create({
+        items: cartItemsWithUnits,
         total: finalTotal,
         discount: discountValue,
         tax: tax,
@@ -330,7 +338,14 @@ export default function CashierPOS() {
         paymentMethod
       });
       
+      // CRITICAL: Force immediate product refresh from backend
+      // Do NOT rely on cached products - always re-fetch
+      const freshProducts = await products.getAll();
+      const filteredProducts = freshProducts.filter(p => p.visibleToCashier !== false && !p.expenseOnly);
+      setProductList(filteredProducts);
+      
       setCart([]);
+      setCartItemUnits({});  // Clear unit selections
       setSelectedDiscount(null);
       setTaxType('exclusive');
       await loadData();
@@ -629,7 +644,7 @@ export default function CashierPOS() {
                           <Trash2 className="w-4 h-4" />
                         </button>
                       </div>
-                      <div className="flex items-center justify-between">
+                      <div className="flex items-center justify-between mb-2">
                         <div className="flex items-center gap-2">
                           <button onClick={() => updateQuantity(item.id, -1)} className="w-8 h-8 rounded-lg bg-white shadow-sm flex items-center justify-center hover:bg-gray-100 transition-colors">
                             <Minus className="w-4 h-4" />
@@ -640,6 +655,41 @@ export default function CashierPOS() {
                           </button>
                         </div>
                         <span className="font-bold text-green-600">KSH {(item.price * item.quantity).toLocaleString()}</span>
+                      </div>
+                      
+                      {/* UNIT SELECTOR */}
+                      <div className="flex gap-2 items-center mt-2">
+                        <label className="text-xs font-semibold text-gray-600">Unit:</label>
+                        <select 
+                          value={cartItemUnits[item.id] || item.unit || 'piece'}
+                          onChange={(e) => {
+                            setCartItemUnits({
+                              ...cartItemUnits,
+                              [item.id]: e.target.value
+                            });
+                          }}
+                          className="text-xs px-2 py-1 border border-gray-300 rounded bg-white"
+                        >
+                          <option value="piece">Piece</option>
+                          <option value="kg">Kilogram (kg)</option>
+                          <option value="g">Grams (g)</option>
+                          <option value="l">Liters (L)</option>
+                        </select>
+                        <input 
+                          type="number" 
+                          step="0.01"
+                          min="0.01"
+                          max="999"
+                          placeholder="qty"
+                          defaultValue={item.quantity}
+                          className="text-xs px-2 py-1 border border-gray-300 rounded w-16"
+                          onChange={(e) => {
+                            const newQty = parseFloat(e.target.value);
+                            if (!isNaN(newQty) && newQty > 0) {
+                              updateQuantity(item.id, newQty - item.quantity);
+                            }
+                          }}
+                        />
                       </div>
                     </div>
                   ))}
