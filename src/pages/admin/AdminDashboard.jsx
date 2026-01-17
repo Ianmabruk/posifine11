@@ -5,7 +5,7 @@ import { Routes, Route, useNavigate, useLocation } from 'react-router-dom';
 import { useAuth } from '../../context/AuthContext';
 import {
   LayoutDashboard, ShoppingBag, Package, Layers, TrendingDown,
-  Users, Settings, LogOut, Menu, X, ExternalLink, Clock, Bell, DollarSign, Tag, CreditCard
+  Users, Settings, LogOut, Menu, X, ExternalLink, Clock, Bell, DollarSign, Tag, CreditCard, Truck
 } from 'lucide-react';
 import Overview from './Overview';
 import Inventory from './Inventory';
@@ -19,6 +19,7 @@ import ServiceFees from './ServiceFees';
 import RemindersManager from './RemindersManager';
 import Discounts from './Discounts';
 import CreditRequests from './CreditRequests';
+import Vendors from './Vendors';
 import ReminderModal from '../../components/ReminderModal';
 import ScreenLock from '../../components/ScreenLock';
 import useInactivity from '../../hooks/useInactivity';
@@ -130,6 +131,7 @@ export default function AdminDashboard() {
     { id: 'inventory', label: 'Inventory', icon: Package, path: '/admin/inventory' },
     { id: 'recipes', label: 'Recipes/BOM', icon: Layers, path: '/admin/recipes' },
     { id: 'expenses', label: 'Expenses', icon: TrendingDown, path: '/admin/expenses' },
+    { id: 'vendors', label: 'Vendors', icon: Truck, path: '/admin/vendors' },
     ...(isCashierUserManagementEnabled() ? [{ id: 'users', label: 'Users', icon: Users, path: '/admin/users' }] : []),
     { id: 'time', label: 'Time Tracking', icon: Clock, path: '/admin/time' },
     { id: 'reminders', label: 'Reminders', icon: Bell, path: '/admin/reminders' },
@@ -244,6 +246,7 @@ export default function AdminDashboard() {
             <Route path="/inventory" element={<Inventory />} />
             <Route path="/recipes" element={<Recipes />} />
             <Route path="/expenses" element={<Expenses />} />
+            <Route path="/vendors" element={<Vendors />} />
             <Route path="/reminders" element={<RemindersManager />} />
             <Route path="/service-fees" element={<ServiceFees />} />
             <Route path="/discounts" element={<Discounts />} />

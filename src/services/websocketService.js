@@ -11,6 +11,7 @@ class WebSocketService {
     this.ws = null;
     this.listeners = {
       stock_updated: [],
+      sale_completed: [],
       heartbeat: [],
       initial: [],
       error: []
@@ -59,6 +60,14 @@ class WebSocketService {
                 onStockUpdate(message.data);
               }
               this.emit('stock_updated', message.data);
+            } else if (message.type === 'SALE_COMPLETED') {
+              console.log('💰 Sale completed - stock deducted:', message.data);
+              // Emit with updated products for UI refresh
+              this.emit('sale_completed', message.data);
+              // Also call the stock update callback if provided
+              if (onStockUpdate && message.data.updatedProducts) {
+                onStockUpdate({ allProducts: message.data.updatedProducts });
+              }
             } else if (message.type === 'initial') {
               console.log('📦 Initial products loaded via WebSocket');
               this.emit('initial', message.products);

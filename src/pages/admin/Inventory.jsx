@@ -71,6 +71,19 @@ export default function Inventory() {
       }).catch((error) => {
         console.warn('WebSocket connection failed:', error);
       });
+      
+      // Listen for SALE_COMPLETED events to refresh inventory
+      websocketService.on('sale_completed', (saleData) => {
+        console.log('🔄 Sale completed - updating inventory display:', saleData);
+        if (saleData.updatedProducts) {
+          setProductList(saleData.updatedProducts);
+          showNotification(`✅ Stock updated! Sale #${saleData.saleId} deducted inventory`, 'success');
+        }
+        if (saleData.lowStockWarnings && saleData.lowStockWarnings.length > 0) {
+          const warnings = saleData.lowStockWarnings.map(w => `${w.name}: ${w.current} left`).join(', ');
+          showNotification(`⚠️ Low stock alert: ${warnings}`, 'warning');
+        }
+      });
     }
 
     // Cleanup on unmount

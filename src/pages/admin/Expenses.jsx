@@ -1,15 +1,45 @@
 import { useState, useEffect } from 'react';
 import { expenses as expensesApi } from '../../services/api';
+import websocketService from '../../services/websocketService';
 import { Plus, TrendingDown } from 'lucide-react';
 
 export default function Expenses() {
   const [expenses, setExpenses] = useState([]);
   const [showAddModal, setShowAddModal] = useState(false);
   const [newExpense, setNewExpense] = useState({ description: '', amount: '', category: 'general' });
+  const [notification, setNotification] = useState(null);
 
   useEffect(() => {
     loadExpenses();
+    
+    // Connect to WebSocket for real-time expense updates from sales
+    const token = localStorage.getItem('token');
+    if (token) {
+      websocketService.connect(token).catch((error) => {
+        console.warn('WebSocket connection failed:', error);
+      });
+      
+      // Listen for SALE_COMPLETED events to refresh expenses
+      websocketService.on('sale_completed', (saleData) => {
+        console.log('💰 Sale completed - updating expenses:', saleData);
+        // Reload expenses to show new auto-deducted items
+        loadExpenses();
+        if (saleData.saleId) {
+          showNotification(`✅ Expenses updated from Sale #${saleData.saleId}`, 'success');
+        }
+      });
+    }
+
+    // Cleanup on unmount
+    return () => {
+      websocketService.disconnect();
+    };
   }, []);
+
+  const showNotification = (message, type) => {
+    setNotification({ message, type });
+    setTimeout(() => setNotification(null), 3000);
+  };
 
   const loadExpenses = async () => {
     const data = await expensesApi.getAll();
@@ -30,6 +60,15 @@ export default function Expenses() {
 
   return (
     <div className="p-6 space-y-6">
+      {/* Real-time notification */}
+      {notification && (
+        <div className={`fixed top-4 right-4 p-4 rounded-lg text-white font-medium z-50 ${
+          notification.type === 'success' ? 'bg-green-600' : 'bg-blue-600'
+        }`}>
+          {notification.message}
+        </div>
+      )}
+      
       <div className="flex items-center justify-between">
         <div>
           <h2 className="text-2xl font-bold">Expense Management</h2>

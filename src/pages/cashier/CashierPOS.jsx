@@ -5,6 +5,7 @@ import { useProducts } from '../../context/ProductsContext';
 
 
 import { sales as salesApi, stats, creditRequests, discounts, products, timeEntries, BASE_API_URL } from '../../services/api';
+import websocketService from '../../services/websocketService';
 import { ShoppingCart, Trash2, LogOut, Plus, Minus, Search, DollarSign, TrendingUp, Package, BarChart3, Edit2, Settings, Tag } from 'lucide-react';
 import DiscountSelector from '../../components/DiscountSelector';
 import ProductCard from '../../components/ProductCard';
@@ -63,6 +64,28 @@ export default function CashierPOS() {
     loadData();
     refreshProducts();
     
+    // Connect to WebSocket for real-time stock updates from admin dashboard
+    const token = localStorage.getItem('token');
+    if (token) {
+      websocketService.connect(token, (data) => {
+        // When stock update received, update product list
+        if (data && data.allProducts) {
+          setProductList(data.allProducts);
+        }
+      }).catch((error) => {
+        console.warn('WebSocket connection failed:', error);
+      });
+      
+      // Listen for SALE_COMPLETED events from admin dashboard to update inventory
+      websocketService.on('sale_completed', (saleData) => {
+        console.log('🔄 Sale completed from admin - updating product list:', saleData);
+        if (saleData.updatedProducts) {
+          // Update product list with deducted stock from admin sale
+          setProductList(saleData.updatedProducts);
+        }
+      });
+    }
+    
     // Load clock in status from backend
     const loadClockStatus = async () => {
       try {
@@ -98,7 +121,10 @@ export default function CashierPOS() {
       refreshProducts().finally(() => setIsAutoRefreshing(false));
     }, 30000); // 30 seconds
 
-    return () => clearInterval(refreshInterval);
+    return () => {
+      clearInterval(refreshInterval);
+      websocketService.disconnect();
+    };
   }, []);
 
   // Sync with global products
