@@ -10,9 +10,9 @@ export default function Landing() {
   const demoSteps = [
     {
       title: '1. Sign Up & Choose Plan',
-      desc: 'Create your account and select between Basic (KSH 900) or Ultra (KSH 1,600) package',
+      desc: 'Create your account and select between Basic (KSH 1,600 - 1 Cashier) or Ultra (KSH 3,000 - Unlimited) package',
       image: '📝',
-      details: 'First user becomes Admin automatically. Choose Ultra for full features including Recipe Builder and User Management.'
+      details: 'First user becomes Admin automatically. Basic supports 1 cashier. Ultra supports unlimited cashiers with full features including Recipe Builder and User Management.'
     },
     {
       title: '2. Add Raw Materials',
@@ -69,22 +69,8 @@ export default function Landing() {
 
   const plans = [
     {
-      name: 'Basic',
-      price: 900,
-      icon: Zap,
-      popular: false,
-      features: [
-        'Cashier Dashboard',
-        'Basic Inventory',
-        'Sales Tracking',
-        'Daily/Weekly Reports',
-        'Single User',
-        'Email Support'
-      ]
-    },
-    {
       name: 'Ultra',
-      price: 1600,
+      price: 3000,
       icon: Crown,
       popular: true,
       features: [
@@ -96,8 +82,23 @@ export default function Landing() {
         'User Management',
         'Permission Controls',
         'Expense Tracking',
-        'Unlimited Users',
+        'Unlimited Cashiers',
         'Priority Support'
+      ]
+    },
+    {
+      name: 'Basic',
+      price: 1600,
+      icon: Zap,
+      popular: false,
+      features: [
+        'Cashier Dashboard',
+        'Basic Inventory',
+        'Sales Tracking',
+        'Daily/Weekly Reports',
+        'Basic Profit/Loss View',
+        'Email Support',
+        '1 Cashier Only'
       ]
     }
   ];

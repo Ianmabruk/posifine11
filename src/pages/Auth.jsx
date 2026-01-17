@@ -93,9 +93,10 @@ export default function Auth() {
         }
       } else {
         const selectedPlan = getSelectedPlan();
+        const planId = localStorage.getItem('planId') || selectedPlan?.id || 'basic';
         res = await auth.signup({
           ...formData,
-          plan: selectedPlan?.id || 'basic'
+          planId: planId
         });
       }
       

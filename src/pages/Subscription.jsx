@@ -11,26 +11,9 @@ export default function Subscription() {
 
   const plans = [
     {
-      id: 'basic',
-      name: 'Basic Package',
-      price: 1000,
-      icon: Zap,
-      color: 'from-green-500 to-teal-600',
-      features: [
-        'Cashier Dashboard Only',
-        'Basic Inventory Management',
-        'Sales Tracking',
-        'Daily/Weekly Sales Summaries',
-        'Basic Profit/Loss View',
-        'Limited Email Notifications',
-        'Record Products Sold',
-        'Single User Access'
-      ]
-    },
-    {
       id: 'ultra',
-      name: 'Ultra Package (Admin + Cashier)',
-      price: 2400,
+      name: 'Ultra Package (Unlimited)',
+      price: 3000,
       icon: Crown,
       color: 'from-blue-600 to-purple-600',
       popular: true,
@@ -45,7 +28,26 @@ export default function Subscription() {
         'Permission Controls',
         'Expense Tracking',
         'Advanced Analytics',
-        'Unlimited Users'
+        'Unlimited Cashiers',
+        'Priority Support'
+      ]
+    },
+    {
+      id: 'basic',
+      name: 'Basic Package',
+      price: 1600,
+      icon: Zap,
+      color: 'from-green-500 to-teal-600',
+      popular: false,
+      features: [
+        'Admin Dashboard + Cashier POS',
+        'Basic Inventory Management',
+        'Sales Tracking',
+        'Daily/Weekly Sales Summaries',
+        'Basic Profit/Loss View',
+        'Email Notifications',
+        'Record Products Sold',
+        '1 Cashier Only'
       ]
     }
   ];
@@ -58,8 +60,9 @@ export default function Subscription() {
     console.log('Found plan:', plan);
     try {
       localStorage.setItem('selectedPlan', JSON.stringify(plan));
-      navigate('/auth/login', { state: { plan } });
-      console.log('Navigation attempted to /auth/login');
+      localStorage.setItem('planId', selected);
+      navigate('/auth/signup', { state: { plan, planId: selected } });
+      console.log('Navigation attempted to /auth/signup with planId:', selected);
     } catch (error) {
       console.error('Navigation error:', error);
     }
