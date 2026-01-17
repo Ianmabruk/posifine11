@@ -1,6 +1,5 @@
 import { createContext, useContext, useState, useEffect } from 'react';
 import { auth, users, BASE_API_URL } from '../services/api';
-import LockedAccount from '../components/LockedAccount';
 
 const AuthContext = createContext();
 
@@ -32,113 +31,39 @@ export const AuthProvider = ({ children }) => {
       }
     };
 
-    // Listen for account lock notifications
-    const handleAccountLocked = (event) => {
-      const lockedUserId = event.detail?.userId;
-      const currentUser = user || JSON.parse(localStorage.getItem('user') || '{}');
-      
-      // If the current user is locked, perform logout immediately
-      if (currentUser && currentUser.id === lockedUserId) {
-        // Show notification
-        alert('⚠️ Your account has been locked by the system administrator. You will be logged out.');
-        
-        // Clear auth data
-        localStorage.removeItem('token');
-        localStorage.removeItem('user');
-        setUser(null);
-        
-        // Redirect to login
-        setTimeout(() => {
-          window.location.href = '/auth/login?reason=account_locked';
-        }, 1000);
-      }
-    };
-
     window.addEventListener('storage', handleStorage);
     window.addEventListener('localStorageUpdated', handleStorage);
-    window.addEventListener('accountLocked', handleAccountLocked);
 
     return () => {
       window.removeEventListener('storage', handleStorage);
       window.removeEventListener('localStorageUpdated', handleStorage);
-      window.removeEventListener('accountLocked', handleAccountLocked);
     };
-  }, [user]);
-
-  const clearOldData = () => {
-    // Clear all product, sales, and expense related cache on app initialization
-    const keysToRemove = [
-      'products',
-      'sales', 
-      'expenses',
-      'activities',
-      'timeEntries',
-      'dashboardCache',
-      'inventoryCache',
-      'analyticsCache'
-    ];
-    
-    keysToRemove.forEach(key => {
-      try {
-        localStorage.removeItem(key);
-        sessionStorage.removeItem(key);
-      } catch (e) {
-        console.warn(`Failed to clear ${key}`, e);
-      }
-    });
-  };
+  }, []);
 
   const initializeAuth = async () => {
     try {
-      // Clear old cached data on every app initialization
-      clearOldData();
-      
       const token = localStorage.getItem('token');
       const savedUser = localStorage.getItem('user');
       
-      if (token && savedUser) {
+      if (token) {
+        // First verify with backend using a direct fetch so that the
+        // global API layer's 401 redirect behavior doesn't navigate away
+        // from public pages (like the landing page) during initialization.
         try {
-          // Parse saved user first - faster than API call
-          const parsed = JSON.parse(savedUser);
-          
-          // If user is locked, immediately redirect
-          if (parsed.locked) {
-            localStorage.removeItem('token');
-            localStorage.removeItem('user');
-            setUser(null);
-            setIsInitialized(true);
-            setLoading(false);
-            return;
-          }
-          
-          setUser(parsed);
-          
-          // Verify token asynchronously in background (non-blocking)
-          fetch(`${BASE_API_URL}/auth/me`, {
+          const resp = await fetch(`${BASE_API_URL}/auth/me`, {
             headers: { Authorization: `Bearer ${token}`, 'Content-Type': 'application/json' }
-          }).then(resp => {
-            if (resp.ok) {
-              return resp.json().then(data => {
-                // If user became locked, update state
-                if (data.locked) {
-                  localStorage.removeItem('token');
-                  localStorage.removeItem('user');
-                  setUser(null);
-                } else {
-                  setUser(data);
-                  localStorage.setItem('user', JSON.stringify(data));
-                }
-              });
-            } else {
-              throw new Error('Invalid token');
-            }
-          }).catch(err => {
-            console.warn('Auth check failed:', err);
-            localStorage.removeItem('token');
-            localStorage.removeItem('user');
           });
+          if (resp.ok) {
+            const data = await resp.json();
+            setUser(data);
+            localStorage.setItem('user', JSON.stringify(data));
+          } else {
+            // Token invalid or server returned error — clear token and optionally fallback
+            throw new Error('Invalid token');
+          }
         } catch (err) {
-          console.warn('Auth initialization failed:', err);
+          console.warn('Auth check failed:', err);
+          // Clear invalid tokens
           localStorage.removeItem('token');
           localStorage.removeItem('user');
         }
@@ -149,8 +74,8 @@ export const AuthProvider = ({ children }) => {
       localStorage.removeItem('user');
       setUser(null);
     } finally {
-      setIsInitialized(true);
       setLoading(false);
+      setIsInitialized(true);
     }
   };
 

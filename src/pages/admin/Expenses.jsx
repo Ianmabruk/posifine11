@@ -1,6 +1,6 @@
 import { useState, useEffect } from 'react';
-import { expenses as expensesApi, admin } from '../../services/api';
-import { Plus, TrendingDown, Trash } from 'lucide-react';
+import { expenses as expensesApi } from '../../services/api';
+import { Plus, TrendingDown } from 'lucide-react';
 
 export default function Expenses() {
   const [expenses, setExpenses] = useState([]);
@@ -9,54 +9,11 @@ export default function Expenses() {
 
   useEffect(() => {
     loadExpenses();
-    
-    // Listen for clear-data events only (NOT storage events - causes excessive refreshes)
-    const handleDataCleared = () => {
-      console.log('Expenses data cleared - refreshing');
-      setExpenses([]);
-    };
-
-    window.addEventListener('dataCleared', handleDataCleared);
-    
-    return () => {
-      window.removeEventListener('dataCleared', handleDataCleared);
-    };
   }, []);
 
   const loadExpenses = async () => {
-    try {
-      const data = await expensesApi.getAll();
-      setExpenses(Array.isArray(data) ? data.reverse() : []);
-    } catch (error) {
-      console.error('Failed to load expenses:', error);
-      setExpenses([]);
-    }
-  };
-
-  const handleClearExpenses = async () => {
-    if (window.confirm('⚠️ Are you sure you want to clear ALL expenses data?\n\nThis action CANNOT be undone!')) {
-      try {
-        const token = localStorage.getItem('token');
-        if (!token) {
-          alert('❌ Not authenticated. Please login again.');
-          return;
-        }
-        
-        await admin.clearData('expenses');
-        
-        // Immediately clear UI and localStorage
-        setExpenses([]);
-        localStorage.removeItem('expenses');
-        
-        // Broadcast change
-        window.dispatchEvent(new Event('expensesCleared'));
-        
-        alert('✅ All expenses cleared successfully!');
-      } catch (error) {
-        console.error('Failed to clear expenses:', error);
-        alert('❌ Failed to clear expenses: ' + error.message);
-      }
-    }
+    const data = await expensesApi.getAll();
+    setExpenses(data.reverse());
   };
 
   const handleAddExpense = async (e) => {
@@ -78,22 +35,13 @@ export default function Expenses() {
           <h2 className="text-2xl font-bold">Expense Management</h2>
           <p className="text-sm text-gray-600 mt-1">Track manual and automatic ingredient-based expenses</p>
         </div>
-        <div className="flex gap-2">
-          <button 
-            onClick={handleClearExpenses}
-            className="btn-secondary flex items-center gap-2 hover:bg-red-50 hover:text-red-600 hover:border-red-200"
-          >
-            <Trash className="w-4 h-4" />
-            Clear All
-          </button>
-          <button 
-            onClick={() => setShowAddModal(true)}
-            className="btn-primary flex items-center gap-2"
-          >
-            <Plus className="w-4 h-4" />
-            Add Expense
-          </button>
-        </div>
+        <button 
+          onClick={() => setShowAddModal(true)}
+          className="btn-primary flex items-center gap-2"
+        >
+          <Plus className="w-4 h-4" />
+          Add Expense
+        </button>
       </div>
 
       <div className="grid grid-cols-1 md:grid-cols-3 gap-6">

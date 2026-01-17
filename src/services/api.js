@@ -2,24 +2,12 @@
 // Updated API Service Layer - Connected to Deployed Backend
 
 const getBaseUrl = () => {
-  // Priority 1: Environment variable
-  if (import.meta.env.VITE_API_BASE) {
-    return import.meta.env.VITE_API_BASE;
-  }
-  
-  // Priority 2: If running on localhost/127.0.0.1, use local backend
-  const hostname = window.location.hostname;
-  if (hostname === 'localhost' || hostname === '127.0.0.1' || hostname === '0.0.0.0') {
-    return 'http://127.0.0.1:5000/api';
-  }
-  
-  // Priority 3: Production Render URL
-  return 'https://posifine22.onrender.com/api';
+  // Use environment variable if available, otherwise use Render backend URL
+  return import.meta.env.VITE_API_BASE || 'https://posifine22.onrender.com/api';
 };
 
 const BASE_API_URL = getBaseUrl();
 
-console.log('🌐 API Base URL:', BASE_API_URL);
 const getToken = () => localStorage.getItem('token');
 
 // Retry logic for network failures (handles Render free tier spindown)
@@ -41,13 +29,16 @@ const requestWithRetry = async (endpoint, options = {}, retryCount = 0, maxRetri
     const response = await fetch(`${BASE_API_URL}${cleanEndpoint}`, config);
 
     if (response.status === 401) {
-      // Remove both token types
+      // For login endpoints, return the error response instead of throwing
+      if (cleanEndpoint.includes('/auth/login') || cleanEndpoint.includes('/main-admin/auth/login')) {
+        const errorData = await response.json().catch(() => ({ error: 'Unauthorized' }));
+        throw new Error(errorData.error || 'Invalid credentials');
+      }
+      
+      // For other endpoints, clear tokens and redirect
       localStorage.removeItem('token');
       localStorage.removeItem('user');
-      localStorage.removeItem('ownerToken');
-      localStorage.removeItem('ownerUser');
       const path = window.location.pathname || '';
-      // Only redirect if on protected pages (not login/signup/auth/main.admin)
       if (!path.includes('/login') && !path.includes('/signup') && !path.includes('/auth') && !path.includes('/main.admin')) {
         try {
           window.location.href = '/login';
@@ -55,16 +46,6 @@ const requestWithRetry = async (endpoint, options = {}, retryCount = 0, maxRetri
       }
       const err = new Error('Unauthorized');
       err.status = 401;
-      throw err;
-    }
-
-    if (response.status === 423) {
-      // Screen locked - don't throw immediately, return the response
-      // Components will handle showing the unlock dialog
-      const errorData = await response.json().catch(() => ({ error: 'Screen locked' }));
-      const err = new Error(errorData.error || 'Screen locked');
-      err.status = 423;
-      err.isScreenLocked = true;
       throw err;
     }
 
@@ -130,42 +111,7 @@ export const auth = {
     body: JSON.stringify(data)
   }),
   
-  me: () => request('/auth/me'),
-  
-  // Subscription management
-  getSubscriptionStatus: () => request('/user/subscription-status'),
-  
-  renewSubscription: (durationDays = 30) => request('/subscriptions/renew', {
-    method: 'POST',
-    body: JSON.stringify({ duration_days: durationDays })
-  })
-};
-
-
-// Subscriptions API
-export const subscriptions = {
-  getPlans: () => request('/subscriptions/plans'),
-  
-  getOverview: () => {
-    const token = localStorage.getItem('ownerToken');
-    return request('/subscriptions/overview', {
-      headers: token ? { 'Authorization': `Bearer ${token}` } : {}
-    });
-  },
-  
-  checkExpiry: () => {
-    const token = localStorage.getItem('ownerToken');
-    return request('/subscriptions/check-expiry', {
-      headers: token ? { 'Authorization': `Bearer ${token}` } : {}
-    });
-  },
-  
-  getUserSubscriptionStatus: (userId) => {
-    const token = localStorage.getItem('ownerToken');
-    return request(`/user/subscription-status`, {
-      headers: token ? { 'Authorization': `Bearer ${token}` } : {}
-    });
-  }
+  me: () => request('/auth/me')
 };
 
 
@@ -224,65 +170,82 @@ export const products = {
   
   getMaxProducible: (id) => request(`/products/${id}/max-producible`),
   
-  // Get detailed stock status for all products
-  getStockStatus: () => request('/products/stock-status')
-};
-
-// Sales API - FIXED: Now calls actual backend instead of hardcoded demo
-export const sales = {
-  getAll: () => request('/sales'),
+  // Weight-based pricing management
+  getWeightPricing: (id) => request(`/products/${id}/weight-pricing`),
   
-  create: (saleData) => request('/sales', {
+  addWeightPrice: (id, weight, price) => request(`/products/${id}/weight-pricing`, {
     method: 'POST',
-    body: JSON.stringify(saleData)
+    body: JSON.stringify({ weight, price })
   }),
   
-  delete: (id) => request(`/sales/${id}`, {
-    method: 'DELETE'
-  })
-};
-
-// Expenses API - FIXED: Now calls actual backend instead of hardcoded demo
-export const expenses = {
-  getAll: () => request('/expenses'),
-  
-  create: (expenseData) => request('/expenses', {
-    method: 'POST',
-    body: JSON.stringify(expenseData)
-  }),
-  
-  update: (id, expenseData) => request(`/expenses/${id}`, {
+  updateWeightPrice: (id, weight, price) => request(`/products/${id}/weight-pricing`, {
     method: 'PUT',
-    body: JSON.stringify(expenseData)
+    body: JSON.stringify({ weight, price })
   }),
   
-  delete: (id) => request(`/expenses/${id}`, {
-    method: 'DELETE'
+  deleteWeightPrice: (id, weight) => request(`/products/${id}/weight-pricing`, {
+    method: 'DELETE',
+    body: JSON.stringify({ weight })
   })
+};
+
+// Sales API
+export const sales = {
+  getAll: async () => {
+    return [
+      { id: 1, total: 450, items: [{ name: 'Coffee', quantity: 2 }], createdAt: new Date().toISOString() }
+    ];
+  },
+  
+  create: async (saleData) => {
+    return {
+      id: Date.now(),
+      ...saleData,
+      createdAt: new Date().toISOString()
+    };
+  }
+};
+
+// Expenses API
+export const expenses = {
+  getAll: async () => {
+    return [
+      { id: 1, description: 'Office supplies', amount: 150, createdAt: new Date().toISOString() }
+    ];
+  },
+  
+  create: async (expenseData) => {
+    return {
+      id: Date.now(),
+      ...expenseData,
+      createdAt: new Date().toISOString()
+    };
+  }
 };
 
 // Statistics API
 export const stats = {
-  get: () => request('/stats')
-};
-
-// Raw Materials API - For composite product system
-export const rawMaterials = {
-  getAll: () => request('/raw-materials'),
-  
-  create: (materialData) => request('/raw-materials', {
-    method: 'POST',
-    body: JSON.stringify(materialData)
-  }),
-  
-  update: (id, materialData) => request(`/raw-materials/${id}`, {
-    method: 'PUT',
-    body: JSON.stringify(materialData)
-  }),
-  
-  delete: (id) => request(`/raw-materials/${id}`, {
-    method: 'DELETE'
-  })
+  get: async () => {
+    try {
+      const response = await fetch(`${BASE_API_URL}/api/stats`, {
+        headers: {
+          'Authorization': `Bearer ${localStorage.getItem('userToken')}`
+        }
+      });
+      if (response.ok) {
+        return await response.json();
+      }
+    } catch (error) {
+      console.error('Failed to fetch stats:', error);
+    }
+    // Fallback only if API fails
+    return {
+      totalSales: 0,
+      totalExpenses: 0,
+      profit: 0,
+      productCount: 0
+    };
+  }
 };
 
 // Reminders API
@@ -302,21 +265,6 @@ export const reminders = {
   delete: async (id) => {
     return { success: true };
   }
-};
-
-// Time Entries API (Clock-in/Clock-out)
-export const timeEntries = {
-  getAll: () => request('/time-entries'),
-  
-  clockIn: (notes) => request('/clock-in', {
-    method: 'POST',
-    body: JSON.stringify({ notes: notes || '' })
-  }),
-  
-  clockOut: () => request('/clock-out', {
-    method: 'POST',
-    body: JSON.stringify({})
-  })
 };
 
 // Price History API
@@ -417,14 +365,6 @@ export const categories = {
   })
 };
 
-// Admin Data Management API
-export const admin = {
-  clearData: (type = 'all') => request('/clear-data', {
-    method: 'POST',
-    body: JSON.stringify({ type })
-  })
-};
-
 // Image Upload API
 export const uploadImage = (imageData) => request('/upload-image', {
   method: 'POST',
@@ -444,10 +384,7 @@ export const mainAdmin = {
     const token = localStorage.getItem('ownerToken');
     return request('/main-admin/users', {
       headers: {
-        'Authorization': `Bearer ${token}`,
-        'Cache-Control': 'no-cache, no-store, must-revalidate',
-        'Pragma': 'no-cache',
-        'Expires': '0'
+        'Authorization': `Bearer ${token}`
       }
     });
   },
@@ -455,10 +392,7 @@ export const mainAdmin = {
     const token = localStorage.getItem('ownerToken');
     return request('/main-admin/stats', {
       headers: {
-        'Authorization': `Bearer ${token}`,
-        'Cache-Control': 'no-cache, no-store, must-revalidate',
-        'Pragma': 'no-cache',
-        'Expires': '0'
+        'Authorization': `Bearer ${token}`
       }
     });
   },
@@ -506,15 +440,6 @@ export const mainAdmin = {
       body: JSON.stringify({ plan })
     });
   },
-  deleteUser: (userId) => {
-    const token = localStorage.getItem('ownerToken');
-    return request(`/main-admin/users/${userId}`, {
-      method: 'DELETE',
-      headers: {
-        'Authorization': `Bearer ${token}`
-      }
-    });
-  },
   clearData: (type) => {
     const token = localStorage.getItem('ownerToken');
     return request('/main-admin/system/clear-data', {
@@ -523,15 +448,6 @@ export const mainAdmin = {
         'Authorization': `Bearer ${token}`
       },
       body: JSON.stringify({ type })
-    });
-  },
-  lockUserScreen: (userId) => {
-    const token = localStorage.getItem('ownerToken');
-    return request(`/admin/lock-user-screen/${userId}`, {
-      method: 'POST',
-      headers: {
-        'Authorization': `Bearer ${token}`
-      }
     });
   }
 };
@@ -611,12 +527,9 @@ export function unsubscribeAllProductSubscriptions() {
   }
 }
 
-// Recipes API - Composite product recipes/BOMs with ingredient deduction support
+// Recipes API
 export const recipes = {
   getAll: () => request('/recipes'),
-  
-  getByProduct: (productId) => request(`/recipes/${productId}`),
-  
   create: (data) => request('/recipes', {
     method: 'POST',
     body: JSON.stringify(data)
@@ -645,4 +558,3 @@ export const cashierNotes = {
     method: 'DELETE'
   })
 };
-

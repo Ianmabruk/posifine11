@@ -1,51 +1,100 @@
 import { useState, useEffect } from 'react';
-import { sales as salesApi, admin } from '../../services/api';
-import { Calendar, Download, Filter, Trash } from 'lucide-react';
+import { sales as salesApi, BASE_API_URL } from '../../services/api';
+import { Calendar, Download, Filter, Trash2, Trash } from 'lucide-react';
 
 export default function Sales() {
   const [sales, setSales] = useState([]);
   const [filter, setFilter] = useState('all');
-  const [loading, setLoading] = useState(true);
+  const [selectedSales, setSelectedSales] = useState([]);
+  const [deleting, setDeleting] = useState(false);
 
   useEffect(() => {
     loadSales();
-    
-    // Listen for clear-data events only (NOT storage events - causes excessive refreshes)
-    const handleDataCleared = () => {
-      console.log('Sales data cleared - refreshing');
-      setSales([]);
-    };
-
-    window.addEventListener('dataCleared', handleDataCleared);
-
-    return () => {
-      window.removeEventListener('dataCleared', handleDataCleared);
-    };
   }, []);
 
   const loadSales = async () => {
+    const data = await salesApi.getAll();
+    setSales(data.reverse());
+  };
+
+  const deleteSale = async (saleId) => {
+    if (!window.confirm('Delete this sale? This action cannot be undone.')) return;
+    
     try {
-      setLoading(true);
-      const data = await salesApi.getAll();
-      setSales(Array.isArray(data) ? data.reverse() : []);
+      setDeleting(true);
+      const token = localStorage.getItem('token');
+      const response = await fetch(`${BASE_API_URL}/sales/${saleId}`, {
+        method: 'DELETE',
+        headers: { 'Authorization': `Bearer ${token}` }
+      });
+      
+      if (!response.ok) throw new Error('Failed to delete sale');
+      
+      setSales(sales.filter(s => s.id !== saleId));
+      alert('Sale deleted successfully');
     } catch (error) {
-      console.error('Failed to load sales:', error);
-      setSales([]);
+      alert('Failed to delete sale: ' + error.message);
     } finally {
-      setLoading(false);
+      setDeleting(false);
     }
   };
 
-  const handleClearSales = async () => {
-    if (window.confirm('⚠️ Are you sure you want to clear ALL sales data?\n\nThis action CANNOT be undone!')) {
-      try {
-        await admin.clearData('sales');
-        setSales([]);
-        alert('✅ All sales cleared successfully!');
-      } catch (error) {
-        console.error('Failed to clear sales:', error);
-        alert('❌ Failed to clear sales: ' + error.message);
-      }
+  const bulkDeleteSales = async () => {
+    if (selectedSales.length === 0) {
+      alert('No sales selected');
+      return;
+    }
+    
+    if (!window.confirm(`Delete ${selectedSales.length} sales? This action cannot be undone.`)) return;
+    
+    try {
+      setDeleting(true);
+      const token = localStorage.getItem('token');
+      const response = await fetch(`${BASE_API_URL}/sales/bulk-delete`, {
+        method: 'POST',
+        headers: { 
+          'Authorization': `Bearer ${token}`,
+          'Content-Type': 'application/json'
+        },
+        body: JSON.stringify({ saleIds: selectedSales })
+      });
+      
+      if (!response.ok) throw new Error('Failed to delete sales');
+      
+      setSales(sales.filter(s => !selectedSales.includes(s.id)));
+      setSelectedSales([]);
+      alert('Sales deleted successfully');
+    } catch (error) {
+      alert('Failed to delete sales: ' + error.message);
+    } finally {
+      setDeleting(false);
+    }
+  };
+
+  const clearAllSales = async () => {
+    if (!window.confirm('Clear ALL sales data? This will delete everything and cannot be undone.')) return;
+    
+    try {
+      setDeleting(true);
+      const token = localStorage.getItem('token');
+      const response = await fetch(`${BASE_API_URL}/clear-data`, {
+        method: 'POST',
+        headers: { 
+          'Authorization': `Bearer ${token}`,
+          'Content-Type': 'application/json'
+        },
+        body: JSON.stringify({ type: 'sales' })
+      });
+      
+      if (!response.ok) throw new Error('Failed to clear sales');
+      
+      setSales([]);
+      setSelectedSales([]);
+      alert('All sales data cleared');
+    } catch (error) {
+      alert('Failed to clear sales: ' + error.message);
+    } finally {
+      setDeleting(false);
     }
   };
 
@@ -78,9 +127,26 @@ export default function Sales() {
             <option value="today">Today</option>
             <option value="week">This Week</option>
           </select>
+          {selectedSales.length > 0 && (
+            <div className="flex items-center gap-2">
+              <span className="text-sm text-gray-600">{selectedSales.length} selected</span>
+              <button 
+                onClick={bulkDeleteSales}
+                disabled={deleting}
+                className="px-3 py-2 bg-red-600 hover:bg-red-700 disabled:bg-gray-400 text-white rounded text-sm font-medium flex items-center gap-1"
+              >
+                <Trash2 className="w-4 h-4" />
+                Delete Selected
+              </button>
+            </div>
+          )}
         </div>
-        <div className="flex gap-2">
-          <button onClick={handleClearSales} className="btn-secondary flex items-center gap-2 hover:bg-red-50 hover:text-red-600 hover:border-red-200">
+        <div className="flex items-center gap-2">
+          <button 
+            onClick={clearAllSales}
+            disabled={deleting || sales.length === 0}
+            className="px-4 py-2 bg-red-700 hover:bg-red-800 disabled:bg-gray-400 text-white rounded font-medium flex items-center gap-2"
+          >
             <Trash className="w-4 h-4" />
             Clear All Sales
           </button>
@@ -112,6 +178,20 @@ export default function Sales() {
           <table className="w-full">
             <thead className="bg-gray-50">
               <tr>
+                <th className="px-4 py-3 text-left">
+                  <input 
+                    type="checkbox" 
+                    checked={selectedSales.length === filteredSales.length && filteredSales.length > 0}
+                    onChange={(e) => {
+                      if (e.target.checked) {
+                        setSelectedSales(filteredSales.map(s => s.id));
+                      } else {
+                        setSelectedSales([]);
+                      }
+                    }}
+                    className="rounded"
+                  />
+                </th>
                 <th className="px-4 py-3 text-left text-sm font-semibold text-gray-700">ID</th>
                 <th className="px-4 py-3 text-left text-sm font-semibold text-gray-700">Date & Time</th>
                 <th className="px-4 py-3 text-left text-sm font-semibold text-gray-700">Items</th>
@@ -119,42 +199,53 @@ export default function Sales() {
                 <th className="px-4 py-3 text-left text-sm font-semibold text-gray-700">Total</th>
                 <th className="px-4 py-3 text-left text-sm font-semibold text-gray-700">COGS</th>
                 <th className="px-4 py-3 text-left text-sm font-semibold text-gray-700">Profit</th>
+                <th className="px-4 py-3 text-left text-sm font-semibold text-gray-700">Action</th>
               </tr>
             </thead>
             <tbody>
-              {filteredSales.length === 0 ? (
-                <tr>
-                  <td colSpan="7" className="px-4 py-12 text-center">
-                    <div className="flex flex-col items-center justify-center">
-                      <div className="w-16 h-16 bg-gray-100 rounded-full flex items-center justify-center mb-4">
-                        <Download className="w-8 h-8 text-gray-400" />
-                      </div>
-                      <p className="text-gray-600 font-medium text-lg">No sales yet</p>
-                      <p className="text-gray-500 text-sm mt-2">Your sales transactions will appear here once processed</p>
-                    </div>
+              {filteredSales.map((sale) => (
+                <tr key={sale.id} className="border-t border-gray-100 hover:bg-gray-50">
+                  <td className="px-4 py-3">
+                    <input 
+                      type="checkbox" 
+                      checked={selectedSales.includes(sale.id)}
+                      onChange={(e) => {
+                        if (e.target.checked) {
+                          setSelectedSales([...selectedSales, sale.id]);
+                        } else {
+                          setSelectedSales(selectedSales.filter(id => id !== sale.id));
+                        }
+                      }}
+                      className="rounded"
+                    />
+                  </td>
+                  <td className="px-4 py-3 text-sm font-medium">#{sale.id}</td>
+                  <td className="px-4 py-3 text-sm">{new Date(sale.createdAt).toLocaleString()}</td>
+                  <td className="px-4 py-3 text-sm">{sale.items?.length || 0} items</td>
+                  <td className="px-4 py-3 text-sm">
+                    <span className="badge badge-success">{sale.paymentMethod}</span>
+                  </td>
+                  <td className="px-4 py-3 text-sm font-semibold text-green-600">
+                    KSH {sale.total?.toLocaleString()}
+                  </td>
+                  <td className="px-4 py-3 text-sm text-orange-600">
+                    KSH {sale.cogs?.toLocaleString() || 0}
+                  </td>
+                  <td className="px-4 py-3 text-sm font-semibold text-blue-600">
+                    KSH {sale.profit?.toLocaleString() || 0}
+                  </td>
+                  <td className="px-4 py-3 text-sm">
+                    <button
+                      onClick={() => deleteSale(sale.id)}
+                      disabled={deleting}
+                      className="px-3 py-1 bg-red-500 hover:bg-red-600 disabled:bg-gray-400 text-white rounded text-sm font-medium flex items-center gap-1"
+                    >
+                      <Trash2 className="w-4 h-4" />
+                      Delete
+                    </button>
                   </td>
                 </tr>
-              ) : (
-                filteredSales.map((sale) => (
-                  <tr key={sale.id} className="border-t border-gray-100 hover:bg-gray-50">
-                    <td className="px-4 py-3 text-sm font-medium">#{sale.id}</td>
-                    <td className="px-4 py-3 text-sm">{new Date(sale.createdAt).toLocaleString()}</td>
-                    <td className="px-4 py-3 text-sm">{sale.items?.length || 0} items</td>
-                    <td className="px-4 py-3 text-sm">
-                      <span className="badge badge-success">{sale.paymentMethod}</span>
-                    </td>
-                    <td className="px-4 py-3 text-sm font-semibold text-green-600">
-                      KSH {sale.total?.toLocaleString()}
-                    </td>
-                    <td className="px-4 py-3 text-sm text-orange-600">
-                      KSH {sale.cogs?.toLocaleString() || 0}
-                    </td>
-                    <td className="px-4 py-3 text-sm font-semibold text-blue-600">
-                      KSH {sale.profit?.toLocaleString() || 0}
-                    </td>
-                  </tr>
-                ))
-              )}
+              ))}
             </tbody>
           </table>
         </div>

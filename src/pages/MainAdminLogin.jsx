@@ -1,6 +1,6 @@
-import { useState, useEffect } from 'react';
-import { useNavigate, useLocation } from 'react-router-dom';
-import { Shield, Mail, Lock, AlertCircle, Eye, EyeOff } from 'lucide-react';
+import { useState, useEffect, useRef } from 'react';
+import { useNavigate } from 'react-router-dom';
+import { Mail, Lock, Eye, EyeOff, AlertCircle } from 'lucide-react';
 import { mainAdmin } from '../services/api';
 
 export default function MainAdminLogin() {
@@ -12,23 +12,25 @@ export default function MainAdminLogin() {
   const [error, setError] = useState('');
   const [showPassword, setShowPassword] = useState(false);
   const navigate = useNavigate();
-  const location = useLocation();
+  const redirectDone = useRef(false);
 
   useEffect(() => {
-    // Check if already logged in as owner
-    const token = localStorage.getItem('mainAdminToken');
-    const user = localStorage.getItem('mainAdminUser');
+    // Only check redirect once
+    if (redirectDone.current) return;
+    redirectDone.current = true;
+
+    const token = localStorage.getItem('ownerToken');
+    const user = localStorage.getItem('ownerUser');
     
     if (token && user) {
       try {
         const userData = JSON.parse(user);
-        if (userData.type === 'main_admin' || userData.type === 'owner') {
-          navigate('/main.admin/dashboard');
-          return;
+        if (userData.role === 'owner') {
+          navigate('/main.admin/dashboard', { replace: true });
         }
       } catch (e) {
-        localStorage.removeItem('mainAdminToken');
-        localStorage.removeItem('mainAdminUser');
+        localStorage.removeItem('ownerToken');
+        localStorage.removeItem('ownerUser');
       }
     }
   }, [navigate]);
@@ -42,14 +44,13 @@ export default function MainAdminLogin() {
       const response = await mainAdmin.login(formData);
       
       if (response.token && response.user && response.user.role === 'owner') {
-        localStorage.setItem('mainAdminToken', response.token);
-        localStorage.setItem('mainAdminUser', JSON.stringify(response.user));
-        navigate('/main.admin/dashboard');
+        localStorage.setItem('ownerToken', response.token);
+        localStorage.setItem('ownerUser', JSON.stringify(response.user));
+        navigate('/main.admin/dashboard', { replace: true });
       } else {
         throw new Error('Invalid response from server or insufficient permissions');
       }
     } catch (err) {
-      console.error('Owner login error:', err);
       setError(err.message || 'Access denied. Owner access only.');
     } finally {
       setLoading(false);
@@ -60,12 +61,12 @@ export default function MainAdminLogin() {
     <div className="min-h-screen bg-gradient-to-br from-gray-900 via-red-900 to-black flex items-center justify-center p-4">
       <div className="bg-black/50 backdrop-blur-lg rounded-2xl shadow-2xl max-w-md w-full p-8 border border-red-500/30">
         <div className="text-center mb-8">
-          <div className="w-16 h-16 bg-gradient-to-br from-red-600 to-black rounded-2xl mx-auto mb-4 flex items-center justify-center border border-red-500/50">
-            <Shield className="w-8 h-8 text-red-400" />
+          <div className="w-20 h-20 bg-gradient-to-br from-red-600 to-red-800 rounded-3xl mx-auto mb-4 flex items-center justify-center border-2 border-red-400 shadow-lg">
+            <div className="text-3xl font-bold text-white">MTC</div>
           </div>
           <h1 className="text-3xl font-bold text-red-400 mb-2">MAIN.ADMIN</h1>
-          <p className="text-gray-400">System Owner Access</p>
-          <div className="mt-2 text-xs text-red-500 bg-red-500/10 px-3 py-1 rounded border border-red-500/30">
+          <p className="text-gray-400 text-sm">Mabrixel Trading Co. - System Owner Access</p>
+          <div className="mt-3 text-xs text-red-500 bg-red-500/10 px-3 py-2 rounded border border-red-500/30">
             🔒 ianmabruk3@gmail.com only
           </div>
         </div>

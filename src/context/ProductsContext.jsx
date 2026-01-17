@@ -26,9 +26,12 @@ export const ProductsProvider = ({ children }) => {
       // Ensure we always get an array
       const productList = Array.isArray(data) ? data : [];
       
-      // Filter visible products
+      // Filter visible products for cashiers
       const visibleProducts = productList.filter(p => {
-        return !p.pendingDelete;
+        // Show all products to admins
+        if (user?.role === 'admin') return true;
+        // For cashiers, hide expense-only and deleted products
+        return !p.expenseOnly && !p.pendingDelete && p.visibleToCashier !== false;
       });
       
       setProducts(visibleProducts);
@@ -42,79 +45,25 @@ export const ProductsProvider = ({ children }) => {
     } catch (err) {
       console.error('Failed to fetch products:', err);
       setError(`Failed to load products: ${err.message}`);
-      // Set empty array instead of keeping old data
       setProducts([]);
     } finally {
       setLoading(false);
       setLastUpdated(Date.now());
     }
-  }, []); // REMOVED user dependency - prevents infinite loop
+  }, [user]);
 
-  // Initial fetch only
+  // Initial fetch
   useEffect(() => {
     fetchProducts();
-  }, []); // Only run on mount
+  }, [fetchProducts, user]); 
 
-  // Auto-refresh interval (every 60 seconds) for background sync
+  // Auto-refresh interval (every 2 seconds) for instant sync
   useEffect(() => {
     const intervalId = setInterval(() => {
         fetchProducts();
-    }, 60000); // 60 seconds - minimal polling
+    }, 2000); // 2 seconds for instant sync
 
     return () => clearInterval(intervalId);
-  }, []); // No dependencies
-
-  // Listen for clear-data events and force immediate refetch
-  useEffect(() => {
-    const handleDataCleared = () => {
-      console.log('🔄 Data cleared event received - forcing products refresh');
-      setProducts([]);
-      setError(null);
-      fetchProducts();
-    };
-
-    window.addEventListener('dataCleared', handleDataCleared);
-    window.addEventListener('productsCleared', handleDataCleared);
-    
-    return () => {
-      window.removeEventListener('dataCleared', handleDataCleared);
-      window.removeEventListener('productsCleared', handleDataCleared);
-    };
-  }, []); // No dependencies
-
-  // Listen for STOCK_UPDATED events from backend broadcasts and refresh immediately
-  useEffect(() => {
-    const handleStockUpdated = (event) => {
-      console.log('📦 STOCK_UPDATED event received - refreshing products');
-      // Immediately refresh to get latest stock quantities
-      fetchProducts();
-    };
-
-    window.addEventListener('STOCK_UPDATED', handleStockUpdated);
-    
-    return () => {
-      window.removeEventListener('STOCK_UPDATED', handleStockUpdated);
-    };
-  }, [fetchProducts]);
-
-  // Listen for PRODUCT_ADDED/PRODUCT_UPDATED events
-  useEffect(() => {
-    const handleProductChanged = (event) => {
-      console.log('📝 Product changed - refreshing products');
-      fetchProducts();
-    };
-
-    window.addEventListener('PRODUCT_ADDED', handleProductChanged);
-    window.addEventListener('PRODUCT_UPDATED', handleProductChanged);
-    window.addEventListener('productCreated', handleProductChanged);
-    window.addEventListener('productUpdated', handleProductChanged);
-    
-    return () => {
-      window.removeEventListener('PRODUCT_ADDED', handleProductChanged);
-      window.removeEventListener('PRODUCT_UPDATED', handleProductChanged);
-      window.removeEventListener('productCreated', handleProductChanged);
-      window.removeEventListener('productUpdated', handleProductChanged);
-    };
   }, [fetchProducts]);
 
   const refreshProducts = async () => {

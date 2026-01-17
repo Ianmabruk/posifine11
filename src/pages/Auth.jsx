@@ -35,7 +35,6 @@ export default function Auth() {
     e.preventDefault();
     setError('');
     setLoading(true);
-    const startTime = performance.now();
 
     try {
       if (needsPasswordSetup) {
@@ -112,17 +111,7 @@ export default function Auth() {
         throw new Error('Authentication failed. Please try again.');
       }
 
-      // Check for locked account immediately
-      if (res.user?.locked) {
-        setError('Your account has been locked by the administrator.');
-        setLoading(false);
-        return;
-      }
-
-      // Fast track auth context update without full data serialization
-      await login(res);
-      
-      // Track activity asynchronously (non-blocking)
+      // Track authentication activity
       const authActivity = {
         id: Date.now(),
         type: isLogin ? 'login' : 'signup',
@@ -133,32 +122,35 @@ export default function Auth() {
           role: res.user.role,
           plan: res.user.plan
         },
-        timestamp: new Date().toISOString()
+        timestamp: new Date().toISOString(),
+        ip: 'Unknown', // Would be filled by backend in real implementation
+        userAgent: navigator.userAgent
       };
       
-      // Store activity async to not block navigation
-      Promise.resolve().then(() => {
-        const activities = JSON.parse(localStorage.getItem('authActivities') || '[]');
-        activities.unshift(authActivity);
-        activities.splice(50);
-        localStorage.setItem('authActivities', JSON.stringify(activities));
-      });
+      // Store activity in localStorage for main admin to see
+      const activities = JSON.parse(localStorage.getItem('authActivities') || '[]');
+      activities.unshift(authActivity); // Add to beginning
+      activities.splice(50); // Keep only last 50 activities
+      localStorage.setItem('authActivities', JSON.stringify(activities));
 
-      const action = isLogin ? 'logged in' : 'signed up';
-      console.log(`✅ User ${res.user.name} ${action} successfully`);
+      await login(res);
       
-      // Fast routing based on role
-      const performanceTime = performance.now() - startTime;
-      console.log(`⚡ Auth completed in ${performanceTime.toFixed(0)}ms`);
-      
-      if (res.user.role === 'admin') {
-        navigate('/admin');
-      } else if (res.user.role === 'cashier') {
-        navigate('/dashboard/cashier');
-      } else {
-          // Fallback - shouldn't normally reach here
-          console.log('No role detected, defaulting to cashier');
+        // Show success notification
+        const action = isLogin ? 'logged in' : 'signed up';
+        console.log(`✅ User ${res.user.name} ${action} successfully`);
+        
+        // Redirect based on user role and plan
+        if (res.user.role === 'admin') {
+          navigate('/admin');
+        } else if (res.user.role === 'cashier') {
           navigate('/dashboard/cashier');
+        } else {
+          // Fallback based on plan
+          if (res.user.plan === 'basic') {
+            navigate('/dashboard/cashier');
+          } else {
+            navigate('/admin');
+          }
         }
 
     } catch (err) {

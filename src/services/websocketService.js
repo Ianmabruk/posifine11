@@ -13,17 +13,7 @@ class WebSocketService {
       stock_updated: [],
       heartbeat: [],
       initial: [],
-      error: [],
-      sale_deleted: [],
-      sale_created: [],
-      product_deleted: [],
-      product_created: [],
-      product_updated: [],
-      user_deleted: [],
-      data_cleared: [],
-      products_cleared: [],
-      cashier_clocked_in: [],
-      cashier_clocked_out: []
+      error: []
     };
     this.reconnectAttempts = 0;
     this.maxReconnectAttempts = 5;
@@ -69,62 +59,12 @@ class WebSocketService {
                 onStockUpdate(message.data);
               }
               this.emit('stock_updated', message.data);
-            } else if (message.type === 'product_created') {
-              console.log('✨ New product created:', message.data.product);
-              this.emit('product_created', message.data);
-              // Trigger dashboard refresh
-              window.dispatchEvent(new Event('productCreated'));
-            } else if (message.type === 'product_updated') {
-              console.log('📝 Product updated:', message.data.product);
-              this.emit('product_updated', message.data);
-              // Trigger dashboard refresh
-              window.dispatchEvent(new Event('productUpdated'));
             } else if (message.type === 'initial') {
               console.log('📦 Initial products loaded via WebSocket');
               this.emit('initial', message.products);
             } else if (message.type === 'heartbeat') {
               // Silent heartbeat - keep connection alive
               this.emit('heartbeat', message);
-            } else if (message.type === 'sale_deleted') {
-              console.log('🗑️ Sale deleted:', message.data);
-              this.emit('sale_deleted', message.data);
-              // Trigger dashboard refresh
-              window.dispatchEvent(new Event('saleDeleted'));
-            } else if (message.type === 'product_deleted') {
-              console.log('🗑️ Product deleted:', message.data);
-              this.emit('product_deleted', message.data);
-              // Trigger dashboard refresh
-              window.dispatchEvent(new Event('dataUpdated'));
-            } else if (message.type === 'user_deleted') {
-              console.log('🗑️ User deleted:', message.data);
-              this.emit('user_deleted', message.data);
-              // Trigger dashboard refresh
-              window.dispatchEvent(new Event('userDeleted'));
-            } else if (message.type === 'data_cleared') {
-              console.log('🗑️ Data cleared:', message.data);
-              this.emit('data_cleared', message.data);
-              // Trigger dashboard refresh
-              window.dispatchEvent(new Event('dataUpdated'));
-            } else if (message.type === 'products_cleared') {
-              console.log('🗑️ Products cleared:', message.data);
-              this.emit('products_cleared', message.data);
-              // Force immediate product refresh
-              window.dispatchEvent(new CustomEvent('productsCleared', { detail: message.data }));
-            } else if (message.type === 'sale_created') {
-              console.log('💰 New sale recorded:', message.data.sale);
-              this.emit('sale_created', message.data);
-              // Trigger dashboard refresh for sales
-              window.dispatchEvent(new CustomEvent('saleCreated', { detail: message.data }));
-            } else if (message.type === 'cashier_clocked_in') {
-              console.log('⏰ Cashier clocked in:', message.data.entry);
-              this.emit('cashier_clocked_in', message.data);
-              // Trigger admin dashboard refresh
-              window.dispatchEvent(new CustomEvent('cashierClockIn', { detail: message.data }));
-            } else if (message.type === 'cashier_clocked_out') {
-              console.log('⏰ Cashier clocked out:', message.data.entry);
-              this.emit('cashier_clocked_out', message.data);
-              // Trigger admin dashboard refresh
-              window.dispatchEvent(new CustomEvent('cashierClockOut', { detail: message.data }));
             }
           } catch (e) {
             console.error('Error parsing WebSocket message:', e);

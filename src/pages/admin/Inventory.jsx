@@ -19,7 +19,10 @@ export default function Inventory() {
   const [showAddModal, setShowAddModal] = useState(false);
   const [showEditModal, setShowEditModal] = useState(false);
   const [showAddStock, setShowAddStock] = useState(false);
+  const [showWeightPricingModal, setShowWeightPricingModal] = useState(false);
   const [selectedProduct, setSelectedProduct] = useState(null);
+  const [weightPricing, setWeightPricing] = useState({});
+  const [newWeightPrice, setNewWeightPrice] = useState({ weight: '', price: '' });
   const [expandedRow, setExpandedRow] = useState(null);
   const [notification, setNotification] = useState(null);
   const [isSyncing, setIsSyncing] = useState(false);
@@ -139,25 +142,6 @@ export default function Inventory() {
     return batchList.filter(b => b.productId === productId && b.quantity > 0);
   };
 
-  // Format quantity display based on unit type
-  const formatQuantity = (quantity, unit) => {
-    if (!unit || !quantity) return quantity;
-    
-    const isWeightUnit = ['kg', 'g', 'gram', 'grams', 'kilogram', 'kilograms'].includes(unit.toLowerCase());
-    
-    if (isWeightUnit) {
-      // For weight units, show with proper decimal places
-      if (quantity >= 1) {
-        return `${quantity.toFixed(2)}`;
-      } else {
-        return `${quantity.toFixed(3)}`.replace(/\.?0+$/, '');
-      }
-    }
-    
-    // For non-weight units, show as integer
-    return Math.round(quantity).toString();
-  };
-
   const showNotification = (message, type = 'success') => {
     setNotification({ message, type });
     setTimeout(() => setNotification(null), 5000);
@@ -177,19 +161,7 @@ export default function Inventory() {
 
   const handleAddProduct = async (e) => {
     e.preventDefault();
-    console.log('🔵 handleAddProduct triggered', { newProduct });
-    
     try {
-      // Validate required fields
-      if (!newProduct.name || !newProduct.name.trim()) {
-        showNotification('❌ Product name is required', 'error');
-        return;
-      }
-      if (!newProduct.price || isNaN(parseFloat(newProduct.price))) {
-        showNotification('❌ Valid product price is required', 'error');
-        return;
-      }
-
       const productData = {
         ...newProduct,
         price: parseFloat(newProduct.price),
@@ -198,9 +170,7 @@ export default function Inventory() {
         visibleToCashier: !newProduct.expenseOnly && newProduct.visibleToCashier !== false
       };
       
-      console.log('📝 Sending product data to API:', productData);
       const result = await products.create(productData);
-      console.log('✅ Product created successfully:', result);
       
       // Reset form and close modal
       setNewProduct({ name: '', price: '', cost: '', category: 'finished', unit: 'pcs', expenseOnly: false, image: '', visibleToCashier: true });
@@ -208,48 +178,24 @@ export default function Inventory() {
       setShowAddModal(false);
       
       // Refresh data
-      console.log('🔄 Refreshing product list...');
       await loadData();
       
       showNotification(`✅ Product "${result.name}" added successfully! ${result.visibleToCashier ? 'Cashiers can now see this product.' : 'This product is hidden from cashiers.'}`, 'success');
       
     } catch (error) {
-      console.error('❌ Failed to create product:', error);
-      console.error('Error details:', { 
-        message: error.message, 
-        status: error.status,
-        stack: error.stack
-      });
-      showNotification(`❌ Failed to create product: ${error.message || 'Unknown error'}`, 'error');
+      console.error('Failed to create product:', error);
+      alert(`Failed to create product: ${error.message || 'Unknown error'}`);
     }
   };
 
   const handleAddStock = async (e) => {
     e.preventDefault();
     try {
-      // Support both integer and fractional quantities (for grams/kg)
-      const quantityValue = parseFloat(newStock.quantity);
-      
-      // Validate quantity
-      if (isNaN(quantityValue) || quantityValue <= 0) {
-        showNotification('❌ Please enter a valid quantity', 'error');
-        return;
-      }
-
-      // Determine minimum increment based on unit
-      const isWeightUnit = selectedProduct.unit && ['kg', 'g', 'gram', 'grams', 'kilogram', 'kilograms'].includes(selectedProduct.unit.toLowerCase());
-      const minIncrement = isWeightUnit ? 0.01 : 1;
-      
-      if (quantityValue < minIncrement) {
-        showNotification(`❌ Minimum quantity is ${minIncrement} ${selectedProduct.unit}`, 'error');
-        return;
-      }
-
       // OPTIMISTIC UPDATE: Update batch list immediately
       const newBatch = {
         id: `batch-${Date.now()}`,
         productId: selectedProduct.id,
-        quantity: quantityValue,
+        quantity: parseInt(newStock.quantity),
         expiryDate: newStock.expiryDate,
         batchNumber: newStock.batchNumber || `BATCH-${Date.now()}`,
         cost: parseFloat(newStock.cost || selectedProduct.cost || 0)
@@ -263,7 +209,7 @@ export default function Inventory() {
         // Make API call in background
         await batches.create({
           productId: selectedProduct.id,
-          quantity: quantityValue,
+          quantity: parseInt(newStock.quantity),
           expiryDate: newStock.expiryDate,
           batchNumber: newStock.batchNumber || `BATCH-${Date.now()}`,
           cost: parseFloat(newStock.cost || selectedProduct.cost || 0)
@@ -467,6 +413,58 @@ export default function Inventory() {
     return totalCost;
   };
 
+  // Weight-based pricing handlers
+  const openWeightPricingModal = async (product) => {
+    setSelectedProduct(product);
+    try {
+      const data = await products.getWeightPricing(product.id);
+      setWeightPricing(data.weightPricing || {});
+    } catch (error) {
+      console.error('Failed to load weight pricing:', error);
+      setWeightPricing({});
+    }
+    setShowWeightPricingModal(true);
+  };
+
+  const handleAddWeightPrice = async (e) => {
+    e.preventDefault();
+    if (!newWeightPrice.weight || !newWeightPrice.price) {
+      showNotification('❌ Please enter both weight and price', 'error');
+      return;
+    }
+
+    try {
+      const weight = parseFloat(newWeightPrice.weight);
+      const price = parseFloat(newWeightPrice.price);
+      
+      // Validate weight is valid increment (0.1kg increments)
+      if ((weight * 10) % 1 !== 0) {
+        showNotification('❌ Weight must be in 0.1kg increments (0.1, 0.2, 0.3, etc)', 'error');
+        return;
+      }
+
+      await products.addWeightPrice(selectedProduct.id, weight, price);
+      setWeightPricing({...weightPricing, [String(weight)]: price});
+      setNewWeightPrice({ weight: '', price: '' });
+      showNotification(`✅ Weight price added for ${weight}kg`, 'success');
+    } catch (error) {
+      showNotification(`❌ Failed to add weight price: ${error.message}`, 'error');
+    }
+  };
+
+  const handleDeleteWeightPrice = async (weight) => {
+    if (!confirm(`Delete pricing for ${weight}kg?`)) return;
+    
+    try {
+      await products.deleteWeightPrice(selectedProduct.id, weight);
+      const updated = {...weightPricing};
+      delete updated[String(weight)];
+      setWeightPricing(updated);
+      showNotification(`✅ Weight price for ${weight}kg deleted`, 'success');
+    } catch (error) {
+      showNotification(`❌ Failed to delete weight price: ${error.message}`, 'error');
+    }
+  };
 
   return (
     <div className="p-6 space-y-6">
@@ -627,7 +625,7 @@ export default function Inventory() {
                             getProductStock(product.id) === 0 ? 'text-red-600' : 
                             getProductStock(product.id) < 10 ? 'text-yellow-600' : 'text-gray-900'
                           }`}>
-                            {formatQuantity(getProductStock(product.id), product.unit)} {product.unit}
+                            {getProductStock(product.id)} {product.unit}
                           </span>
                           {getProductStock(product.id) < 10 && getProductStock(product.id) > 0 && (
                             <AlertTriangle className="w-4 h-4 text-yellow-500" />
@@ -668,6 +666,13 @@ export default function Inventory() {
                       </td>
                       <td className="px-4 py-3">
                         <div className="flex items-center gap-2">
+                          <button
+                            onClick={() => openWeightPricingModal(product)}
+                            className="p-2 hover:bg-purple-50 rounded-lg text-purple-600 transition-colors"
+                            title="Edit weight-based pricing"
+                          >
+                            <Package className="w-4 h-4" />
+                          </button>
                           <button
                             onClick={() => {
                               setEditProduct(product);
@@ -748,29 +753,16 @@ export default function Inventory() {
       {showAddStock && selectedProduct && (
         <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50">
           <div className="bg-white rounded-xl p-6 w-full max-w-md">
-            <h3 className="text-xl font-bold mb-2">Add Stock for {selectedProduct.name}</h3>
-            <p className="text-xs text-gray-600 mb-4">
-              Unit: <span className="font-semibold">{selectedProduct.unit}</span>
-              {['kg', 'g', 'gram', 'grams', 'kilogram', 'kilograms'].includes(selectedProduct.unit?.toLowerCase()) && (
-                <span className="ml-2 text-blue-600">🔹 Supports decimals (e.g., 0.5 kg, 250 g)</span>
-              )}
-            </p>
+            <h3 className="text-xl font-bold mb-4">Add Stock for {selectedProduct.name}</h3>
             <form onSubmit={handleAddStock} className="space-y-4">
-              <div>
-                <label className="block text-sm font-medium text-gray-700 mb-1">
-                  Quantity {['kg', 'g', 'gram', 'grams', 'kilogram', 'kilograms'].includes(selectedProduct.unit?.toLowerCase()) ? '(decimal allowed)' : '(whole numbers)'}
-                </label>
-                <input
-                  type="number"
-                  step={['kg', 'g', 'gram', 'grams', 'kilogram', 'kilograms'].includes(selectedProduct.unit?.toLowerCase()) ? "0.01" : "1"}
-                  min={['kg', 'g', 'gram', 'grams', 'kilogram', 'kilograms'].includes(selectedProduct.unit?.toLowerCase()) ? "0.01" : "1"}
-                  placeholder={['kg', 'g', 'gram', 'grams', 'kilogram', 'kilograms'].includes(selectedProduct.unit?.toLowerCase()) ? "e.g., 0.5, 1.25" : "e.g., 100, 500"}
-                  className="input"
-                  value={newStock.quantity}
-                  onChange={(e) => setNewStock({ ...newStock, quantity: e.target.value })}
-                  required
-                />
-              </div>
+              <input
+                type="number"
+                placeholder="Quantity"
+                className="input"
+                value={newStock.quantity}
+                onChange={(e) => setNewStock({ ...newStock, quantity: e.target.value })}
+                required
+              />
               <input
                 type="date"
                 placeholder="Expiry Date (Optional)"
@@ -788,7 +780,6 @@ export default function Inventory() {
               <input
                 type="number"
                 step="0.01"
-                min="0"
                 placeholder="Cost per Unit"
                 className="input"
                 value={newStock.cost}
@@ -1032,6 +1023,94 @@ export default function Inventory() {
                 <button type="button" onClick={() => setShowEditModal(false)} className="btn-secondary">Cancel</button>
               </div>
             </form>
+          </div>
+        </div>
+      )}
+
+      {/* Weight-Based Pricing Modal */}
+      {showWeightPricingModal && selectedProduct && (
+        <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50">
+          <div className="bg-white rounded-xl p-6 w-full max-w-2xl max-h-96 overflow-y-auto">
+            <h3 className="text-xl font-bold mb-4">Weight-Based Pricing - {selectedProduct.name}</h3>
+            <p className="text-sm text-gray-600 mb-4">Set different prices for different weights (in 0.1kg increments)</p>
+            
+            <div className="space-y-4">
+              {/* Add new weight price */}
+              <div className="border border-gray-200 rounded-lg p-4 space-y-3">
+                <h4 className="font-semibold text-sm text-gray-700">Add New Weight Price</h4>
+                <form onSubmit={handleAddWeightPrice} className="flex gap-3">
+                  <input
+                    type="number"
+                    step="0.1"
+                    min="0.1"
+                    placeholder="Weight (kg) - e.g., 0.1, 0.5, 1.0"
+                    className="input flex-1"
+                    value={newWeightPrice.weight}
+                    onChange={(e) => setNewWeightPrice({...newWeightPrice, weight: e.target.value})}
+                    required
+                  />
+                  <input
+                    type="number"
+                    step="0.01"
+                    min="0"
+                    placeholder="Price (KSH)"
+                    className="input flex-1"
+                    value={newWeightPrice.price}
+                    onChange={(e) => setNewWeightPrice({...newWeightPrice, price: e.target.value})}
+                    required
+                  />
+                  <button type="submit" className="btn-primary whitespace-nowrap">Add Price</button>
+                </form>
+              </div>
+
+              {/* Existing weight prices */}
+              <div className="border border-gray-200 rounded-lg p-4">
+                <h4 className="font-semibold text-sm text-gray-700 mb-3">Current Prices</h4>
+                {Object.keys(weightPricing).length > 0 ? (
+                  <div className="space-y-2">
+                    {Object.entries(weightPricing)
+                      .sort(([a], [b]) => parseFloat(a) - parseFloat(b))
+                      .map(([weight, price]) => (
+                        <div key={weight} className="flex items-center justify-between bg-gray-50 p-3 rounded-lg">
+                          <div className="flex-1">
+                            <span className="font-medium">{weight} kg</span>
+                            <span className="text-gray-600 ml-4">KSH {parseFloat(price).toLocaleString()}</span>
+                          </div>
+                          <button
+                            onClick={() => handleDeleteWeightPrice(weight)}
+                            className="text-red-600 hover:bg-red-50 px-3 py-1 rounded text-sm font-medium transition-colors"
+                          >
+                            Delete
+                          </button>
+                        </div>
+                      ))}
+                  </div>
+                ) : (
+                  <p className="text-gray-500 text-sm">No weight-based pricing set. Add one above.</p>
+                )}
+              </div>
+
+              {/* Base price info */}
+              <div className="bg-blue-50 border border-blue-200 rounded-lg p-3">
+                <p className="text-sm text-blue-800">
+                  <strong>Base price:</strong> KSH {selectedProduct.price?.toLocaleString()}
+                </p>
+              </div>
+            </div>
+
+            <div className="flex gap-2 mt-6">
+              <button 
+                onClick={() => {
+                  setShowWeightPricingModal(false);
+                  setSelectedProduct(null);
+                  setWeightPricing({});
+                  setNewWeightPrice({ weight: '', price: '' });
+                }}
+                className="btn-secondary flex-1"
+              >
+                Done
+              </button>
+            </div>
           </div>
         </div>
       )}

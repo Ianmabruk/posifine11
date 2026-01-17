@@ -12,28 +12,25 @@ export default function Subscription() {
   const plans = [
     {
       id: 'basic',
-      name: 'Professional Package',
-      price: 1500,
+      name: 'Basic Package',
+      price: 1000,
       icon: Zap,
       color: 'from-green-500 to-teal-600',
       features: [
-        'Admin Dashboard + Cashier POS',
+        'Cashier Dashboard Only',
         'Basic Inventory Management',
         'Sales Tracking',
         'Daily/Weekly Sales Summaries',
         'Basic Profit/Loss View',
         'Limited Email Notifications',
         'Record Products Sold',
-        'Up to 2 Users',
-        'Vendor Management',
-        'Basic Expense Tracking',
-        'Limited Analytics'
+        'Single User Access'
       ]
     },
     {
       id: 'ultra',
-      name: 'Ultra Package (Enterprise)',
-      price: 3000,
+      name: 'Ultra Package (Admin + Cashier)',
+      price: 2400,
       icon: Crown,
       color: 'from-blue-600 to-purple-600',
       popular: true,
@@ -48,10 +45,7 @@ export default function Subscription() {
         'Permission Controls',
         'Expense Tracking',
         'Advanced Analytics',
-        'Unlimited Users',
-        'Vendor Management',
-        'Advanced Reporting',
-        'Priority Support'
+        'Unlimited Users'
       ]
     }
   ];

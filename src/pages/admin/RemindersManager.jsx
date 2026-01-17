@@ -1,17 +1,11 @@
 import { useState, useEffect } from 'react';
-import { useAuth } from '../../context/AuthContext';
 import { BASE_API_URL } from '../../services/api';
-import { Bell, Plus, Trash2, Calendar, Send, MessageSquare } from 'lucide-react';
+import { Bell, Plus, Trash2, Calendar } from 'lucide-react';
 
 export default function RemindersManager() {
-  const { user } = useAuth();
   const [reminders, setReminders] = useState([]);
   const [products, setProducts] = useState([]);
   const [showForm, setShowForm] = useState(false);
-  const [showMessaging, setShowMessaging] = useState(false);
-  const [messages, setMessages] = useState([]);
-  const [newMessage, setNewMessage] = useState('');
-  const [selectedRecipient, setSelectedRecipient] = useState('all');
   const [formData, setFormData] = useState({
     customerName: '',
     productId: '',
@@ -23,14 +17,6 @@ export default function RemindersManager() {
   useEffect(() => {
     fetchReminders();
     fetchProducts();
-    loadMessages();
-    
-    // Listen for new messages
-    const handleNewMessage = () => {
-      loadMessages();
-    };
-    window.addEventListener('messageReceived', handleNewMessage);
-    return () => window.removeEventListener('messageReceived', handleNewMessage);
   }, []);
 
 
@@ -179,44 +165,6 @@ export default function RemindersManager() {
     }
   };
 
-  const loadMessages = () => {
-    const messageKey = `adminMessages_${user?.email || 'default'}`;
-    const storedMessages = JSON.parse(localStorage.getItem(messageKey) || '[]');
-    setMessages(storedMessages);
-  };
-
-  const sendMessage = (e) => {
-    e.preventDefault();
-    if (!newMessage.trim()) return;
-
-    const message = {
-      id: Date.now(),
-      sender: 'admin',
-      recipient: selectedRecipient,
-      text: newMessage,
-      timestamp: new Date().toISOString(),
-      read: false
-    };
-
-    const messageKey = `adminMessages_${user?.email || 'default'}`;
-    const allMessages = JSON.parse(localStorage.getItem(messageKey) || '[]');
-    allMessages.push(message);
-    localStorage.setItem(messageKey, JSON.stringify(allMessages));
-    
-    // Also save to cashier messages so they can see it (account-specific)
-    const cashierMessageKey = `cashierMessages_${user?.email || 'default'}`;
-    const cashierMessages = JSON.parse(localStorage.getItem(cashierMessageKey) || '[]');
-    cashierMessages.push(message);
-    localStorage.setItem(cashierMessageKey, JSON.stringify(cashierMessages));
-    
-    setMessages(allMessages);
-    setNewMessage('');
-    
-    // Dispatch event to notify cashiers
-    window.dispatchEvent(new CustomEvent('newAdminMessage', { detail: message }));
-    alert('Message sent to cashier(s)!');
-  };
-
   const days = ['Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday', 'Sunday'];
 
   return (
@@ -226,22 +174,13 @@ export default function RemindersManager() {
           <Bell className="text-blue-600" />
           Reminder System
         </h1>
-        <div className="flex gap-3">
-          <button
-            onClick={() => setShowMessaging(true)}
-            className="bg-purple-600 text-white px-6 py-3 rounded-lg font-bold hover:bg-purple-700 transition flex items-center gap-2"
-          >
-            <MessageSquare size={20} />
-            Message Cashier
-          </button>
-          <button
-            onClick={() => setShowForm(true)}
-            className="bg-blue-600 text-white px-6 py-3 rounded-lg font-bold hover:bg-blue-700 transition flex items-center gap-2"
-          >
-            <Plus size={20} />
-            New Reminder
-          </button>
-        </div>
+        <button
+          onClick={() => setShowForm(true)}
+          className="bg-blue-600 text-white px-6 py-3 rounded-lg font-bold hover:bg-blue-700 transition flex items-center gap-2"
+        >
+          <Plus size={20} />
+          New Reminder
+        </button>
       </div>
 
       <div className="grid gap-4">
@@ -369,74 +308,6 @@ export default function RemindersManager() {
                 </button>
               </div>
             </form>
-          </div>
-        </div>
-      )}
-
-      {/* Messaging Modal */}
-      {showMessaging && (
-        <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50 p-4">
-          <div className="bg-white rounded-2xl shadow-2xl max-w-2xl w-full max-h-96 flex flex-col">
-            <div className="bg-gradient-to-r from-purple-600 to-pink-600 p-6 text-white rounded-t-2xl">
-              <h2 className="text-2xl font-bold flex items-center gap-2">
-                <MessageSquare size={24} />
-                Send Message to Cashier
-              </h2>
-            </div>
-            
-            <div className="flex-1 overflow-y-auto p-4 space-y-4">
-              {messages.length === 0 ? (
-                <p className="text-gray-500 text-center py-8">No messages yet. Start a conversation!</p>
-              ) : (
-                messages.map(msg => (
-                  <div key={msg.id} className={`p-4 rounded-lg ${msg.sender === 'admin' ? 'bg-blue-50 ml-8' : 'bg-gray-50 mr-8'}`}>
-                    <p className="text-sm font-semibold text-gray-600 mb-1">
-                      {msg.sender === 'admin' ? 'You' : 'Cashier'}
-                    </p>
-                    <p className="text-gray-800">{msg.text}</p>
-                    <p className="text-xs text-gray-400 mt-2">
-                      {new Date(msg.timestamp).toLocaleTimeString()}
-                    </p>
-                  </div>
-                ))
-              )}
-            </div>
-
-            <form onSubmit={sendMessage} className="p-4 border-t space-y-3">
-              <div>
-                <label className="block text-sm font-medium mb-2">Send To</label>
-                <select
-                  value={selectedRecipient}
-                  onChange={(e) => setSelectedRecipient(e.target.value)}
-                  className="w-full px-4 py-2 rounded-lg border focus:ring-2 focus:ring-purple-500"
-                >
-                  <option value="all">All Cashiers</option>
-                  <option value="cashier">Primary Cashier</option>
-                </select>
-              </div>
-              <div className="flex gap-3">
-                <input
-                  type="text"
-                  value={newMessage}
-                  onChange={(e) => setNewMessage(e.target.value)}
-                  placeholder="Type your message..."
-                  className="flex-1 px-4 py-3 rounded-lg border focus:ring-2 focus:ring-purple-500"
-                />
-                <button
-                  type="submit"
-                  className="bg-purple-600 text-white px-6 py-3 rounded-lg font-bold hover:bg-purple-700 transition flex items-center gap-2"
-                >
-                  <Send size={18} />
-                </button>
-              </div>
-            </form>
-
-            <button
-              onClick={() => setShowMessaging(false)}
-              className="w-full py-2 bg-gray-200 text-gray-700 font-bold hover:bg-gray-300 transition rounded-b-2xl"
-            >
-              Close
-            </button>
           </div>
         </div>
       )}

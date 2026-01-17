@@ -5,7 +5,7 @@ import { Routes, Route, useNavigate, useLocation } from 'react-router-dom';
 import { useAuth } from '../../context/AuthContext';
 import {
   LayoutDashboard, ShoppingBag, Package, Layers, TrendingDown,
-  Users, Settings, LogOut, Menu, X, ExternalLink, Clock, Bell, DollarSign, Tag, CreditCard, Truck
+  Users, Settings, LogOut, Menu, X, ExternalLink, Clock, Bell, DollarSign, Tag, CreditCard
 } from 'lucide-react';
 import Overview from './Overview';
 import Inventory from './Inventory';
@@ -19,7 +19,6 @@ import ServiceFees from './ServiceFees';
 import RemindersManager from './RemindersManager';
 import Discounts from './Discounts';
 import CreditRequests from './CreditRequests';
-import Vendors from './Vendors';
 import ReminderModal from '../../components/ReminderModal';
 import ScreenLock from '../../components/ScreenLock';
 import useInactivity from '../../hooks/useInactivity';
@@ -35,56 +34,66 @@ export default function AdminDashboard() {
   const [appSettings, setAppSettings] = useState({});
   const [isLocked, unlock] = useInactivity(45000); // 45 seconds
 
-  // Prevent navigation when locked
-  useEffect(() => {
-    if (isLocked) {
-      console.log('🔒 Screen locked - navigation disabled');
-    }
-  }, [isLocked]);
 
   useEffect(() => {
-    // Only run once on mount
-    const initializeDashboard = async () => {
-      try {
-        // Verify user is authenticated
-        const storedUser = localStorage.getItem('user');
-        if (!storedUser) {
-          navigate('/auth/login');
-          return;
-        }
-
+    // CRITICAL: Ensure user data is correct and prevent unnecessary redirects
+    const ensureUserData = () => {
+      const storedUser = localStorage.getItem('user');
+      if (storedUser) {
         const userData = JSON.parse(storedUser);
+        let needsUpdate = false;
         
-        // Verify user has admin access
-        if (userData.role !== 'admin' && userData.plan !== 'ultra') {
-          console.warn('⚠️ User does not have admin access');
-          navigate('/dashboard');
-          return;
+        // If user has ultra plan or admin role, ensure they stay here
+        if (userData.plan === 'ultra' || userData.role === 'admin') {
+          // Ensure active flag is set
+          if (!userData.active) {
+            userData.active = true;
+            needsUpdate = true;
+          }
+          // Ensure role matches plan
+          if (userData.plan === 'ultra' && userData.role !== 'admin') {
+            userData.role = 'admin';
+            needsUpdate = true;
+          }
+          // Ensure price is set
+          if (userData.plan === 'ultra' && (!userData.price || userData.price !== 1600)) {
+            userData.price = 1600;
+            needsUpdate = true;
+          }
+          
+          if (needsUpdate) {
+            localStorage.setItem('user', JSON.stringify(userData));
+            // Force context to update by dispatching storage event
+            window.dispatchEvent(new Event('storage'));
+            window.dispatchEvent(new Event('localStorageUpdated'));
+          }
         }
-
-        // Load settings
-        try {
-          const data = await settingsApi.get();
-          setAppSettings(data);
-        } catch (error) {
-          console.error('Failed to load settings:', error);
-        }
-
-        // Show reminder modal once per session
-        const reminderShown = sessionStorage.getItem('adminReminderShown');
-        if (!reminderShown) {
-          setTimeout(() => {
-            setShowReminderModal(true);
-            sessionStorage.setItem('adminReminderShown', 'true');
-          }, 1000);
-        }
-      } catch (error) {
-        console.error('Dashboard initialization error:', error);
       }
     };
+    
+    // Run immediately and also after a short delay to catch any async updates
+    ensureUserData();
+    setTimeout(ensureUserData, 100);
+    
+    // Show reminder modal on login (with delay to ensure everything is loaded)
+    const timer = setTimeout(() => {
+      setShowReminderModal(true);
+    }, 1000);
+    
+    loadSettings();
+    
+    return () => clearTimeout(timer);
+  }, []);
 
-    initializeDashboard();
-  }, []); // Empty dependency array - run only once
+  const loadSettings = async () => {
+    try {
+      const data = await settingsApi.get();
+      setAppSettings(data);
+    } catch (error) {
+      console.error('Failed to load settings:', error);
+    }
+  };
+
 
   const handleClearData = async () => {
     if (window.confirm('Are you sure you want to clear all sales and expenses data? This action cannot be undone.')) {
@@ -103,30 +112,14 @@ export default function AdminDashboard() {
         
         if (!response.ok) {
           const error = await response.json();
-          console.error('Clear data error:', error);
           throw new Error(error.message || 'Failed to clear data');
         }
         
-        // Clear all frontend state immediately
-        localStorage.removeItem('products');
-        localStorage.removeItem('sales');
-        localStorage.removeItem('expenses');
-        localStorage.removeItem('users');
-        
-        // Broadcast to all listeners
-        window.dispatchEvent(new Event('storage'));
-        window.dispatchEvent(new CustomEvent('dataCleared'));
-        
-        alert('✅ Data cleared successfully! Refreshing...');
-        
-        // Reload after short delay to ensure all UI updates
-        setTimeout(() => {
-          window.location.href = '/admin';
-        }, 500);
-        
+        alert('Data cleared successfully!');
+        window.location.reload();
       } catch (error) {
         console.error('Failed to clear data:', error);
-        alert('❌ Failed to clear data: ' + error.message);
+        alert('Failed to clear data: ' + error.message);
       }
     }
   };
@@ -136,7 +129,6 @@ export default function AdminDashboard() {
     { id: 'sales', label: 'Sales', icon: ShoppingBag, path: '/admin/sales' },
     { id: 'inventory', label: 'Inventory', icon: Package, path: '/admin/inventory' },
     { id: 'recipes', label: 'Recipes/BOM', icon: Layers, path: '/admin/recipes' },
-    { id: 'vendors', label: 'Vendors', icon: Truck, path: '/admin/vendors' },
     { id: 'expenses', label: 'Expenses', icon: TrendingDown, path: '/admin/expenses' },
     ...(isCashierUserManagementEnabled() ? [{ id: 'users', label: 'Users', icon: Users, path: '/admin/users' }] : []),
     { id: 'time', label: 'Time Tracking', icon: Clock, path: '/admin/time' },
@@ -251,7 +243,6 @@ export default function AdminDashboard() {
             <Route path="/sales" element={<Sales />} />
             <Route path="/inventory" element={<Inventory />} />
             <Route path="/recipes" element={<Recipes />} />
-            <Route path="/vendors" element={<Vendors />} />
             <Route path="/expenses" element={<Expenses />} />
             <Route path="/reminders" element={<RemindersManager />} />
             <Route path="/service-fees" element={<ServiceFees />} />
