@@ -12,6 +12,10 @@ class WebSocketService {
     this.listeners = {
       stock_updated: [],
       sale_completed: [],
+      admin_sale_completed: [],
+      product_created: [],
+      product_updated: [],
+      product_deleted: [],
       heartbeat: [],
       initial: [],
       error: []
@@ -51,16 +55,17 @@ class WebSocketService {
         this.ws.onmessage = (event) => {
           try {
             const message = JSON.parse(event.data);
+            const messageType = message.type ? message.type.toLowerCase() : 'unknown';
 
-            // Handle different message types
-            if (message.type === 'stock_updated') {
+            // Normalize event names and handle all message types
+            if (messageType === 'stock_updated') {
               console.log('📦 Stock update received:', message.data);
               // Call the provided callback with stock update
               if (onStockUpdate) {
                 onStockUpdate(message.data);
               }
               this.emit('stock_updated', message.data);
-            } else if (message.type === 'SALE_COMPLETED') {
+            } else if (messageType === 'sale_completed') {
               console.log('💰 Sale completed - stock deducted:', message.data);
               // Emit with updated products for UI refresh
               this.emit('sale_completed', message.data);
@@ -68,12 +73,42 @@ class WebSocketService {
               if (onStockUpdate && message.data.updatedProducts) {
                 onStockUpdate({ allProducts: message.data.updatedProducts });
               }
-            } else if (message.type === 'initial') {
+            } else if (messageType === 'admin_sale_completed') {
+              console.log('👨‍💼 Admin sale completed:', message.data);
+              this.emit('admin_sale_completed', message.data);
+              // Also emit as sale_completed for components listening to general sales
+              this.emit('sale_completed', message.data);
+              if (onStockUpdate && message.data.updatedProducts) {
+                onStockUpdate({ allProducts: message.data.updatedProducts });
+              }
+            } else if (messageType === 'product_created') {
+              console.log('✨ Product created:', message.data);
+              this.emit('product_created', message.data);
+            } else if (messageType === 'product_updated') {
+              console.log('📝 Product updated:', message.data);
+              this.emit('product_updated', message.data);
+              if (onStockUpdate && message.data.allProducts) {
+                onStockUpdate({ allProducts: message.data.allProducts });
+              }
+            } else if (messageType === 'product_deleted') {
+              console.log('🗑️ Product deleted:', message.data);
+              this.emit('product_deleted', message.data);
+              if (onStockUpdate && message.data.allProducts) {
+                onStockUpdate({ allProducts: message.data.allProducts });
+              }
+            } else if (messageType === 'initial') {
               console.log('📦 Initial products loaded via WebSocket');
               this.emit('initial', message.products);
-            } else if (message.type === 'heartbeat') {
+            } else if (messageType === 'heartbeat') {
               // Silent heartbeat - keep connection alive
               this.emit('heartbeat', message);
+            } else {
+              // Log other message types for debugging
+              console.log(`📨 Message received (${messageType}):`, message.data);
+              // Emit generic event for any unknown message type
+              if (messageType !== 'unknown') {
+                this.emit(messageType, message.data);
+              }
             }
           } catch (e) {
             console.error('Error parsing WebSocket message:', e);
