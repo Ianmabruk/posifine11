@@ -26,12 +26,9 @@ export const ProductsProvider = ({ children }) => {
       // Ensure we always get an array
       const productList = Array.isArray(data) ? data : [];
       
-      // Filter visible products for cashiers
+      // Filter visible products
       const visibleProducts = productList.filter(p => {
-        // Show all products to admins
-        if (user?.role === 'admin') return true;
-        // For cashiers, hide expense-only and deleted products
-        return !p.expenseOnly && !p.pendingDelete && p.visibleToCashier !== false;
+        return !p.pendingDelete;
       });
       
       setProducts(visibleProducts);
@@ -45,26 +42,45 @@ export const ProductsProvider = ({ children }) => {
     } catch (err) {
       console.error('Failed to fetch products:', err);
       setError(`Failed to load products: ${err.message}`);
+      // Set empty array instead of keeping old data
       setProducts([]);
     } finally {
       setLoading(false);
       setLastUpdated(Date.now());
     }
-  }, [user]);
+  }, []); // REMOVED user dependency - prevents infinite loop
 
-  // Initial fetch
+  // Initial fetch only
   useEffect(() => {
     fetchProducts();
-  }, [fetchProducts, user]); 
+  }, []); // Only run on mount
 
-  // Auto-refresh interval (every 2 seconds) for instant sync
+  // Auto-refresh interval (every 60 seconds) for background sync
   useEffect(() => {
     const intervalId = setInterval(() => {
         fetchProducts();
-    }, 2000); // 2 seconds for instant sync
+    }, 60000); // 60 seconds - minimal polling
 
     return () => clearInterval(intervalId);
-  }, [fetchProducts]);
+  }, []); // No dependencies
+
+  // Listen for clear-data events and force immediate refetch
+  useEffect(() => {
+    const handleDataCleared = () => {
+      console.log('🔄 Data cleared event received - forcing products refresh');
+      setProducts([]);
+      setError(null);
+      fetchProducts();
+    };
+
+    window.addEventListener('dataCleared', handleDataCleared);
+    window.addEventListener('productsCleared', handleDataCleared);
+    
+    return () => {
+      window.removeEventListener('dataCleared', handleDataCleared);
+      window.removeEventListener('productsCleared', handleDataCleared);
+    };
+  }, []); // No dependencies
 
   const refreshProducts = async () => {
     setLoading(true);

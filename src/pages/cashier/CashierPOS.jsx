@@ -4,7 +4,7 @@ import { useAuth } from '../../context/AuthContext';
 import { useProducts } from '../../context/ProductsContext';
 
 
-import { sales as salesApi, stats, creditRequests, discounts, products, BASE_API_URL } from '../../services/api';
+import { sales as salesApi, stats, creditRequests, discounts, products, timeEntries, BASE_API_URL } from '../../services/api';
 import { ShoppingCart, Trash2, LogOut, Plus, Minus, Search, DollarSign, TrendingUp, Package, BarChart3, Edit2, Settings, Tag } from 'lucide-react';
 import DiscountSelector from '../../components/DiscountSelector';
 import ProductCard from '../../components/ProductCard';
@@ -63,12 +63,33 @@ export default function CashierPOS() {
     loadData();
     refreshProducts();
     
-    // Check if already clocked in today
-    const todayClockIn = localStorage.getItem(`clockIn_${user?.id}_${new Date().toDateString()}`);
-    if (todayClockIn) {
-      setClockedIn(true);
-      setClockInTime(new Date(todayClockIn));
-    }
+    // Load clock in status from backend
+    const loadClockStatus = async () => {
+      try {
+        const entries = await timeEntries.getAll();
+        // Find if user has an active clock in today
+        const today = new Date().toDateString();
+        const activeEntry = entries.find(e => 
+          e.status === 'clocked_in' && 
+          new Date(e.date).toDateString() === today
+        );
+        
+        if (activeEntry) {
+          setClockedIn(true);
+          setClockInTime(new Date(activeEntry.clockInTime));
+        }
+      } catch (error) {
+        console.error('Failed to load clock status:', error);
+        // Fallback to localStorage if backend fails
+        const todayClockIn = localStorage.getItem(`clockIn_${user?.id}_${new Date().toDateString()}`);
+        if (todayClockIn) {
+          setClockedIn(true);
+          setClockInTime(new Date(todayClockIn));
+        }
+      }
+    };
+    
+    loadClockStatus();
 
     // Set up automatic product refresh every 30 seconds
     const refreshInterval = setInterval(() => {
@@ -92,35 +113,29 @@ export default function CashierPOS() {
     }
   }, [globalProducts]);
 
-  const handleClockIn = () => {
-    const now = new Date();
-    localStorage.setItem(`clockIn_${user?.id}_${now.toDateString()}`, now.toISOString());
-    setClockedIn(true);
-    setClockInTime(now);
+  const handleClockIn = async () => {
+    try {
+      const entry = await timeEntries.create('clock_in');
+      setClockedIn(true);
+      setClockInTime(new Date(entry.clockInTime));
+      alert('✅ Clocked in successfully');
+    } catch (error) {
+      console.error('Clock in error:', error);
+      alert('Failed to clock in: ' + error.message);
+    }
   };
 
 
-  const handleClockOut = () => {
-    const now = new Date();
-    const clockInData = localStorage.getItem(`clockIn_${user?.id}_${new Date().toDateString()}`);
-    if (clockInData) {
-      const clockIn = new Date(clockInData);
-      const duration = Math.floor((now - clockIn) / 1000 / 60); // minutes
-      // Store clock out record
-      const records = JSON.parse(localStorage.getItem('clockRecords') || '[]');
-      records.push({
-        userId: user?.id,
-        userName: user?.name,
-        clockIn: clockIn.toISOString(),
-        clockOut: now.toISOString(),
-        duration,
-        date: new Date().toDateString()
-      });
-      localStorage.setItem('clockRecords', JSON.stringify(records));
-      localStorage.removeItem(`clockIn_${user?.id}_${new Date().toDateString()}`);
+  const handleClockOut = async () => {
+    try {
+      const entry = await timeEntries.create('clock_out');
+      setClockedIn(false);
+      setClockInTime(null);
+      alert(`✅ Clocked out successfully\n\nDuration: ${entry.duration} minutes`);
+    } catch (error) {
+      console.error('Clock out error:', error);
+      alert('Failed to clock out: ' + error.message);
     }
-    setClockedIn(false);
-    setClockInTime(null);
   };
 
   const handleAddUser = async (e) => {
@@ -279,7 +294,9 @@ export default function CashierPOS() {
       });
       
       setCart([]);
-      loadData();
+      
+      // Refresh both sales data and products to show updated stock
+      await Promise.all([loadData(), refreshProducts()]);
       
       // Show success message with sale details
       alert(`✅ Sale completed successfully!\n\n💰 Total: KSH ${total.toLocaleString()}\n📋 Payment: ${paymentMethod}\n🧾 Receipt #: ${result.id || 'N/A'}\n\nThank you for your purchase!`);

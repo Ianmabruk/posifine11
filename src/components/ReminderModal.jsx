@@ -1,20 +1,29 @@
-import { useEffect, useState } from 'react';
+import { useEffect, useState, useRef } from 'react';
 import { BASE_API_URL } from '../services/api';
 import { X, CheckCircle, AlertCircle } from 'lucide-react';
 
 export default function ReminderModal({ onClose }) {
   const [reminders, setReminders] = useState([]);
   const [loading, setLoading] = useState(true);
+  const cacheRef = useRef({ data: null, timestamp: null });
+  const CACHE_DURATION = 30000; // Cache for 30 seconds
 
   useEffect(() => {
     fetchReminders();
   }, []);
 
-
-
-
   const fetchReminders = async () => {
     try {
+      // Check cache first
+      const now = Date.now();
+      if (cacheRef.current.data && cacheRef.current.timestamp && 
+          (now - cacheRef.current.timestamp) < CACHE_DURATION) {
+        console.log('📦 Using cached reminders');
+        setReminders(cacheRef.current.data);
+        setLoading(false);
+        return;
+      }
+
       const token = localStorage.getItem('token');
       const res = await fetch(`${BASE_API_URL}/reminders/today`, {
         headers: { Authorization: `Bearer ${token}` }
@@ -24,6 +33,7 @@ export default function ReminderModal({ onClose }) {
       if (!res.ok) {
         console.error('API Error:', res.status, res.statusText);
         setReminders([]);
+        setLoading(false);
         return;
       }
       
@@ -31,6 +41,9 @@ export default function ReminderModal({ onClose }) {
       
       // Ensure data is an array
       if (Array.isArray(data)) {
+        // Cache the data
+        cacheRef.current.data = data;
+        cacheRef.current.timestamp = Date.now();
         setReminders(data);
       } else {
         console.error('Expected array but got:', typeof data, data);
@@ -44,8 +57,6 @@ export default function ReminderModal({ onClose }) {
     }
   };
 
-
-
   const markFulfilled = async (id) => {
     try {
       const token = localStorage.getItem('token');
@@ -54,6 +65,8 @@ export default function ReminderModal({ onClose }) {
         headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${token}` },
         body: JSON.stringify({ status: 'fulfilled' })
       });
+      // Clear cache after marking fulfilled
+      cacheRef.current = { data: null, timestamp: null };
       fetchReminders();
     } catch (error) {
       console.error('Failed to update reminder:', error);

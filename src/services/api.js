@@ -191,36 +191,41 @@ export const products = {
 
 // Sales API
 export const sales = {
-  getAll: async () => {
-    return [
-      { id: 1, total: 450, items: [{ name: 'Coffee', quantity: 2 }], createdAt: new Date().toISOString() }
-    ];
-  },
+  getAll: () => request('/sales'),
   
-  create: async (saleData) => {
-    return {
-      id: Date.now(),
-      ...saleData,
-      createdAt: new Date().toISOString()
-    };
-  }
+  create: (saleData) => request('/sales', {
+    method: 'POST',
+    body: JSON.stringify(saleData)
+  }),
+  
+  delete: (id) => request(`/sales/${id}`, {
+    method: 'DELETE'
+  }),
+  
+  // Admin complete sale with immediate deduction
+  adminComplete: (saleData) => request('/admin-complete-sale', {
+    method: 'POST',
+    body: JSON.stringify(saleData)
+  })
 };
 
 // Expenses API
 export const expenses = {
-  getAll: async () => {
-    return [
-      { id: 1, description: 'Office supplies', amount: 150, createdAt: new Date().toISOString() }
-    ];
-  },
+  getAll: () => request('/expenses'),
   
-  create: async (expenseData) => {
-    return {
-      id: Date.now(),
-      ...expenseData,
-      createdAt: new Date().toISOString()
-    };
-  }
+  create: (expenseData) => request('/expenses', {
+    method: 'POST',
+    body: JSON.stringify(expenseData)
+  }),
+  
+  update: (id, expenseData) => request(`/expenses/${id}`, {
+    method: 'PUT',
+    body: JSON.stringify(expenseData)
+  }),
+  
+  delete: (id) => request(`/expenses/${id}`, {
+    method: 'DELETE'
+  })
 };
 
 // Statistics API
@@ -250,21 +255,19 @@ export const stats = {
 
 // Reminders API
 export const reminders = {
-  getAll: async () => {
-    return [];
-  },
-  getToday: async () => {
-    return [];
-  },
-  create: async (reminderData) => {
-    return { id: Date.now(), ...reminderData };
-  },
-  update: async (id, reminderData) => {
-    return { id, ...reminderData };
-  },
-  delete: async (id) => {
-    return { success: true };
-  }
+  getAll: () => request('/reminders'),
+  getToday: () => request('/reminders/today'),
+  create: (reminderData) => request('/reminders', {
+    method: 'POST',
+    body: JSON.stringify(reminderData)
+  }),
+  update: (id, reminderData) => request(`/reminders/${id}`, {
+    method: 'PUT',
+    body: JSON.stringify(reminderData)
+  }),
+  delete: (id) => request(`/reminders/${id}`, {
+    method: 'DELETE'
+  })
 };
 
 // Price History API
@@ -325,15 +328,30 @@ export const creditRequests = {
 
 // Settings API
 export const settings = {
-  get: async () => {
-    return {
-      screenLockPassword: '2005',
-      businessName: 'My Business'
-    };
-  },
-  update: async (settingsData) => {
-    return settingsData;
-  }
+  get: () => request('/settings'),
+  update: (settingsData) => request('/settings', {
+    method: 'PUT',
+    body: JSON.stringify(settingsData)
+  })
+};
+
+// Time Entries API - for clock in/out tracking
+export const timeEntries = {
+  getAll: () => request('/time-entries'),
+  
+  create: (action) => request('/time-entries', {
+    method: 'POST',
+    body: JSON.stringify({ action })
+  }),
+  
+  update: (id, data) => request(`/time-entries/${id}`, {
+    method: 'PUT',
+    body: JSON.stringify(data)
+  }),
+  
+  delete: (id) => request(`/time-entries/${id}`, {
+    method: 'DELETE'
+  })
 };
 
 // Batches API

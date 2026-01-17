@@ -1,20 +1,18 @@
-import { useState, useEffect, useCallback } from 'react';
+import { useState, useEffect, useCallback, useRef } from 'react';
 
 export default function useInactivity(timeout = 60000) { // Default 1 minute
   const [isLocked, setIsLocked] = useState(false);
-  const [lastActivity, setLastActivity] = useState(Date.now());
+  const lastActivityRef = useRef(Date.now());
 
   const resetTimer = useCallback(() => {
-    setLastActivity(Date.now());
-    if (isLocked) {
-      setIsLocked(false);
-    }
-  }, [isLocked]);
+    lastActivityRef.current = Date.now();
+    setIsLocked(false);
+  }, []);
 
   const unlock = useCallback(() => {
     setIsLocked(false);
-    resetTimer();
-  }, [resetTimer]);
+    lastActivityRef.current = Date.now();
+  }, []);
 
   useEffect(() => {
     const events = [
@@ -27,7 +25,10 @@ export default function useInactivity(timeout = 60000) { // Default 1 minute
     ];
 
     const handleActivity = () => {
-      resetTimer();
+      lastActivityRef.current = Date.now();
+      if (isLocked) {
+        setIsLocked(false);
+      }
     };
 
     // Add event listeners
@@ -38,10 +39,10 @@ export default function useInactivity(timeout = 60000) { // Default 1 minute
     // Set up interval to check for inactivity
     const interval = setInterval(() => {
       const now = Date.now();
-      if (now - lastActivity > timeout && !isLocked) {
+      if (now - lastActivityRef.current > timeout && !isLocked) {
         setIsLocked(true);
       }
-    }, 1000); // Check every second
+    }, 5000); // Check every 5 seconds instead of 1 second to reduce CPU usage
 
     // Cleanup
     return () => {
@@ -50,7 +51,7 @@ export default function useInactivity(timeout = 60000) { // Default 1 minute
       });
       clearInterval(interval);
     };
-  }, [lastActivity, timeout, isLocked, resetTimer]);
+  }, [timeout, isLocked]);
 
   return [isLocked, unlock, resetTimer];
 }
