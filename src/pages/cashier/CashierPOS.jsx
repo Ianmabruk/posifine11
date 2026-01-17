@@ -69,7 +69,9 @@ export default function CashierPOS() {
     if (token) {
       websocketService.connect(token, (data) => {
         // When stock update received, update product list
+        console.log('📡 WebSocket callback - received data:', data);
         if (data && data.allProducts) {
+          console.log('📦 Updating product list from WebSocket callback');
           setProductList(data.allProducts);
         }
       }).catch((error) => {
@@ -78,10 +80,13 @@ export default function CashierPOS() {
       
       // Listen for SALE_COMPLETED events from admin dashboard to update inventory
       websocketService.on('sale_completed', (saleData) => {
-        console.log('🔄 Sale completed from admin - updating product list:', saleData);
+        console.log('🔄 Sale completed event received - updating product list:', saleData);
         if (saleData.updatedProducts) {
           // Update product list with deducted stock from admin sale
+          console.log('📝 Setting product list from sale_completed event, products count:', saleData.updatedProducts.length);
           setProductList(saleData.updatedProducts);
+        } else {
+          console.warn('⚠️ Sale completed but no updatedProducts in event');
         }
       });
     }
@@ -312,6 +317,8 @@ export default function CashierPOS() {
     if (cart.length === 0) return;
     
     try {
+      console.log('🛒 Checkout initiated - items:', cart.length);
+      
       // Create sale through the backend API
       const result = await salesApi.create({
         items: cart.map(item => ({ productId: item.id, quantity: item.quantity, price: item.price })),
@@ -319,13 +326,29 @@ export default function CashierPOS() {
         paymentMethod
       });
       
+      console.log('✅ Sale API response received:', result);
+      
+      // Immediately update products in UI with the response data - THIS IS CRITICAL FOR INSTANT DISPLAY
+      if (result.updatedProducts && result.updatedProducts.length > 0) {
+        setProductList(result.updatedProducts);
+        console.log(`✅ Products updated from sale response (${result.updatedProducts.length} products)`);
+      } else {
+        console.warn('⚠️ No updatedProducts in response - will refresh from server');
+      }
+      
       setCart([]);
       
-      // Refresh both sales data and products to show updated stock
-      await Promise.all([loadData(), refreshProducts()]);
+      // Also refresh data and products in background to ensure consistency
+      // This is a secondary sync - the main update came from the response above
+      Promise.all([
+        loadData().catch(err => console.error('Error reloading sales data:', err)),
+        refreshProducts().catch(err => console.error('Error refreshing products:', err))
+      ]).then(() => {
+        console.log('✅ Background data refresh complete');
+      });
       
       // Show success message with sale details
-      alert(`✅ Sale completed successfully!\n\n💰 Total: KSH ${total.toLocaleString()}\n📋 Payment: ${paymentMethod}\n🧾 Receipt #: ${result.id || 'N/A'}\n\nThank you for your purchase!`);
+      alert(`✅ Sale completed successfully!\n\n💰 Total: KSH ${total.toLocaleString()}\n📋 Payment: ${paymentMethod}\n🧾 Receipt #: ${result.sale?.id || 'N/A'}\n\nThank you for your purchase!`);
     } catch (error) {
       console.error('Checkout error:', error);
       let errorMessage = 'Failed to complete sale';
