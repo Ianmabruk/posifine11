@@ -95,11 +95,12 @@ export default function CashierPOS() {
     const loadClockStatus = async () => {
       try {
         const entries = await timeEntries.getAll();
-        // Find if user has an active clock in today
+        // Find if CURRENT USER has an active clock in today
         const today = new Date().toDateString();
         const activeEntry = entries.find(e => 
           e.status === 'clocked_in' && 
-          new Date(e.date).toDateString() === today
+          e.cashierId === user?.id &&  // FIX: Check user ID, not just any active entry
+          new Date(e.date || e.createdAt).toDateString() === today
         );
         
         if (activeEntry) {
