@@ -44,6 +44,7 @@ export default function CashierPOS() {
     items: []
   });
   const [isAutoRefreshing, setIsAutoRefreshing] = useState(false);
+  const [isProcessingSale, setIsProcessingSale] = useState(false);
 
   // Track last products update time and update count to display refresh info
   const [lastProductUpdate, setLastProductUpdate] = useState(Date.now());
@@ -336,7 +337,13 @@ export default function CashierPOS() {
       return;
     }
     
+    if (isProcessingSale) {
+      console.warn('⚠️ Sale already being processed - ignoring duplicate click');
+      return;
+    }
+    
     try {
+      setIsProcessingSale(true);
       console.log('🛒 Checkout initiated - items:', cart.length, 'Total:', total);
       console.log('📋 Cart items:', cart);
       
@@ -401,6 +408,8 @@ export default function CashierPOS() {
       
       console.error('❌ Error message:', errorMessage);
       alert(errorMessage);
+    } finally {
+      setIsProcessingSale(false);
     }
   };
 
@@ -812,10 +821,21 @@ export default function CashierPOS() {
 
               <button 
                 onClick={handleCheckout} 
-                disabled={cart.length === 0} 
-                className="btn-primary w-full py-4 text-lg bg-gradient-to-r from-green-600 to-teal-600 hover:from-green-700 hover:to-teal-700 shadow-lg"
+                disabled={cart.length === 0 || isProcessingSale} 
+                className={`btn-primary w-full py-4 text-lg font-semibold rounded-lg transition-all ${
+                  isProcessingSale 
+                    ? 'bg-gray-400 cursor-not-allowed' 
+                    : 'bg-gradient-to-r from-green-600 to-teal-600 hover:from-green-700 hover:to-teal-700 shadow-lg hover:shadow-xl'
+                }`}
               >
-                Complete Sale
+                {isProcessingSale ? (
+                  <span className="flex items-center justify-center gap-2">
+                    <span className="inline-block animate-spin">⏳</span>
+                    Processing Sale...
+                  </span>
+                ) : (
+                  '✓ Complete Sale'
+                )}
               </button>
             </div>
           </div>
