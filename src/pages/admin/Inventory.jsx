@@ -57,9 +57,6 @@ export default function Inventory() {
     visibleToCashier: true
   });
 
-  // Track if we've loaded data to avoid duplicating loads
-  const [hasLoadedInitially, setHasLoadedInitially] = useState(false);
-
   // Load data function
   const loadData = async () => {
     try {
