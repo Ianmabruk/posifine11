@@ -92,6 +92,7 @@ export default function CashierPOS() {
     }
     
     // Load clock in status from backend - only when user is loaded
+    // IMPORTANT: We load the status but do NOT auto-set to true on first login
     if (user?.id) {
       const loadClockStatus = async () => {
         try {
@@ -104,24 +105,16 @@ export default function CashierPOS() {
             new Date(e.date || e.createdAt).toDateString() === today
           );
           
-          if (activeEntry) {
-            setClockedIn(true);
-            setClockInTime(new Date(activeEntry.clockInTime));
-          } else {
-            setClockedIn(false);
-            setClockInTime(null);
-          }
+          // FIXED: Always set clockedIn to false on initial load
+          // User MUST manually click "Clock In" button - no auto clock-in
+          setClockedIn(false);
+          setClockInTime(null);
+          console.log('🔔 Clock status loaded - user must manually clock in');
         } catch (error) {
           console.error('Failed to load clock status:', error);
-          // Fallback to localStorage if backend fails
-          const todayClockIn = localStorage.getItem(`clockIn_${user?.id}_${new Date().toDateString()}`);
-          if (todayClockIn) {
-            setClockedIn(true);
-            setClockInTime(new Date(todayClockIn));
-          } else {
-            setClockedIn(false);
-            setClockInTime(null);
-          }
+          // Fallback: Always require manual clock in
+          setClockedIn(false);
+          setClockInTime(null);
         }
       };
       
@@ -328,13 +321,27 @@ export default function CashierPOS() {
 
 
   const handleCheckout = async () => {
-    if (cart.length === 0) return;
+    console.log('🔘 Complete Sale button clicked');
+    console.log('🛒 Cart length:', cart.length, 'Total:', total);
+    
+    if (cart.length === 0) {
+      console.warn('⚠️ Cart is empty - cannot complete sale');
+      alert('Please add items to cart before completing sale');
+      return;
+    }
+    
+    if (total <= 0) {
+      console.warn('⚠️ Total is zero or negative - cannot complete sale');
+      alert('Invalid cart total - please check items');
+      return;
+    }
     
     try {
-      console.log('🛒 Checkout initiated - items:', cart.length);
+      console.log('🛒 Checkout initiated - items:', cart.length, 'Total:', total);
       console.log('📋 Cart items:', cart);
       
       // Create sale through the backend API
+      console.log('📤 Sending sale request to backend...');
       const result = await salesApi.create({
         items: cart.map(item => ({ productId: item.id, quantity: item.quantity, price: item.price })),
         total,
