@@ -55,14 +55,10 @@ export const ProductsProvider = ({ children }) => {
     fetchProducts();
   }, []); // Only run on mount
 
-  // Auto-refresh interval (every 60 seconds) for background sync
-  useEffect(() => {
-    const intervalId = setInterval(() => {
-        fetchProducts();
-    }, 60000); // 60 seconds - minimal polling
-
-    return () => clearInterval(intervalId);
-  }, []); // No dependencies
+  // REMOVED: Auto-refresh interval that was causing inventory resets
+  // The 60-second interval was overwriting user changes
+  // Now we only refresh on explicit request (manual refresh, WebSocket events, or sale completion)
+  // This prevents stale data from overwriting fresh updates
 
   // Listen for clear-data events and force immediate refetch
   useEffect(() => {

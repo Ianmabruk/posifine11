@@ -14,6 +14,7 @@ export default function Inventory() {
   const { products: globalProducts, refreshProducts } = useProducts();
   const [productList, setProductList] = useState([]);
   const [batchList, setBatchList] = useState([]);
+  const [hasLoadedInitially, setHasLoadedInitially] = useState(false);
   const [filter, setFilter] = useState('all');
   const [searchTerm, setSearchTerm] = useState('');
   const [showAddModal, setShowAddModal] = useState(false);
@@ -56,16 +57,37 @@ export default function Inventory() {
     visibleToCashier: true
   });
 
+  // Track if we've loaded data to avoid duplicating loads
+  const [hasLoadedInitially, setHasLoadedInitially] = useState(false);
+
+  // Load data function
+  const loadData = async () => {
+    try {
+      console.log('📦 Loading inventory data...');
+      await refreshProducts();
+      const batchData = await batches.getAll();
+      setBatchList(batchData);
+      console.log('✅ Inventory data loaded');
+    } catch (error) {
+      console.error('❌ Failed to load data:', error);
+      showNotification('Failed to load inventory data', 'error');
+    }
+  };
 
   useEffect(() => {
-    loadData();
+    // Initial load only
+    if (!hasLoadedInitially) {
+      loadData();
+      setHasLoadedInitially(true);
+    }
     
     // Connect to WebSocket for real-time stock updates
     const token = localStorage.getItem('token');
     if (token) {
       websocketService.connect(token, (data) => {
         // When stock update received, update product list
-        if (data && data.allProducts) {
+        if (data && data.allProducts && data.allProducts.length > 0) {
+          console.log('📦 WebSocket stock update received:', data.allProducts.length, 'products');
           setProductList(data.allProducts);
         }
       }).catch((error) => {
@@ -75,7 +97,8 @@ export default function Inventory() {
       // Listen for SALE_COMPLETED events to refresh inventory
       websocketService.on('sale_completed', (saleData) => {
         console.log('🔄 Sale completed - updating inventory display:', saleData);
-        if (saleData.updatedProducts) {
+        if (saleData.updatedProducts && saleData.updatedProducts.length > 0) {
+          console.log(`✅ Updating ${saleData.updatedProducts.length} products from sale`);
           setProductList(saleData.updatedProducts);
           showNotification(`✅ Stock updated! Sale #${saleData.saleId} deducted inventory`, 'success');
         }
@@ -90,24 +113,16 @@ export default function Inventory() {
     return () => {
       websocketService.disconnect();
     };
-  }, []);
+  }, [hasLoadedInitially]);
 
-  const loadData = async () => {
-    try {
-      await refreshProducts();
-      const batchData = await batches.getAll();
-      setBatchList(batchData);
-    } catch (error) {
-      console.error('Failed to load data:', error);
-    }
-  };
-
-  // Sync with global context
+  // FIXED: Only sync global products on initial load, not on every change
+  // This prevents the global context refresh from overwriting manual updates
   useEffect(() => {
-    if (globalProducts) {
+    if (globalProducts && globalProducts.length > 0 && productList.length === 0) {
+      console.log('📦 Initial sync from global context:', globalProducts.length, 'products');
       setProductList(globalProducts);
     }
-  }, [globalProducts]);
+  }, [globalProducts.length]); // Only watch length to avoid excessive updates
 
   const handleImageUpload = (e, isNewProduct = true) => {
     const file = e.target.files[0];

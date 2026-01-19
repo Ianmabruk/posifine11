@@ -91,34 +91,42 @@ export default function CashierPOS() {
       });
     }
     
-    // Load clock in status from backend
-    const loadClockStatus = async () => {
-      try {
-        const entries = await timeEntries.getAll();
-        // Find if CURRENT USER has an active clock in today
-        const today = new Date().toDateString();
-        const activeEntry = entries.find(e => 
-          e.status === 'clocked_in' && 
-          e.cashierId === user?.id &&  // FIX: Check user ID, not just any active entry
-          new Date(e.date || e.createdAt).toDateString() === today
-        );
-        
-        if (activeEntry) {
-          setClockedIn(true);
-          setClockInTime(new Date(activeEntry.clockInTime));
+    // Load clock in status from backend - only when user is loaded
+    if (user?.id) {
+      const loadClockStatus = async () => {
+        try {
+          const entries = await timeEntries.getAll();
+          // Find if CURRENT USER has an active clock in today
+          const today = new Date().toDateString();
+          const activeEntry = entries.find(e => 
+            e.status === 'clocked_in' && 
+            e.cashierId === user?.id &&
+            new Date(e.date || e.createdAt).toDateString() === today
+          );
+          
+          if (activeEntry) {
+            setClockedIn(true);
+            setClockInTime(new Date(activeEntry.clockInTime));
+          } else {
+            setClockedIn(false);
+            setClockInTime(null);
+          }
+        } catch (error) {
+          console.error('Failed to load clock status:', error);
+          // Fallback to localStorage if backend fails
+          const todayClockIn = localStorage.getItem(`clockIn_${user?.id}_${new Date().toDateString()}`);
+          if (todayClockIn) {
+            setClockedIn(true);
+            setClockInTime(new Date(todayClockIn));
+          } else {
+            setClockedIn(false);
+            setClockInTime(null);
+          }
         }
-      } catch (error) {
-        console.error('Failed to load clock status:', error);
-        // Fallback to localStorage if backend fails
-        const todayClockIn = localStorage.getItem(`clockIn_${user?.id}_${new Date().toDateString()}`);
-        if (todayClockIn) {
-          setClockedIn(true);
-          setClockInTime(new Date(todayClockIn));
-        }
-      }
-    };
-    
-    loadClockStatus();
+      };
+      
+      loadClockStatus();
+    }
 
     // Set up automatic product refresh every 30 seconds
     const refreshInterval = setInterval(() => {
@@ -131,7 +139,7 @@ export default function CashierPOS() {
       clearInterval(refreshInterval);
       websocketService.disconnect();
     };
-  }, []);
+  }, [user?.id]);
 
   // Sync with global products
   useEffect(() => {
@@ -149,7 +157,10 @@ export default function CashierPOS() {
     try {
       const entry = await timeEntries.create('clock_in');
       setClockedIn(true);
-      setClockInTime(new Date(entry.clockInTime));
+      const clockInDate = new Date(entry.clockInTime);
+      setClockInTime(clockInDate);
+      // Persist to localStorage as backup
+      localStorage.setItem(`clockIn_${user?.id}_${new Date().toDateString()}`, clockInDate.toISOString());
       alert('✅ Clocked in successfully');
     } catch (error) {
       console.error('Clock in error:', error);
@@ -163,6 +174,8 @@ export default function CashierPOS() {
       const entry = await timeEntries.create('clock_out');
       setClockedIn(false);
       setClockInTime(null);
+      // Remove from localStorage
+      localStorage.removeItem(`clockIn_${user?.id}_${new Date().toDateString()}`);
       alert(`✅ Clocked out successfully\n\nDuration: ${entry.duration} minutes`);
     } catch (error) {
       console.error('Clock out error:', error);
@@ -319,6 +332,7 @@ export default function CashierPOS() {
     
     try {
       console.log('🛒 Checkout initiated - items:', cart.length);
+      console.log('📋 Cart items:', cart);
       
       // Create sale through the backend API
       const result = await salesApi.create({
@@ -329,29 +343,42 @@ export default function CashierPOS() {
       
       console.log('✅ Sale API response received:', result);
       
-      // Immediately update products in UI with the response data - THIS IS CRITICAL FOR INSTANT DISPLAY
+      // CRITICAL: Immediately update products in UI with the response data
+      // The response includes the updated products with stock deducted
       if (result.updatedProducts && result.updatedProducts.length > 0) {
+        console.log(`✅ Updating local products from sale response (${result.updatedProducts.length} products)`);
         setProductList(result.updatedProducts);
-        console.log(`✅ Products updated from sale response (${result.updatedProducts.length} products)`);
       } else {
-        console.warn('⚠️ No updatedProducts in response - will refresh from server');
+        console.warn('⚠️ No updatedProducts in response - refreshing from server');
+        // Fallback: Force refresh from server
+        try {
+          const freshProducts = await refreshProducts();
+          if (freshProducts && freshProducts.length > 0) {
+            setProductList(freshProducts);
+            console.log(`✅ Refreshed products from server (${freshProducts.length} products)`);
+          }
+        } catch (refreshErr) {
+          console.error('⚠️ Failed to refresh products:', refreshErr);
+        }
       }
       
+      // Clear cart immediately
       setCart([]);
+      console.log('✅ Cart cleared');
       
-      // Also refresh data and products in background to ensure consistency
-      // This is a secondary sync - the main update came from the response above
-      Promise.all([
-        loadData().catch(err => console.error('Error reloading sales data:', err)),
-        refreshProducts().catch(err => console.error('Error refreshing products:', err))
-      ]).then(() => {
-        console.log('✅ Background data refresh complete');
+      // Refresh sales data in background (non-blocking)
+      loadData().catch(err => {
+        console.error('⚠️ Failed to reload sales data in background:', err);
+        // Don't block checkout on this error
       });
       
       // Show success message with sale details
-      alert(`✅ Sale completed successfully!\n\n💰 Total: KSH ${total.toLocaleString()}\n📋 Payment: ${paymentMethod}\n🧾 Receipt #: ${result.sale?.id || 'N/A'}\n\nThank you for your purchase!`);
+      const receiptNum = result.sale?.id || 'N/A';
+      console.log(`✅ Sale #${receiptNum} completed successfully`);
+      alert(`✅ Sale completed successfully!\n\n💰 Total: KSH ${total.toLocaleString()}\n📋 Payment: ${paymentMethod}\n🧾 Receipt #: ${receiptNum}\n\nThank you for your purchase!`);
+      
     } catch (error) {
-      console.error('Checkout error:', error);
+      console.error('❌ Checkout error:', error);
       let errorMessage = 'Failed to complete sale';
       
       if (error.message.includes('Failed to fetch') || error.message.includes('Network error')) {
@@ -365,6 +392,7 @@ export default function CashierPOS() {
         errorMessage = `Failed to complete sale: ${error.message}`;
       }
       
+      console.error('❌ Error message:', errorMessage);
       alert(errorMessage);
     }
   };
