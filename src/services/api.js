@@ -111,7 +111,12 @@ export const auth = {
     body: JSON.stringify(data)
   }),
   
-  me: () => request('/auth/me')
+  me: () => request('/auth/me'),
+  
+  updatePin: (pin) => request('/auth/update-pin', {
+    method: 'POST',
+    body: JSON.stringify({ pin })
+  })
 };
 
 

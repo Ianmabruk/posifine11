@@ -2,19 +2,19 @@
 import { useState, useEffect } from 'react';
 import { useAuth } from '../../context/AuthContext';
 import { useProducts } from '../../context/ProductsContext';
-
+import { useScreenLock } from '../../context/ScreenLockContext';
 
 import { sales as salesApi, stats, creditRequests, discounts, products, timeEntries, BASE_API_URL } from '../../services/api';
 import websocketService from '../../services/websocketService';
-import { ShoppingCart, Trash2, LogOut, Plus, Minus, Search, DollarSign, TrendingUp, Package, BarChart3, Edit2, Settings, Tag } from 'lucide-react';
+import { ShoppingCart, Trash2, LogOut, Plus, Minus, Search, DollarSign, TrendingUp, Package, BarChart3, Edit2, Settings, Tag, Lock } from 'lucide-react';
 import DiscountSelector from '../../components/DiscountSelector';
 import ProductCard from '../../components/ProductCard';
-
-
+import ScreenLockPin from '../../components/ScreenLockPin';
 
 export default function CashierPOS() {
   const { user, logout, isUltraPackage, isBasicPackage, canEditStock, canManageUsers, canViewAnalytics, isRealTimeProductSyncEnabled, isCashierUserManagementEnabled } = useAuth();
   const { products: globalProducts, refreshProducts } = useProducts();
+  const { isLocked, lock, unlock } = useScreenLock();
 
   const [productList, setProductList] = useState([]);
   const [cart, setCart] = useState([]);
@@ -453,6 +453,10 @@ export default function CashierPOS() {
                 <Settings className="w-4 h-4" />
                 <span className="hidden md:inline">Settings</span>
               </button>
+              <button onClick={lock} className="btn-secondary flex items-center gap-1 md:gap-2 hover:bg-yellow-50 hover:text-yellow-600 hover:border-yellow-200 text-sm md:text-base px-2 md:px-4" title="Lock screen (15 min timeout)">
+                <Lock className="w-4 h-4" />
+                <span className="hidden md:inline">Lock</span>
+              </button>
               <button onClick={logout} className="btn-secondary flex items-center gap-1 md:gap-2 hover:bg-red-50 hover:text-red-600 hover:border-red-200 text-sm md:text-base px-2 md:px-4">
                 <LogOut className="w-4 h-4" />
                 <span className="hidden md:inline">Logout</span>
@@ -460,10 +464,7 @@ export default function CashierPOS() {
             </div>
           </div>
         </div>
-      </nav>
-
-
-      {/* View Tabs */}
+      </nav>      {/* View Tabs */}
       <div className="flex gap-1 md:gap-2 px-2 md:px-6 py-2 md:py-4 bg-white border-b border-gray-200 overflow-x-auto">
         <button
           onClick={() => setActiveView('pos')}
@@ -1337,6 +1338,14 @@ export default function CashierPOS() {
           </div>
         </div>
       )}
+
+      {/* Screen Lock PIN Component */}
+      <ScreenLockPin 
+        isLocked={isLocked} 
+        onUnlock={unlock}
+        userPin={user?.pin || '1234'}
+        userName={user?.name}
+      />
     </div>
   );
 }
