@@ -74,32 +74,60 @@ export default function CashierPOS() {
     const token = localStorage.getItem('token');
     if (token) {
       websocketService.connect(token, (data) => {
-        // When stock update received, reload products to show new stock
+        console.log('📡 WebSocket callback received:', data);
+        
+        // Handle all product updates
         if (data && data.allProducts) {
+          console.log(`📦 Merging ${data.allProducts.length} products from WebSocket`);
           const filtered = data.allProducts.filter(p => p.visibleToCashier !== false && !p.expenseOnly);
           setProductList(filtered);
         }
+        
+        // Handle individual stock updates
+        if (data && data.productId !== undefined && data.newQuantity !== undefined) {
+          console.log(`📦 Stock update for product ${data.productId}: ${data.newQuantity}${data.unit || ''}`);
+          setProductList(prev => {
+            // Find and update the product in current list
+            const updated = prev.map(p => 
+              p.id === data.productId 
+                ? { ...p, quantity: data.newQuantity } 
+                : p
+            );
+            return updated;
+          });
+        }
+        
         // When discounts updated, refresh discount list
         if (data && data.discounts) {
+          console.log('📊 Discount list updated');
           setDiscountList(data.discounts);
         }
+        
         // When new sale created, reload data to show updated stats
         if (data && data.sale) {
+          console.log('💰 Sale detected, reloading stats');
           loadData();
         }
       }).catch((error) => {
-        console.warn('WebSocket connection failed:', error);
+        console.warn('⚠️ WebSocket connection failed:', error);
       });
     }
 
     const unsub = subscribeProducts((msg) => {
       try {
         if (!msg) return;
+        console.log('📨 Product subscription message:', msg.type);
         if (msg.type === 'initial' || msg.type === 'products_snapshot' || msg.type === 'product_created' || msg.type === 'product_updated' || msg.type === 'product_deleted') {
-          products.getAll().then(p => setProductList(p.filter(prod => prod.visibleToCashier !== false && !prod.expenseOnly))).catch(() => {});
+          products.getAll().then(p => {
+            const filtered = p.filter(prod => prod.visibleToCashier !== false && !prod.expenseOnly);
+            console.log(`✅ Subscription update: ${filtered.length} products`);
+            setProductList(filtered);
+          }).catch((err) => {
+            console.error('Failed to fetch products from subscription:', err);
+          });
         }
       } catch (e) {
-        console.error('Product subscription handler error', e);
+        console.error('❌ Product subscription handler error', e);
       }
     });
 
@@ -217,6 +245,18 @@ export default function CashierPOS() {
       setData({ sales: s, expenses: e, stats: st });
       setBatchList(b);
       
+      // CRITICAL FIX: Restore clock status after product refresh
+      // Clock status may have changed during data fetch, restore from localStorage
+      const storedClockStatus = localStorage.getItem(`clockStatus_${user?.id}`);
+      if (storedClockStatus === 'true') {
+        setIsClockedIn(true);
+        // Restore clock-in time if available
+        const storedClockTime = localStorage.getItem(`clockInTime_${user?.id}`);
+        if (storedClockTime) {
+          setClockedInTime(new Date(storedClockTime));
+        }
+      }
+      
       // Load discounts
       try {
         const discounts = await fetch(`${BASE_API_URL}/discounts`, {
@@ -329,6 +369,8 @@ export default function CashierPOS() {
         price: item.price
       }));
       
+      // 1. Create the sale record
+      console.log('📤 Creating sale...');
       const saleResponse = await sales.create({
         items: cartItemsWithUnits,
         total: finalTotal,
@@ -337,42 +379,73 @@ export default function CashierPOS() {
         taxType: taxType,
         paymentMethod
       });
+      console.log('✅ Sale created:', saleResponse.id);
       
-      // CRITICAL: Force immediate product refresh from backend
-      // Do NOT rely on cached products - always re-fetch
+      // 2. Force immediate product refresh from backend (CRITICAL: await this!)
+      console.log('🔄 Refreshing product inventory...');
       const freshProducts = await products.getAll();
+      console.log(`📦 Received ${freshProducts.length} products from server`);
+      
+      // 3. Filter products for cashier display
       const filteredProducts = freshProducts.filter(p => p.visibleToCashier !== false && !p.expenseOnly);
+      console.log(`✅ Filtered to ${filteredProducts.length} visible products`);
+      
+      // 4. Update UI with fresh products
       setProductList(filteredProducts);
       
+      // 5. Clear cart and selections
       setCart([]);
       setCartItemUnits({});  // Clear unit selections
       setSelectedDiscount(null);
       setTaxType('exclusive');
-      await loadData();
-      alert('Sale completed successfully!');
+      
+      // 6. Restore clock status (in case it was lost during refresh)
+      const storedClockStatus = localStorage.getItem(`clockStatus_${user?.id}`);
+      if (storedClockStatus === 'true') {
+        setIsClockedIn(true);
+        const storedClockTime = localStorage.getItem(`clockInTime_${user?.id}`);
+        if (storedClockTime) {
+          setClockedInTime(new Date(storedClockTime));
+        }
+      }
+      
+      console.log('✅ Sale completed successfully!');
+      alert('✅ Sale completed successfully!');
     } catch (error) {
-      console.error('Checkout failed:', error);
-      alert('Sale failed. Please try again.');
+      console.error('❌ Checkout failed:', error.message, error);
+      alert(`❌ Sale failed: ${error.message || 'Unknown error occurred'}`);
     }
   };
 
   const handleAddProduct = async (e) => {
     e.preventDefault();
     try {
-      await products.create({ 
+      console.log('➕ Creating new product:', newProduct.name);
+      
+      // Create the product
+      const createdProduct = await products.create({ 
         ...newProduct, 
         price: parseFloat(newProduct.price),
         cost: parseFloat(newProduct.cost || 0),
         quantity: 0 // Stock managed through batches
       });
+      
+      console.log('✅ Product created:', createdProduct);
+      
+      // Clear form
       setNewProduct({ name: '', price: '', cost: '', category: 'finished', image: '' });
       setImagePreview('');
       setShowAddProduct(false);
-      await loadData(); // Reload all data immediately
-      alert('Product added successfully!');
+      
+      // Refresh all data to show new product everywhere
+      console.log('🔄 Reloading data...');
+      await loadData();
+      
+      console.log('✅ Product added successfully!');
+      alert('✅ Product added successfully!');
     } catch (error) {
-      console.error('Failed to add product:', error);
-      alert('Failed to add product');
+      console.error('❌ Failed to add product:', error.message, error);
+      alert(`❌ Failed to add product: ${error.message || 'Unknown error'}`);
     }
   };
 
