@@ -404,7 +404,7 @@ export const mainAdmin = {
     });
   },
   getUsers: () => {
-    const token = localStorage.getItem('ownerToken');
+    const token = localStorage.getItem('token') || localStorage.getItem('ownerToken') || localStorage.getItem('mainAdminToken');
     return request('/main-admin/users', {
       headers: {
         'Authorization': `Bearer ${token}`
@@ -412,7 +412,7 @@ export const mainAdmin = {
     });
   },
   getStats: () => {
-    const token = localStorage.getItem('ownerToken');
+    const token = localStorage.getItem('token') || localStorage.getItem('ownerToken') || localStorage.getItem('mainAdminToken');
     return request('/main-admin/stats', {
       headers: {
         'Authorization': `Bearer ${token}`
@@ -420,7 +420,7 @@ export const mainAdmin = {
     });
   },
   getActivities: () => {
-    const token = localStorage.getItem('ownerToken');
+    const token = localStorage.getItem('token') || localStorage.getItem('ownerToken') || localStorage.getItem('mainAdminToken');
     return request('/main-admin/activities', {
       headers: {
         'Authorization': `Bearer ${token}`
@@ -428,7 +428,7 @@ export const mainAdmin = {
     });
   },
   getSalesAll: () => {
-    const token = localStorage.getItem('ownerToken');
+    const token = localStorage.getItem('token') || localStorage.getItem('ownerToken') || localStorage.getItem('mainAdminToken');
     return request('/main-admin/sales-all', {
       headers: {
         'Authorization': `Bearer ${token}`
@@ -436,7 +436,7 @@ export const mainAdmin = {
     });
   },
   getTimeEntriesAll: () => {
-    const token = localStorage.getItem('ownerToken');
+    const token = localStorage.getItem('token') || localStorage.getItem('ownerToken') || localStorage.getItem('mainAdminToken');
     return request('/main-admin/time-entries-all', {
       headers: {
         'Authorization': `Bearer ${token}`
@@ -444,7 +444,7 @@ export const mainAdmin = {
     });
   },
   lockUser: (userId, locked) => {
-    const token = localStorage.getItem('ownerToken');
+    const token = localStorage.getItem('token') || localStorage.getItem('ownerToken') || localStorage.getItem('mainAdminToken');
     return request(`/main-admin/users/${userId}/lock`, {
       method: 'POST',
       headers: {
@@ -454,7 +454,7 @@ export const mainAdmin = {
     });
   },
   changePlan: (userId, plan) => {
-    const token = localStorage.getItem('ownerToken');
+    const token = localStorage.getItem('token') || localStorage.getItem('ownerToken') || localStorage.getItem('mainAdminToken');
     return request(`/main-admin/users/${userId}/plan`, {
       method: 'POST',
       headers: {
@@ -464,7 +464,7 @@ export const mainAdmin = {
     });
   },
   clearData: (type) => {
-    const token = localStorage.getItem('ownerToken');
+    const token = localStorage.getItem('token') || localStorage.getItem('ownerToken') || localStorage.getItem('mainAdminToken');
     return request('/main-admin/system/clear-data', {
       method: 'POST',
       headers: {
@@ -474,7 +474,7 @@ export const mainAdmin = {
     });
   },
   getSubscribers: () => {
-    const token = localStorage.getItem('ownerToken');
+    const token = localStorage.getItem('token') || localStorage.getItem('ownerToken') || localStorage.getItem('mainAdminToken');
     return request('/main-admin/subscribers', {
       headers: {
         'Authorization': `Bearer ${token}`
@@ -482,7 +482,7 @@ export const mainAdmin = {
     });
   },
   getSubscribersAnalytics: () => {
-    const token = localStorage.getItem('ownerToken');
+    const token = localStorage.getItem('token') || localStorage.getItem('ownerToken') || localStorage.getItem('mainAdminToken');
     return request('/main-admin/subscribers/analytics', {
       headers: {
         'Authorization': `Bearer ${token}`
@@ -490,7 +490,7 @@ export const mainAdmin = {
     });
   },
   getUsersWithSubscriptions: () => {
-    const token = localStorage.getItem('ownerToken');
+    const token = localStorage.getItem('token') || localStorage.getItem('ownerToken') || localStorage.getItem('mainAdminToken');
     return request('/main-admin/users-with-subscriptions', {
       headers: {
         'Authorization': `Bearer ${token}`

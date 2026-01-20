@@ -31,10 +31,21 @@ export default function MainAdmin() {
 
   useEffect(() => {
     // Check if user is authenticated as main admin
-    const token = localStorage.getItem('mainAdminToken');
-    const user = localStorage.getItem('mainAdminUser');
+    const token = localStorage.getItem('token') || localStorage.getItem('mainAdminToken');
+    const userStr = localStorage.getItem('user') || localStorage.getItem('mainAdminUser');
     
-    if (!token || !user) {
+    if (!token || !userStr) {
+      navigate('/main-admin/login');
+      return;
+    }
+
+    try {
+      const userData = JSON.parse(userStr);
+      if (userData.role !== 'owner') {
+        navigate('/main-admin/login');
+        return;
+      }
+    } catch (e) {
       navigate('/main-admin/login');
       return;
     }
@@ -58,13 +69,11 @@ export default function MainAdmin() {
     try {
       setError(null);
       let usersData = [];
-      let paymentsData = [];
       let backendStatus = true;
 
       // Try to load from mainAdmin API first
       try {
         usersData = await mainAdmin.getUsers();
-        paymentsData = await mainAdmin.getPayments();
       } catch (mainAdminError) {
         console.warn('MainAdmin API not available, falling back to regular users API:', mainAdminError.message);
         
@@ -75,24 +84,16 @@ export default function MainAdmin() {
           console.warn('Users API also failed:', usersError.message);
           backendStatus = false;
         }
-        
-        // Try to get payments from localStorage if backend not available
-        if (!backendStatus) {
-          paymentsData = [];
-          setBackendAvailable(false);
-        }
       }
 
       // If still no users and backend not available, generate demo data
       if (usersData.length === 0 && !backendStatus) {
         usersData = generateDemoData();
-        paymentsData = generateDemoPayments(usersData);
       }
 
       setAllUsers(usersData);
-      setPayments(paymentsData);
       setBackendAvailable(backendStatus);
-      calculateStats(usersData, paymentsData);
+      calculateStats(usersData, []);
 
     } catch (error) {
       console.error('Failed to load data:', error);

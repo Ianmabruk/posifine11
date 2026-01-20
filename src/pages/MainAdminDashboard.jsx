@@ -20,22 +20,22 @@ export default function MainAdminDashboard() {
 
   useEffect(() => {
     // Verify owner access
-    const token = localStorage.getItem('ownerToken');
-    const user = localStorage.getItem('ownerUser');
+    const token = localStorage.getItem('token') || localStorage.getItem('mainAdminToken') || localStorage.getItem('ownerToken');
+    const userStr = localStorage.getItem('user') || localStorage.getItem('mainAdminUser') || localStorage.getItem('ownerUser');
     
-    if (!token || !user) {
-      navigate('/main.admin', { replace: true });
+    if (!token || !userStr) {
+      navigate('/main-admin/login', { replace: true });
       return;
     }
 
     try {
-      const userData = JSON.parse(user);
-      if ((userData.role !== 'owner' && !userData.isMainAdmin) || userData.email !== 'ianmabruk3@gmail.com') {
-        navigate('/main.admin', { replace: true });
+      const userData = JSON.parse(userStr);
+      if (userData.role !== 'owner' || userData.email !== 'ianmabruk3@gmail.com') {
+        navigate('/main-admin/login', { replace: true });
         return;
       }
     } catch (e) {
-      navigate('/main.admin', { replace: true });
+      navigate('/main-admin/login', { replace: true });
       return;
     }
 
@@ -43,7 +43,7 @@ export default function MainAdminDashboard() {
     // Auto-refresh every 30 seconds
     const interval = setInterval(loadData, 30000);
     return () => clearInterval(interval);
-  }, []);
+  }, [navigate]);
 
   const loadData = async () => {
     try {

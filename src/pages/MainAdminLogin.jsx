@@ -19,16 +19,18 @@ export default function MainAdminLogin() {
     if (redirectDone.current) return;
     redirectDone.current = true;
 
-    const token = localStorage.getItem('ownerToken');
-    const user = localStorage.getItem('ownerUser');
+    const token = localStorage.getItem('token') || localStorage.getItem('ownerToken') || localStorage.getItem('mainAdminToken');
+    const userStr = localStorage.getItem('user') || localStorage.getItem('ownerUser') || localStorage.getItem('mainAdminUser');
     
-    if (token && user) {
+    if (token && userStr) {
       try {
-        const userData = JSON.parse(user);
+        const userData = JSON.parse(userStr);
         if (userData.role === 'owner') {
           navigate('/main.admin/dashboard', { replace: true });
         }
       } catch (e) {
+        localStorage.removeItem('token');
+        localStorage.removeItem('user');
         localStorage.removeItem('ownerToken');
         localStorage.removeItem('ownerUser');
       }
@@ -44,8 +46,13 @@ export default function MainAdminLogin() {
       const response = await mainAdmin.login(formData);
       
       if (response.token && response.user && response.user.role === 'owner') {
+        // Save to multiple keys for compatibility
+        localStorage.setItem('token', response.token);
+        localStorage.setItem('user', JSON.stringify(response.user));
         localStorage.setItem('ownerToken', response.token);
         localStorage.setItem('ownerUser', JSON.stringify(response.user));
+        localStorage.setItem('mainAdminToken', response.token);
+        localStorage.setItem('mainAdminUser', JSON.stringify(response.user));
         navigate('/main.admin/dashboard', { replace: true });
       } else {
         throw new Error('Invalid response from server or insufficient permissions');
