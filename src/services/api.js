@@ -472,6 +472,30 @@ export const mainAdmin = {
       },
       body: JSON.stringify({ type })
     });
+  },
+  getSubscribers: () => {
+    const token = localStorage.getItem('ownerToken');
+    return request('/main-admin/subscribers', {
+      headers: {
+        'Authorization': `Bearer ${token}`
+      }
+    });
+  },
+  getSubscribersAnalytics: () => {
+    const token = localStorage.getItem('ownerToken');
+    return request('/main-admin/subscribers/analytics', {
+      headers: {
+        'Authorization': `Bearer ${token}`
+      }
+    });
+  },
+  getUsersWithSubscriptions: () => {
+    const token = localStorage.getItem('ownerToken');
+    return request('/main-admin/users-with-subscriptions', {
+      headers: {
+        'Authorization': `Bearer ${token}`
+      }
+    });
   }
 };
 
