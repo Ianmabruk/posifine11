@@ -149,31 +149,35 @@ export default function CashierPOS() {
 
   const handleClockIn = async () => {
     try {
+      setIsProcessingSale(true);
       const entry = await timeEntries.create('clock_in');
       setClockedIn(true);
       const clockInDate = new Date(entry.clockInTime);
       setClockInTime(clockInDate);
-      // Persist to localStorage as backup
       localStorage.setItem(`clockIn_${user?.id}_${new Date().toDateString()}`, clockInDate.toISOString());
-      alert('✅ Clocked in successfully');
+      console.log('✅ Clocked in at:', clockInDate.toLocaleTimeString());
     } catch (error) {
       console.error('Clock in error:', error);
       alert('Failed to clock in: ' + error.message);
+    } finally {
+      setIsProcessingSale(false);
     }
   };
 
 
   const handleClockOut = async () => {
     try {
+      setIsProcessingSale(true);
       const entry = await timeEntries.create('clock_out');
       setClockedIn(false);
       setClockInTime(null);
-      // Remove from localStorage
       localStorage.removeItem(`clockIn_${user?.id}_${new Date().toDateString()}`);
-      alert(`✅ Clocked out successfully\n\nDuration: ${entry.duration} minutes`);
+      console.log(`✅ Clocked out - Duration: ${entry.duration} minutes`);
     } catch (error) {
       console.error('Clock out error:', error);
       alert('Failed to clock out: ' + error.message);
+    } finally {
+      setIsProcessingSale(false);
     }
   };
 
@@ -386,10 +390,9 @@ export default function CashierPOS() {
         // Don't block checkout on this error
       });
       
-      // Show success message with sale details
+      // Show success message with sale details (non-blocking)
       const receiptNum = result.sale?.id || 'N/A';
-      console.log(`✅ Sale #${receiptNum} completed successfully`);
-      alert(`✅ Sale completed successfully!\n\n💰 Total: KSH ${total.toLocaleString()}\n📋 Payment: ${paymentMethod}\n🧾 Receipt #: ${receiptNum}\n\nThank you for your purchase!`);
+      console.log(`✅ Sale #${receiptNum} completed successfully - Total: KSH ${total.toLocaleString()}`);
       
     } catch (error) {
       console.error('❌ Checkout error:', error);
