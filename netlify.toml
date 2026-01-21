@@ -14,7 +14,3 @@
 
 [context.production.environment]
   NODE_VERSION = "18"
-
-# Disable neon extension (not needed - using file-based storage)
-[plugins]
-  skip = true
