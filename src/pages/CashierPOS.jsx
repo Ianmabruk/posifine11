@@ -427,7 +427,7 @@ export default function CashierPOS() {
       }));
       
       // 1. Create the sale record
-      console.log('📤 Creating sale...');
+      console.log('📤 Creating sale with items:', cartItemsWithUnits);
       const saleResponse = await sales.create({
         items: cartItemsWithUnits,
         total: finalTotal,
@@ -436,22 +436,29 @@ export default function CashierPOS() {
         taxType: taxType,
         paymentMethod
       });
-      console.log('✅ Sale created:', saleResponse.id);
+      
+      console.log('✅ Sale created successfully:', saleResponse);
+      
+      if (!saleResponse || !saleResponse.saleId) {
+        throw new Error('Invalid sale response - no saleId returned');
+      }
+      
+      const saleId = saleResponse.saleId;
+      console.log(`✅ Sale ID: ${saleId}, Stock deductions: ${JSON.stringify(saleResponse.stockDeductions)}`);
       
       // 2. Clear cart and selections IMMEDIATELY (user sees this instantly)
       setCart([]);
       setCartItemUnits({});  // Clear unit selections
       setSelectedDiscount(null);
       setTaxType('exclusive');
-      
-      // 3. Hide processing state
+      setCheckoutLoading(false);  // CRITICAL: Clear button state
       setIsProcessingSale(false);
       
+      // 3. Show success message
       console.log('✅ Sale completed successfully!');
-      alert('✅ Sale completed successfully!');
+      alert(`✅ Sale #${saleId} completed!\nAmount: ${finalTotal}\nStock deducted: ${JSON.stringify(saleResponse.stockDeductions.products.map(p => `${p.name}: ${p.deducted}${p.unit}`)).replace(/"/g, '')}`);
       
       // 4. Refresh product inventory in BACKGROUND (don't block UI)
-      // WebSocket will update product list when stock changes, but also fetch fresh data
       console.log('🔄 Refreshing product inventory in background...');
       (async () => {
         try {
@@ -472,11 +479,14 @@ export default function CashierPOS() {
       
     } catch (error) {
       console.error('❌ Checkout failed:', error.message, error);
-      // CRITICAL: Always clear processing state on error
+      // CRITICAL: Always clear all processing states on error
+      setCheckoutLoading(false);
       setIsProcessingSale(false);
       alert(`❌ Sale failed: ${error.message || 'Unknown error occurred'}`);
     } finally {
+      // Double-check: ensure button is always unblocked
       setCheckoutLoading(false);
+      setIsProcessingSale(false);
     }
   };
 
