@@ -44,28 +44,31 @@ export default function AdminDashboard() {
     e.preventDefault();
     try {
       if (!newProduct.name || !newProduct.price) {
-        alert('Please fill in all required fields (Name, Price)');
+        alert('Please fill in Name and Price');
         return;
       }
 
-      console.log('➕ Creating product:', newProduct.name);
       const result = await products.create({
         ...newProduct,
         price: parseFloat(newProduct.price),
         cost: parseFloat(newProduct.cost || 0),
-        quantity: 0  // Products start with 0 stock, added via batches
+        quantity: 0
       });
 
-      console.log('✅ Product created:', result.id);
+      // OPTIMISTIC UPDATE
+      setData(prev => ({
+        ...prev,
+        products: [...prev.products, result]
+      }));
+
       setNewProduct({ name: '', price: '', cost: '', category: 'finished', unit: 'pcs' });
       setShowAddProduct(false);
-
-      // Reload data to show new product
-      await loadData();
-      alert(`✅ Product "${result.name}" added successfully!`);
+      alert(`✅ Product added!`);
+      
+      // FIRE AND FORGET: Refresh in background
+      loadData().catch(() => {});
     } catch (error) {
-      console.error('❌ Failed to add product:', error);
-      alert(`❌ Failed to add product: ${error.message || 'Unknown error'}`);
+      alert(`❌ Failed: ${error.message || 'Unknown error'}`);
     }
   };
 
@@ -73,20 +76,24 @@ export default function AdminDashboard() {
     e.preventDefault();
     try {
       if (!newUser.name || !newUser.email) {
-        alert('Please fill in all required fields (Name, Email)');
+        alert('Please fill in Name and Email');
         return;
       }
 
-      console.log('➕ Creating user:', newUser.name);
       const result = await users.create(newUser);
 
-      console.log('✅ User created:', result.id);
+      // OPTIMISTIC UPDATE
+      setData(prev => ({
+        ...prev,
+        users: [...prev.users, result]
+      }));
+
       setNewUser({ name: '', email: '', password: 'changeme123', role: 'cashier' });
       setShowAddUser(false);
-
-      // Reload data to show new user
-      await loadData();
-      alert(`✅ User "${result.name}" created successfully! Login: ${result.email} / changeme123`);
+      alert(`✅ User created!`);
+      
+      // FIRE AND FORGET: Refresh in background
+      loadData().catch(() => {});
     } catch (error) {
       console.error('❌ Failed to create user:', error);
       alert(`❌ Failed to create user: ${error.message || 'Unknown error'}`);

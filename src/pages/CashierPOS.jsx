@@ -403,7 +403,6 @@ export default function CashierPOS() {
     if (cart.length === 0 || checkoutLoading) return;
     
     setCheckoutLoading(true);
-    setIsProcessingSale(true);  // Add visual feedback
     
     try {
       const discountValue = selectedDiscount 
@@ -411,23 +410,21 @@ export default function CashierPOS() {
         : 0;
       
       const tax = taxType === 'inclusive' 
-        ? (total * 0.16)  // Kenya standard tax 16%
+        ? (total * 0.16)
         : (total * 0.16);
       
       const finalTotal = taxType === 'inclusive'
         ? (total - discountValue)
         : (total - discountValue + tax);
       
-      // Include unit information for each item
       const cartItemsWithUnits = cart.map(item => ({
         productId: item.id,
         quantity: item.quantity,
-        unit: cartItemUnits[item.id] || item.unit || 'piece',  // Use selected unit or default
+        unit: cartItemUnits[item.id] || item.unit || 'piece',
         price: item.price
       }));
       
-      // 1. Create the sale record
-      console.log('📤 Creating sale with items:', cartItemsWithUnits);
+      // Call backend (will be fast <20ms)
       const saleResponse = await sales.create({
         items: cartItemsWithUnits,
         total: finalTotal,
@@ -437,16 +434,13 @@ export default function CashierPOS() {
         paymentMethod
       });
       
-      console.log('✅ Sale created successfully:', saleResponse);
-      
       if (!saleResponse || !saleResponse.saleId) {
-        throw new Error('Invalid sale response - no saleId returned');
+        throw new Error('Invalid response');
       }
       
       const saleId = saleResponse.saleId;
-      console.log(`✅ Sale ID: ${saleId}, Stock deductions:`, saleResponse.stockDeductions);
       
-      // 2. Build new sale record with all details
+      // BUILD NEW SALE RECORD
       const newSale = {
         id: saleId,
         items: cartItemsWithUnits,
@@ -462,103 +456,88 @@ export default function CashierPOS() {
         createdAt: new Date().toISOString()
       };
       
-      // 3. UPDATE PRODUCT LIST WITH DEDUCTIONS IMMEDIATELY (optimistic stock update)
+      // UPDATE PRODUCT QUANTITIES IMMEDIATELY
       if (saleResponse.stockDeductions?.products) {
         const updatedProducts = productList.map(product => {
           const deduction = saleResponse.stockDeductions.products.find(d => d.id === product.id);
-          if (deduction) {
-            return { ...product, quantity: deduction.after };
-          }
-          return product;
+          return deduction ? { ...product, quantity: deduction.after } : product;
         });
         setProductList(updatedProducts);
-        console.log('✅ Product quantities updated immediately with stock deductions');
       }
       
-      // 4. ADD SALE TO LIST IMMEDIATELY (optimistic update)
+      // ADD SALE TO LIST IMMEDIATELY
       setData(prev => ({
         ...prev,
         sales: [newSale, ...prev.sales]
       }));
-      console.log('✅ Sale added to UI immediately');
       
-      // 5. Clear cart and selections IMMEDIATELY (user sees this instantly)
+      // CLEAR CART INSTANTLY
       setCart([]);
       setCartItemUnits({});
       setSelectedDiscount(null);
       setTaxType('exclusive');
-      setCheckoutLoading(false);
-      setIsProcessingSale(false);
       
-      // 5. Show success message with deductions
+      // SHOW SUCCESS - This is instant, no waits
       const deductionsSummary = saleResponse.stockDeductions?.products
         ?.map(p => `${p.name}: -${p.deducted}${p.unit}`)
         .join('\n') || 'None';
       
-      console.log('✅ Sale completed successfully!');
       alert(`✅ SALE COMPLETE!\nSale ID: #${saleId}\nAmount: KSH ${finalTotal.toLocaleString()}\n\nStock Deducted:\n${deductionsSummary}`);
       
-      // 4. Refresh product inventory in BACKGROUND (don't block UI)
-      console.log('🔄 Refreshing product inventory in background...');
-      (async () => {
-        try {
-          const freshProducts = await products.getAll();
-          console.log(`📦 Received ${freshProducts.length} products from server`);
-          
-          // Filter products for cashier display
-          const filteredProducts = freshProducts.filter(p => p.visibleToCashier !== false && !p.expenseOnly);
-          console.log(`✅ Filtered to ${filteredProducts.length} visible products`);
-          
-          // Update UI with fresh products
-          setProductList(filteredProducts);
-        } catch (error) {
-          console.warn('Background product refresh failed:', error);
-          // This is not critical - WebSocket will keep products updated
-        }
-      })();
+      // FIRE AND FORGET: Background refresh (doesn't block UI)
+      sales.getAll().then(s => setData(prev => ({ ...prev, sales: s }))).catch(() => {});
+      products.getAll().then(p => setProductList(p.filter(prod => prod.visibleToCashier !== false && !prod.expenseOnly))).catch(() => {});
+      
+      setCheckoutLoading(false);
       
     } catch (error) {
-      console.error('❌ Checkout failed:', error.message, error);
-      // CRITICAL: Always clear all processing states on error
       setCheckoutLoading(false);
-      setIsProcessingSale(false);
-      alert(`❌ Sale failed: ${error.message || 'Unknown error occurred'}`);
-    } finally {
-      // Double-check: ensure button is always unblocked
-      setCheckoutLoading(false);
-      setIsProcessingSale(false);
+      alert(`❌ Sale failed: ${error.message || 'Unknown error'}`);
     }
   };
 
   const handleAddProduct = async (e) => {
     e.preventDefault();
     try {
-      console.log('➕ Creating new product:', newProduct.name);
+      if (!newProduct.name || !newProduct.price) {
+        alert('Product name and price are required');
+        return;
+      }
       
       // Create the product
       const createdProduct = await products.create({ 
         ...newProduct, 
         price: parseFloat(newProduct.price),
         cost: parseFloat(newProduct.cost || 0),
-        quantity: 0 // Stock managed through batches
+        quantity: 0
       });
       
-      console.log('✅ Product created:', createdProduct);
+      // OPTIMISTIC UPDATE: Add product to list immediately (no wait for loadData)
+      const newProd = {
+        id: createdProduct.id,
+        name: createdProduct.name,
+        price: createdProduct.price,
+        cost: createdProduct.cost,
+        category: createdProduct.category,
+        quantity: 0,
+        visibleToCashier: true
+      };
       
-      // Clear form
+      setProductList(prev => [...prev, newProd]);
+      
+      // Clear form and close modal instantly
       setNewProduct({ name: '', price: '', cost: '', category: 'finished', image: '' });
       setImagePreview('');
       setShowAddProduct(false);
       
-      // Refresh all data to show new product everywhere
-      console.log('🔄 Reloading data...');
-      await loadData();
+      // Show success instantly
+      alert('✅ Product added!');
       
-      console.log('✅ Product added successfully!');
-      alert('✅ Product added successfully!');
+      // FIRE AND FORGET: Refresh data in background without blocking
+      loadData().catch(() => {});
+      
     } catch (error) {
-      console.error('❌ Failed to add product:', error.message, error);
-      alert(`❌ Failed to add product: ${error.message || 'Unknown error'}`);
+      alert(`❌ Failed: ${error.message || 'Unknown error'}`);
     }
   };
 
