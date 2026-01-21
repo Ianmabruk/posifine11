@@ -157,6 +157,37 @@ export default function CashierPOS() {
     }
   }, [globalProducts]);
 
+  // POLL STATS & SALES when in monitor view (every 3 seconds for real-time updates)
+  useEffect(() => {
+    if (activeView !== 'monitor') return;
+    
+    const pollMonitorData = async () => {
+      try {
+        const [updatedStats, updatedSales, updatedExpenses] = await Promise.all([
+          stats.get(),
+          sales.getAll(),
+          expenses.getAll()
+        ]);
+        setData(prev => ({
+          ...prev,
+          stats: updatedStats,
+          sales: updatedSales,
+          expenses: updatedExpenses
+        }));
+      } catch (e) {
+        console.warn('Monitor data poll failed:', e);
+      }
+    };
+    
+    // Poll immediately on first load
+    pollMonitorData();
+    
+    // Then poll every 3 seconds for real-time updates
+    const monitorInterval = setInterval(pollMonitorData, 3000);
+    
+    return () => clearInterval(monitorInterval);
+  }, [activeView]);
+
   // Subscribe to real-time product updates
   useEffect(() => {
     // Connect to WebSocket for real-time stock updates
@@ -402,127 +433,125 @@ export default function CashierPOS() {
   const handleCheckout = async () => {
     if (cart.length === 0 || checkoutLoading) return;
     
-    setCheckoutLoading(true);
+    // OPTIMISTIC UI UPDATE: Clear cart immediately for snappy feel
+    const cartSnapshot = [...cart];
+    const discountValue = selectedDiscount 
+      ? (selectedDiscount.type === 'percentage' ? (total * selectedDiscount.value / 100) : selectedDiscount.value)
+      : 0;
     
-    try {
-      const discountValue = selectedDiscount 
-        ? (selectedDiscount.type === 'percentage' ? (total * selectedDiscount.value / 100) : selectedDiscount.value)
-        : 0;
-      
-      const tax = taxType === 'inclusive' 
-        ? (total * 0.16)
-        : (total * 0.16);
-      
-      const finalTotal = taxType === 'inclusive'
-        ? (total - discountValue)
-        : (total - discountValue + tax);
-      
-      const cartItemsWithUnits = cart.map(item => ({
-        productId: item.id,
-        quantity: item.quantity,
-        unit: cartItemUnits[item.id] || item.unit || 'piece',
-        price: item.price
-      }));
-      
-      // CALL BACKEND
-      const saleResponse = await sales.create({
-        items: cartItemsWithUnits,
-        total: finalTotal,
-        discount: discountValue,
-        tax: tax,
-        taxType: taxType,
-        paymentMethod
-      });
-      
-      if (!saleResponse || !saleResponse.saleId) {
-        throw new Error('Invalid response');
-      }
-      
-      const saleId = saleResponse.saleId;
-      
-      // BUILD NEW SALE RECORD
-      const newSale = {
-        id: saleId,
-        items: cartItemsWithUnits,
-        total: finalTotal,
-        discount: discountValue,
-        tax: tax,
-        taxType: taxType,
-        paymentMethod: paymentMethod,
-        accountId: user?.accountId,
-        cashierId: user?.id,
-        cashierName: user?.name || 'Cashier',
-        stockDeductions: saleResponse.stockDeductions || { products: [], expenses: [] },
-        createdAt: new Date().toISOString()
-      };
-      
-      // 1. UPDATE PRODUCT QUANTITIES
-      if (saleResponse.stockDeductions?.products) {
-        const updatedProducts = productList.map(product => {
-          const deduction = saleResponse.stockDeductions.products.find(d => d.id === product.id);
-          return deduction ? { ...product, quantity: deduction.after } : product;
+    const tax = taxType === 'inclusive' 
+      ? (total * 0.16)
+      : (total * 0.16);
+    
+    const finalTotal = taxType === 'inclusive'
+      ? (total - discountValue)
+      : (total - discountValue + tax);
+    
+    const cartItemsWithUnits = cartSnapshot.map(item => ({
+      productId: item.id,
+      quantity: item.quantity,
+      unit: cartItemUnits[item.id] || item.unit || 'piece',
+      price: item.price
+    }));
+    
+    // CLEAR UI IMMEDIATELY (don't wait for backend)
+    setCheckoutLoading(true);
+    setCart([]);
+    setCartItemUnits({});
+    setSelectedDiscount(null);
+    setTaxType('exclusive');
+    
+    // Show quick optimistic success
+    const originalTitle = document.title;
+    document.title = `💾 Saving sale...`;
+    
+    // ASYNC BACKEND CALL (non-blocking, fire-and-forget style)
+    (async () => {
+      try {
+        // CALL BACKEND
+        const saleResponse = await sales.create({
+          items: cartItemsWithUnits,
+          total: finalTotal,
+          discount: discountValue,
+          tax: tax,
+          taxType: taxType,
+          paymentMethod
         });
-        setProductList(updatedProducts);
-      }
-      
-      // 2. ADD SALE TO LIST
-      setData(prev => ({
-        ...prev,
-        sales: [newSale, ...prev.sales]
-      }));
-      
-      // 3. CLEAR CART
-      setCart([]);
-      setCartItemUnits({});
-      setSelectedDiscount(null);
-      setTaxType('exclusive');
-      setCheckoutLoading(false);
-      
-      // 4. SHOW SUCCESS WITHOUT BLOCKING (no alert - use console toast instead)
-      console.log(`✅ SALE #${saleId} COMPLETE - Amount: KSH ${finalTotal.toLocaleString()}`);
-      
-      // Show quick notification using console
-      const deductionsSummary = saleResponse.stockDeductions?.products
-        ?.map(p => `${p.name}: -${p.deducted}${p.unit}`)
-        .join(', ') || 'None';
-      console.log(`📦 Stock deducted: ${deductionsSummary}`);
-      
-      // Use toast notification in UI if available, otherwise silent
-      if (window.__showNotification) {
-        window.__showNotification(`✅ Sale #${saleId} Complete!`);
-      } else {
-        // Fallback: show in title briefly
-        const originalTitle = document.title;
-        document.title = `✅ Sale #${saleId} Complete!`;
-        setTimeout(() => { document.title = originalTitle; }, 2000);
-      }
-      
-      // 5. BACKGROUND REFRESH (fire-and-forget, async, non-blocking)
-      setTimeout(async () => {
-        try {
-          const [s, p] = await Promise.all([
-            sales.getAll().catch(() => []),
-            products.getAll().catch(() => [])
-          ]);
-          if (s) setData(prev => ({ ...prev, sales: s }));
-          if (p) setProductList(p.filter(prod => prod.visibleToCashier !== false && !prod.expenseOnly));
-        } catch (e) {
-          console.warn('Background refresh skipped');
+        
+        if (!saleResponse || !saleResponse.saleId) {
+          throw new Error('Invalid response');
         }
-      }, 100);
-      
-    } catch (error) {
-      setCheckoutLoading(false);
-      console.error('Sale failed:', error.message);
-      
-      // Non-blocking error notification
-      if (window.__showNotification) {
-        window.__showNotification(`❌ Sale failed: ${error.message}`);
-      } else {
-        document.title = `❌ Error: ${error.message}`;
-        setTimeout(() => { document.title = 'POSifine'; }, 2000);
+        
+        const saleId = saleResponse.saleId;
+        
+        // BUILD NEW SALE RECORD
+        const newSale = {
+          id: saleId,
+          items: cartItemsWithUnits,
+          total: finalTotal,
+          discount: discountValue,
+          tax: tax,
+          taxType: taxType,
+          paymentMethod: paymentMethod,
+          accountId: user?.accountId,
+          cashierId: user?.id,
+          cashierName: user?.name || 'Cashier',
+          stockDeductions: saleResponse.stockDeductions || { products: [], expenses: [] },
+          createdAt: new Date().toISOString()
+        };
+        
+        // UPDATE UI WITH NEW SALE (but cart is already cleared)
+        setData(prev => ({
+          ...prev,
+          sales: [newSale, ...prev.sales]
+        }));
+        
+        // UPDATE PRODUCT QUANTITIES if stock deductions provided
+        if (saleResponse.stockDeductions?.products) {
+          const updatedProducts = productList.map(product => {
+            const deduction = saleResponse.stockDeductions.products.find(d => d.id === product.id);
+            return deduction ? { ...product, quantity: deduction.after } : product;
+          });
+          setProductList(updatedProducts);
+        }
+        
+        // SUCCESS NOTIFICATION
+        console.log(`✅ SALE #${saleId} COMPLETE - Amount: KSH ${finalTotal.toLocaleString()}`);
+        
+        const deductionsSummary = saleResponse.stockDeductions?.products
+          ?.map(p => `${p.name}: -${p.deducted}${p.unit}`)
+          .join(', ') || 'None';
+        console.log(`📦 Stock deducted: ${deductionsSummary}`);
+        
+        document.title = `✅ Sale #${saleId} Complete!`;
+        if (window.__showNotification) {
+          window.__showNotification(`✅ Sale #${saleId} Complete!`);
+        }
+        
+        // Stats will auto-refresh via monitor view polling every 3 seconds
+        // No need to manually refresh here
+        
+        // Reset title after 3 seconds
+        setTimeout(() => { document.title = originalTitle; }, 3000);
+        
+      } catch (error) {
+        console.error('Sale failed:', error.message);
+        
+        // ROLLBACK UI on error
+        setCart(cartSnapshot);
+        setCheckoutLoading(false);
+        
+        // Error notification
+        if (window.__showNotification) {
+          window.__showNotification(`❌ Sale failed: ${error.message}`);
+        } else {
+          document.title = `❌ Error: ${error.message}`;
+          setTimeout(() => { document.title = originalTitle; }, 3000);
+        }
+      } finally {
+        setCheckoutLoading(false);
       }
-    }
+    })(); // Execute immediately, don't wait
   };
 
   const handleAddProduct = async (e) => {
