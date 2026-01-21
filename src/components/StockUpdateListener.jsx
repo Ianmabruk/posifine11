@@ -7,20 +7,20 @@ export default function StockUpdateListener() {
   useEffect(() => {
     // Listen for real-time stock updates
     const handleStockUpdate = (event) => {
-      console.log('📦 Stock update received:', event.detail);
+      console.log(' Stock update received:', event.detail);
       // Refresh products to get latest stock
       refreshProducts();
     };
 
     // Listen for sale completion events
     const handleSaleComplete = (event) => {
-      console.log('✅ Sale completed, refreshing stock:', event.detail);
+      console.log(' Sale completed, refreshing stock:', event.detail);
       refreshProducts();
     };
 
     // Listen for product changes from WebSocket or other sources
     const handleProductsSync = (event) => {
-      console.log('🔄 Products sync event:', event.detail);
+      console.log(' Products sync event:', event.detail);
       // Products context will handle the update
     };
 

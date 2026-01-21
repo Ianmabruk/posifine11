@@ -2,10 +2,10 @@ import { useState, useEffect } from 'react';
 import { useAuth } from '../context/AuthContext';
 import { useProducts } from '../context/ProductsContext';
 import { useScreenLock } from '../context/ScreenLockContext';
-import { products, sales, expenses, stats, batches, subscribeProducts, unsubscribeAllProductSubscriptions, discounts, timeEntries } from '../services/api';
+import { products, sales, expenses, stats, batches, subscribeProducts, unsubscribeAllProductSubscriptions, discounts, timeEntries, creditRequests } from '../services/api';
 import websocketService from '../services/websocketService';
 import { BASE_API_URL } from '../services/api';
-import { ShoppingCart, Trash2, LogOut, Plus, Minus, DollarSign, TrendingDown, Package, Edit2, Search, BarChart3, Camera, Upload, AlertTriangle, Clock, Play, Square, Settings, Lock } from 'lucide-react';
+import { ShoppingCart, Trash2, LogOut, Plus, Minus, DollarSign, TrendingDown, Package, Edit2, Search, BarChart3, Camera, Upload, AlertTriangle, Clock, Play, Square, Settings, Lock, CreditCard, X } from 'lucide-react';
 import DiscountSelector from '../components/DiscountSelector';
 import ProductCard from '../components/ProductCard';
 import ScreenLockPin from '../components/ScreenLockPin';
@@ -27,6 +27,9 @@ export default function CashierPOS() {
   const [newProduct, setNewProduct] = useState({ name: '', price: '', cost: '', category: 'finished', image: '' });
   const [newStock, setNewStock] = useState({ quantity: '', expiryDate: '', batchNumber: '', cost: '' });
   const [showAddExpense, setShowAddExpense] = useState(false);
+  const [showCreditRequest, setShowCreditRequest] = useState(false);
+  const [creditRequestForm, setCreditRequestForm] = useState({ customerName: '', amount: '', reason: '', notes: '' });
+  const [creditRequestSubmitting, setCreditRequestSubmitting] = useState(false);
   const [newExpense, setNewExpense] = useState({ description: '', amount: '', category: '' });
   const [imagePreview, setImagePreview] = useState('');
   const [discountList, setDiscountList] = useState([]);
@@ -551,6 +554,34 @@ export default function CashierPOS() {
     }
   };
 
+  const handleCreditRequest = async (e) => {
+    e.preventDefault();
+    if (!creditRequestForm.customerName || !creditRequestForm.amount) {
+      alert('Please fill in all required fields');
+      return;
+    }
+    
+    setCreditRequestSubmitting(true);
+    try {
+      const response = await creditRequests.create({
+        customerName: creditRequestForm.customerName,
+        amount: parseFloat(creditRequestForm.amount),
+        reason: creditRequestForm.reason,
+        notes: creditRequestForm.notes
+      });
+      
+      console.log('✅ Credit request submitted:', response);
+      setCreditRequestForm({ customerName: '', amount: '', reason: '', notes: '' });
+      setShowCreditRequest(false);
+      alert('✅ Credit request submitted successfully!');
+    } catch (error) {
+      console.error('Failed to submit credit request:', error);
+      alert('❌ Failed to submit credit request: ' + (error.message || 'Unknown error'));
+    } finally {
+      setCreditRequestSubmitting(false);
+    }
+  };
+
   const handleClearData = async () => {
     if (window.confirm('Are you sure you want to clear all sales and expenses? This action cannot be undone.')) {
       try {
@@ -619,6 +650,10 @@ export default function CashierPOS() {
             <button onClick={handleClearData} className="px-4 py-2 rounded-lg font-medium transition-all bg-orange-100 hover:bg-orange-200 text-orange-600 border border-orange-300 flex items-center gap-2">
               <Trash2 className="w-4 h-4" />
               Clear
+            </button>
+            <button onClick={() => setShowCreditRequest(true)} className="px-4 py-2 rounded-lg font-medium transition-all bg-blue-100 hover:bg-blue-200 text-blue-600 border border-blue-300 flex items-center gap-2">
+              <CreditCard className="w-4 h-4" />
+              Request Credit
             </button>
             {isClockedIn && clockedInTime && (
               <div className="ml-auto text-right text-xs">
@@ -1248,6 +1283,94 @@ export default function CashierPOS() {
                 </tbody>
               </table>
             </div>
+          </div>
+        </div>
+      )}
+
+      {/* Credit Request Modal */}
+      {showCreditRequest && (
+        <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50 p-4">
+          <div className="bg-white rounded-2xl shadow-2xl max-w-md w-full max-h-96 overflow-y-auto">
+            <div className="bg-gradient-to-r from-blue-500 to-indigo-600 p-6 text-white flex justify-between items-center sticky top-0">
+              <h2 className="text-2xl font-bold flex items-center gap-2">
+                <CreditCard />
+                Request Credit
+              </h2>
+              <button onClick={() => setShowCreditRequest(false)} className="hover:bg-white/20 p-2 rounded-lg transition">
+                <X size={24} />
+              </button>
+            </div>
+            <form onSubmit={handleCreditRequest} className="p-6 space-y-4">
+              <div>
+                <label className="block text-sm font-medium mb-2">Customer Name *</label>
+                <input
+                  type="text"
+                  placeholder="Enter customer name"
+                  value={creditRequestForm.customerName}
+                  onChange={(e) => setCreditRequestForm({ ...creditRequestForm, customerName: e.target.value })}
+                  className="w-full px-4 py-3 rounded-lg border focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                  required
+                  disabled={creditRequestSubmitting}
+                />
+              </div>
+              <div>
+                <label className="block text-sm font-medium mb-2">Amount (KES) *</label>
+                <input
+                  type="number"
+                  placeholder="0.00"
+                  value={creditRequestForm.amount}
+                  onChange={(e) => setCreditRequestForm({ ...creditRequestForm, amount: e.target.value })}
+                  className="w-full px-4 py-3 rounded-lg border focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                  min="0"
+                  step="0.01"
+                  required
+                  disabled={creditRequestSubmitting}
+                />
+              </div>
+              <div>
+                <label className="block text-sm font-medium mb-2">Reason</label>
+                <select
+                  value={creditRequestForm.reason}
+                  onChange={(e) => setCreditRequestForm({ ...creditRequestForm, reason: e.target.value })}
+                  className="w-full px-4 py-3 rounded-lg border focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                  disabled={creditRequestSubmitting}
+                >
+                  <option value="">Select reason...</option>
+                  <option value="regular_customer">Regular Customer</option>
+                  <option value="emergency">Emergency</option>
+                  <option value="bulk_order">Bulk Order</option>
+                  <option value="other">Other</option>
+                </select>
+              </div>
+              <div>
+                <label className="block text-sm font-medium mb-2">Notes</label>
+                <textarea
+                  placeholder="Add any additional notes..."
+                  value={creditRequestForm.notes}
+                  onChange={(e) => setCreditRequestForm({ ...creditRequestForm, notes: e.target.value })}
+                  className="w-full px-4 py-3 rounded-lg border focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                  rows="3"
+                  disabled={creditRequestSubmitting}
+                />
+              </div>
+              <div className="flex gap-2 pt-4">
+                <button
+                  type="submit"
+                  disabled={creditRequestSubmitting}
+                  className="flex-1 bg-gradient-to-r from-blue-500 to-indigo-600 text-white py-3 rounded-lg font-bold hover:shadow-lg transition disabled:opacity-50 disabled:cursor-not-allowed"
+                >
+                  {creditRequestSubmitting ? 'Submitting...' : 'Submit Request'}
+                </button>
+                <button
+                  type="button"
+                  onClick={() => setShowCreditRequest(false)}
+                  disabled={creditRequestSubmitting}
+                  className="flex-1 bg-gray-200 text-gray-700 py-3 rounded-lg font-bold hover:bg-gray-300 transition disabled:opacity-50"
+                >
+                  Cancel
+                </button>
+              </div>
+            </form>
           </div>
         </div>
       )}

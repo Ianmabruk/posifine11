@@ -303,6 +303,10 @@ export const creditRequests = {
     method: 'POST',
     body: JSON.stringify(requestData)
   }),
+  update: (id, data) => request(`/credit-requests/${id}`, {
+    method: 'PUT',
+    body: JSON.stringify(data)
+  }),
   approve: (id) => request(`/credit-requests/${id}/approve`, {
     method: 'POST'
   }),
