@@ -11,3 +11,10 @@
   NODE_VERSION = "18"
   VITE_API_BASE = "https://posifine22.onrender.com/api"
   VITE_API_URL = "https://posifine22.onrender.com"
+
+[context.production.environment]
+  NODE_VERSION = "18"
+
+# Disable neon extension (not needed - using file-based storage)
+[plugins]
+  skip = true
