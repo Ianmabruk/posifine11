@@ -235,27 +235,7 @@ export const expenses = {
 
 // Statistics API
 export const stats = {
-  get: async () => {
-    try {
-      const response = await fetch(`${BASE_API_URL}/api/stats`, {
-        headers: {
-          'Authorization': `Bearer ${localStorage.getItem('userToken')}`
-        }
-      });
-      if (response.ok) {
-        return await response.json();
-      }
-    } catch (error) {
-      console.error('Failed to fetch stats:', error);
-    }
-    // Fallback only if API fails
-    return {
-      totalSales: 0,
-      totalExpenses: 0,
-      profit: 0,
-      productCount: 0
-    };
-  }
+  get: () => request('/stats')
 };
 
 // Reminders API

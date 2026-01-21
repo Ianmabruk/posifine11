@@ -1,6 +1,6 @@
 import { useState, useEffect } from 'react';
 import { useAuth } from '../context/AuthContext';
-import { products, sales, expenses, stats, batches, subscribeProducts, unsubscribeAllProductSubscriptions } from '../services/api';
+import { products, sales, expenses, stats, batches, subscribeProducts, unsubscribeAllProductSubscriptions, discounts } from '../services/api';
 import websocketService from '../services/websocketService';
 import { BASE_API_URL } from '../services/api';
 import { ShoppingCart, Trash2, LogOut, Plus, Minus, DollarSign, TrendingDown, Package, Edit2, Search, BarChart3, Camera, Upload, AlertTriangle, Clock, Play, Square } from 'lucide-react';
@@ -29,6 +29,7 @@ export default function CashierPOS() {
   const [currentTimeEntry, setCurrentTimeEntry] = useState(null);
   const [clockedInTime, setClockedInTime] = useState(null);
   const [cartItemUnits, setCartItemUnits] = useState({});  // Track units for each cart item
+  const [checkoutLoading, setCheckoutLoading] = useState(false);  // Prevent double-submit
 
   useEffect(() => {
     loadData();
@@ -37,8 +38,6 @@ export default function CashierPOS() {
     const savedPaymentMethod = localStorage.getItem(`paymentMethod_${user?.id}`);
     const savedDiscount = localStorage.getItem(`selectedDiscount_${user?.id}`);
     const savedTaxType = localStorage.getItem(`taxType_${user?.id}`);
-    const savedClockStatus = localStorage.getItem(`clockStatus_${user?.id}`);
-    const savedClockInTime = localStorage.getItem(`clockInTime_${user?.id}`);
     
     if (savedCart) {
       try {
@@ -57,14 +56,7 @@ export default function CashierPOS() {
       } catch (e) {}
     }
     
-    if (savedClockStatus === 'clocked_in') {
-      setIsClockedIn(true);
-      if (savedClockInTime) {
-        setClockedInTime(new Date(savedClockInTime));
-      }
-    }
-    
-    // Check actual clock status from backend
+    // Check clock status from backend (don't rely on localStorage)
     checkClockStatus();
   }, [user?.id]);
 
@@ -157,10 +149,11 @@ export default function CashierPOS() {
   // Clock in function
   const handleClockIn = async () => {
     try {
+      const token = localStorage.getItem('token');
       const response = await fetch(`${BASE_API_URL}/clock-in`, {
         method: 'POST',
         headers: {
-          'Authorization': `Bearer ${localStorage.getItem('token')}`,
+          'Authorization': `Bearer ${token}`,
           'Content-Type': 'application/json'
         }
       });
@@ -169,10 +162,9 @@ export default function CashierPOS() {
         const data = await response.json();
         setCurrentTimeEntry(data.entry);
         setIsClockedIn(true);
-        const now = new Date(data.entry.clockIn);
-        setClockedInTime(now);
-        localStorage.setItem(`clockStatus_${user?.id}`, 'clocked_in');
-        localStorage.setItem(`clockInTime_${user?.id}`, now.toISOString());
+        const clockInTime = new Date(data.entry.clockIn);
+        setClockedInTime(clockInTime);
+        console.log('✅ Clocked in successfully');
         alert('✅ ' + data.message);
       } else {
         const error = await response.json();
@@ -187,10 +179,11 @@ export default function CashierPOS() {
   // Clock out function
   const handleClockOut = async () => {
     try {
+      const token = localStorage.getItem('token');
       const response = await fetch(`${BASE_API_URL}/clock-out`, {
         method: 'POST',
         headers: {
-          'Authorization': `Bearer ${localStorage.getItem('token')}`,
+          'Authorization': `Bearer ${token}`,
           'Content-Type': 'application/json'
         }
       });
@@ -200,8 +193,7 @@ export default function CashierPOS() {
         setCurrentTimeEntry(data.entry);
         setIsClockedIn(false);
         setClockedInTime(null);
-        localStorage.removeItem(`clockStatus_${user?.id}`);
-        localStorage.removeItem(`clockInTime_${user?.id}`);
+        console.log('✅ Clocked out successfully');
         alert('✅ ' + data.message);
       } else {
         const error = await response.json();
@@ -216,8 +208,12 @@ export default function CashierPOS() {
   // Check clock status from backend
   const checkClockStatus = async () => {
     try {
+      const token = localStorage.getItem('token');
       const response = await fetch(`${BASE_API_URL}/clock-status`, {
-        headers: { 'Authorization': `Bearer ${localStorage.getItem('token')}` }
+        headers: { 
+          'Authorization': `Bearer ${token}`,
+          'Content-Type': 'application/json'
+        }
       });
       
       if (response.ok) {
@@ -225,6 +221,11 @@ export default function CashierPOS() {
         if (data.isClockedIn) {
           setIsClockedIn(true);
           setClockedInTime(new Date(data.clockInTime));
+          console.log('✅ User is clocked in since:', data.clockInTime);
+        } else {
+          setIsClockedIn(false);
+          setClockedInTime(null);
+          console.log('User is not clocked in');
         }
       }
     } catch (error) {
@@ -234,38 +235,18 @@ export default function CashierPOS() {
 
   const loadData = async () => {
     try {
-      const [p, s, e, st, b] = await Promise.all([
+      const [p, s, e, st, b, d] = await Promise.all([
         products.getAll(),
         sales.getAll(),
         expenses.getAll(),
         stats.get(),
-        batches.getAll()
+        batches.getAll(),
+        discounts.getAll().catch(() => [])  // Fallback to empty array if discounts fail
       ]);
       setProductList(p.filter(prod => prod.visibleToCashier !== false && !prod.expenseOnly));
       setData({ sales: s, expenses: e, stats: st });
       setBatchList(b);
-      
-      // CRITICAL FIX: Restore clock status after product refresh
-      // Clock status may have changed during data fetch, restore from localStorage
-      const storedClockStatus = localStorage.getItem(`clockStatus_${user?.id}`);
-      if (storedClockStatus === 'true') {
-        setIsClockedIn(true);
-        // Restore clock-in time if available
-        const storedClockTime = localStorage.getItem(`clockInTime_${user?.id}`);
-        if (storedClockTime) {
-          setClockedInTime(new Date(storedClockTime));
-        }
-      }
-      
-      // Load discounts
-      try {
-        const discounts = await fetch(`${BASE_API_URL}/discounts`, {
-          headers: { 'Authorization': `Bearer ${localStorage.getItem('token')}` }
-        }).then(r => r.json());
-        setDiscountList(discounts || []);
-      } catch (err) {
-        console.warn('Failed to load discounts:', err);
-      }
+      setDiscountList(d || []);
     } catch (error) {
       console.error('Failed to load data:', error);
     }
@@ -346,8 +327,9 @@ export default function CashierPOS() {
   const total = cart.reduce((sum, item) => sum + (item.price * item.quantity), 0);
 
   const handleCheckout = async () => {
-    if (cart.length === 0) return;
+    if (cart.length === 0 || checkoutLoading) return;
     
+    setCheckoutLoading(true);
     try {
       const discountValue = selectedDiscount 
         ? (selectedDiscount.type === 'percentage' ? (total * selectedDiscount.value / 100) : selectedDiscount.value)
@@ -399,21 +381,13 @@ export default function CashierPOS() {
       setSelectedDiscount(null);
       setTaxType('exclusive');
       
-      // 6. Restore clock status (in case it was lost during refresh)
-      const storedClockStatus = localStorage.getItem(`clockStatus_${user?.id}`);
-      if (storedClockStatus === 'true') {
-        setIsClockedIn(true);
-        const storedClockTime = localStorage.getItem(`clockInTime_${user?.id}`);
-        if (storedClockTime) {
-          setClockedInTime(new Date(storedClockTime));
-        }
-      }
-      
       console.log('✅ Sale completed successfully!');
       alert('✅ Sale completed successfully!');
     } catch (error) {
       console.error('❌ Checkout failed:', error.message, error);
       alert(`❌ Sale failed: ${error.message || 'Unknown error occurred'}`);
+    } finally {
+      setCheckoutLoading(false);
     }
   };
 
@@ -849,8 +823,8 @@ export default function CashierPOS() {
                 </select>
               </div>
 
-              <button onClick={handleCheckout} disabled={cart.length === 0} className="btn-primary w-full py-4 text-lg bg-gradient-to-r from-green-600 to-teal-600 hover:from-green-700 hover:to-teal-700 shadow-lg">
-                Complete Sale
+              <button onClick={handleCheckout} disabled={cart.length === 0 || checkoutLoading} className="btn-primary w-full py-4 text-lg bg-gradient-to-r from-green-600 to-teal-600 hover:from-green-700 hover:to-teal-700 shadow-lg disabled:opacity-50 disabled:cursor-not-allowed">
+                {checkoutLoading ? '⏳ Processing Sale...' : 'Complete Sale'}
               </button>
             </div>
           </div>
