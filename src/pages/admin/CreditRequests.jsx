@@ -242,10 +242,6 @@ export default function CreditRequests() {
           </div>
         </div>
       )}
-    </div>
-  );
-}
-      </div>
 
       <div className="grid grid-cols-1 gap-4">
         {filteredRequests.map(request => (
