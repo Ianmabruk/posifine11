@@ -17,7 +17,7 @@ export const ProductsProvider = ({ children }) => {
   const fetchProducts = useCallback(async () => {
     if (!localStorage.getItem('token')) {
        setLoading(false);
-       return;
+       return [];
     }
 
     try {
@@ -39,11 +39,15 @@ export const ProductsProvider = ({ children }) => {
         detail: { products: visibleProducts, timestamp: Date.now() }
       }));
       
+      // CRITICAL: Return the products so callers can use them immediately
+      return visibleProducts;
+      
     } catch (err) {
       console.error('Failed to fetch products:', err);
       setError(`Failed to load products: ${err.message}`);
       // Set empty array instead of keeping old data
       setProducts([]);
+      return [];
     } finally {
       setLoading(false);
       setLastUpdated(Date.now());
@@ -80,7 +84,8 @@ export const ProductsProvider = ({ children }) => {
 
   const refreshProducts = async () => {
     setLoading(true);
-    await fetchProducts();
+    const freshProducts = await fetchProducts();
+    return freshProducts;
   };
 
   return (
