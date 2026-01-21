@@ -324,6 +324,8 @@ export const settings = {
 export const timeEntries = {
   getAll: () => request('/time-entries'),
   
+  getStatus: () => request('/clock-status'),
+  
   create: (action) => request('/time-entries', {
     method: 'POST',
     body: JSON.stringify({ action })

@@ -197,15 +197,15 @@ export default function Inventory() {
       
       const result = await products.create(productData);
       
-      // Reset form and close modal
+      // Reset form and close modal IMMEDIATELY
       setNewProduct({ name: '', price: '', cost: '', category: 'finished', unit: 'pcs', expenseOnly: false, image: '', visibleToCashier: true });
       setImagePreview('');
       setShowAddModal(false);
       
-      // Refresh data
-      await loadData();
-      
       showNotification(`✅ Product "${result.name}" added successfully! ${result.visibleToCashier ? 'Cashiers can now see this product.' : 'This product is hidden from cashiers.'}`, 'success');
+      
+      // Refresh data in background (don't block modal close)
+      loadData().catch(err => console.warn('Background refresh failed:', err));
       
     } catch (error) {
       console.error('Failed to create product:', error);
@@ -240,14 +240,16 @@ export default function Inventory() {
           cost: parseFloat(newStock.cost || selectedProduct.cost || 0)
         });
         
+        // Close form and reset immediately (don't block on loadData)
         setNewStock({ quantity: '', expiryDate: '', batchNumber: '', cost: '' });
         setShowAddStock(false);
         setSelectedProduct(null);
         
-        // Refresh data to sync with backend
-        await loadData();
-        
         showNotification(`✅ Stock added successfully for ${selectedProduct.name}!`, 'success');
+        
+        // Refresh data in background to sync with backend
+        loadData().catch(err => console.warn('Background refresh failed:', err));
+        
       } catch (apiError) {
         // Rollback optimistic update on failure
         setBatchList(prev => prev.filter(b => b.id !== newBatch.id));

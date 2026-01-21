@@ -1,12 +1,19 @@
 import { useState, useEffect } from 'react';
 import { useAuth } from '../context/AuthContext';
-import { products, sales, expenses, stats, batches, subscribeProducts, unsubscribeAllProductSubscriptions, discounts } from '../services/api';
+import { useProducts } from '../context/ProductsContext';
+import { useScreenLock } from '../context/ScreenLockContext';
+import { products, sales, expenses, stats, batches, subscribeProducts, unsubscribeAllProductSubscriptions, discounts, timeEntries } from '../services/api';
 import websocketService from '../services/websocketService';
 import { BASE_API_URL } from '../services/api';
-import { ShoppingCart, Trash2, LogOut, Plus, Minus, DollarSign, TrendingDown, Package, Edit2, Search, BarChart3, Camera, Upload, AlertTriangle, Clock, Play, Square } from 'lucide-react';
+import { ShoppingCart, Trash2, LogOut, Plus, Minus, DollarSign, TrendingDown, Package, Edit2, Search, BarChart3, Camera, Upload, AlertTriangle, Clock, Play, Square, Settings, Lock } from 'lucide-react';
+import DiscountSelector from '../components/DiscountSelector';
+import ProductCard from '../components/ProductCard';
+import ScreenLockPin from '../components/ScreenLockPin';
 
 export default function CashierPOS() {
   const { user, logout } = useAuth();
+  const { products: globalProducts, refreshProducts } = useProducts();
+  const { isLocked, lock, unlock } = useScreenLock();
   const [productList, setProductList] = useState([]);
   const [batchList, setBatchList] = useState([]);
   const [cart, setCart] = useState([]);
@@ -30,9 +37,15 @@ export default function CashierPOS() {
   const [clockedInTime, setClockedInTime] = useState(null);
   const [cartItemUnits, setCartItemUnits] = useState({});  // Track units for each cart item
   const [checkoutLoading, setCheckoutLoading] = useState(false);  // Prevent double-submit
+  const [isAutoRefreshing, setIsAutoRefreshing] = useState(false);  // Auto-refresh indicator
+  const [isProcessingSale, setIsProcessingSale] = useState(false);  // Processing sale state
+  const [lastProductUpdate, setLastProductUpdate] = useState(Date.now());  // Track updates
+  const [productUpdateCount, setProductUpdateCount] = useState(0);  // Update count
 
   useEffect(() => {
     loadData();
+    refreshProducts();
+    
     // Restore session data from localStorage
     const savedCart = localStorage.getItem(`cart_${user?.id}`);
     const savedPaymentMethod = localStorage.getItem(`paymentMethod_${user?.id}`);
@@ -56,9 +69,90 @@ export default function CashierPOS() {
       } catch (e) {}
     }
     
-    // Check clock status from backend (don't rely on localStorage)
+    // Check clock status from backend
     checkClockStatus();
+
+    // Connect to WebSocket for real-time stock updates
+    const token = localStorage.getItem('token');
+    if (token) {
+      websocketService.connect(token, (data) => {
+        console.log('📡 WebSocket callback received:', data);
+        
+        if (data && data.allProducts) {
+          console.log(`📦 Merging ${data.allProducts.length} products from WebSocket`);
+          const filtered = data.allProducts.filter(p => p.visibleToCashier !== false && !p.expenseOnly);
+          setProductList(filtered);
+        }
+        
+        if (data && data.productId !== undefined && data.newQuantity !== undefined) {
+          console.log(`📦 Stock update for product ${data.productId}: ${data.newQuantity}${data.unit || ''}`);
+          setProductList(prev => {
+            const updated = prev.map(p => 
+              p.id === data.productId 
+                ? { ...p, quantity: data.newQuantity } 
+                : p
+            );
+            return updated;
+          });
+        }
+        
+        if (data && data.discounts) {
+          console.log('📊 Discount list updated');
+          setDiscountList(data.discounts);
+        }
+        
+        if (data && data.sale) {
+          console.log('💰 Sale detected, reloading stats');
+          loadData();
+        }
+      }).catch((error) => {
+        console.warn('⚠️ WebSocket connection failed:', error);
+      });
+    }
+
+    const unsub = subscribeProducts((msg) => {
+      try {
+        if (!msg) return;
+        console.log('📨 Product subscription message:', msg.type);
+        if (msg.type === 'initial' || msg.type === 'products_snapshot' || msg.type === 'product_created' || msg.type === 'product_updated' || msg.type === 'product_deleted') {
+          products.getAll().then(p => {
+            const filtered = p.filter(prod => prod.visibleToCashier !== false && !prod.expenseOnly);
+            console.log(`✅ Subscription update: ${filtered.length} products`);
+            setProductList(filtered);
+          }).catch((err) => {
+            console.error('Failed to fetch products from subscription:', err);
+          });
+        }
+      } catch (e) {
+        console.error('❌ Product subscription handler error', e);
+      }
+    });
+
+    // Set up automatic product refresh every 30 seconds
+    const refreshInterval = setInterval(() => {
+      console.log('🔄 Auto-refreshing products...');
+      setIsAutoRefreshing(true);
+      refreshProducts().finally(() => setIsAutoRefreshing(false));
+    }, 30000);
+
+    return () => {
+      clearInterval(refreshInterval);
+      try { unsub(); } catch (e) {}
+      websocketService.disconnect();
+    };
   }, [user?.id]);
+
+  // Sync with global products from ProductsContext
+  useEffect(() => {
+    if (globalProducts) {
+      const visibleProducts = globalProducts.filter(p => 
+        p.visibleToCashier !== false && !p.expenseOnly && !p.pendingDelete
+      );
+      setProductList(visibleProducts);
+      setLastProductUpdate(Date.now());
+      setProductUpdateCount(prev => prev + 1);
+    }
+  }, [globalProducts]);
 
   // Subscribe to real-time product updates
   useEffect(() => {
@@ -149,84 +243,55 @@ export default function CashierPOS() {
   // Clock in function
   const handleClockIn = async () => {
     try {
-      const token = localStorage.getItem('token');
-      const response = await fetch(`${BASE_API_URL}/clock-in`, {
-        method: 'POST',
-        headers: {
-          'Authorization': `Bearer ${token}`,
-          'Content-Type': 'application/json'
-        }
-      });
-      
-      if (response.ok) {
-        const data = await response.json();
-        setCurrentTimeEntry(data.entry);
-        setIsClockedIn(true);
-        const clockInTime = new Date(data.entry.clockIn);
-        setClockedInTime(clockInTime);
-        console.log('✅ Clocked in successfully');
-        alert('✅ ' + data.message);
-      } else {
-        const error = await response.json();
-        alert('⚠️ ' + (error.message || 'Failed to clock in'));
-      }
+      setIsProcessingSale(true);
+      const result = await timeEntries.create('clock_in');
+      setCurrentTimeEntry(result);
+      setIsClockedIn(true);
+      const clockInTime = new Date(result.clockInTime);
+      setClockedInTime(clockInTime);
+      localStorage.setItem(`clockIn_${user?.id}_${new Date().toDateString()}`, clockInTime.toISOString());
+      console.log('✅ Clocked in successfully');
+      alert('✅ Clocked in successfully at ' + clockInTime.toLocaleTimeString());
     } catch (error) {
       console.error('Clock in failed:', error);
-      alert('Failed to clock in');
+      alert('❌ Clock in failed: ' + (error.message || 'Unknown error'));
+    } finally {
+      setIsProcessingSale(false);
     }
   };
 
   // Clock out function
   const handleClockOut = async () => {
     try {
-      const token = localStorage.getItem('token');
-      const response = await fetch(`${BASE_API_URL}/clock-out`, {
-        method: 'POST',
-        headers: {
-          'Authorization': `Bearer ${token}`,
-          'Content-Type': 'application/json'
-        }
-      });
-      
-      if (response.ok) {
-        const data = await response.json();
-        setCurrentTimeEntry(data.entry);
-        setIsClockedIn(false);
-        setClockedInTime(null);
-        console.log('✅ Clocked out successfully');
-        alert('✅ ' + data.message);
-      } else {
-        const error = await response.json();
-        alert('⚠️ ' + (error.message || 'Failed to clock out'));
-      }
+      setIsProcessingSale(true);
+      const result = await timeEntries.create('clock_out');
+      setCurrentTimeEntry(result);
+      setIsClockedIn(false);
+      setClockedInTime(null);
+      localStorage.removeItem(`clockIn_${user?.id}_${new Date().toDateString()}`);
+      console.log('✅ Clocked out successfully');
+      const durationStr = result.duration ? `${result.duration} minutes` : 'unknown duration';
+      alert('✅ Clocked out successfully. Duration: ' + durationStr);
     } catch (error) {
       console.error('Clock out failed:', error);
-      alert('Failed to clock out');
+      alert('❌ Clock out failed: ' + (error.message || 'Unknown error'));
+    } finally {
+      setIsProcessingSale(false);
     }
   };
 
   // Check clock status from backend
   const checkClockStatus = async () => {
     try {
-      const token = localStorage.getItem('token');
-      const response = await fetch(`${BASE_API_URL}/clock-status`, {
-        headers: { 
-          'Authorization': `Bearer ${token}`,
-          'Content-Type': 'application/json'
-        }
-      });
-      
-      if (response.ok) {
-        const data = await response.json();
-        if (data.isClockedIn) {
-          setIsClockedIn(true);
-          setClockedInTime(new Date(data.clockInTime));
-          console.log('✅ User is clocked in since:', data.clockInTime);
-        } else {
-          setIsClockedIn(false);
-          setClockedInTime(null);
-          console.log('User is not clocked in');
-        }
+      const data = await timeEntries.getStatus();
+      if (data.isClockedIn) {
+        setIsClockedIn(true);
+        setClockedInTime(new Date(data.clockInTime));
+        console.log('✅ User is clocked in since:', data.clockInTime);
+      } else {
+        setIsClockedIn(false);
+        setClockedInTime(null);
+        console.log('User is not clocked in');
       }
     } catch (error) {
       console.warn('Failed to check clock status:', error);
@@ -363,19 +428,7 @@ export default function CashierPOS() {
       });
       console.log('✅ Sale created:', saleResponse.id);
       
-      // 2. Force immediate product refresh from backend (CRITICAL: await this!)
-      console.log('🔄 Refreshing product inventory...');
-      const freshProducts = await products.getAll();
-      console.log(`📦 Received ${freshProducts.length} products from server`);
-      
-      // 3. Filter products for cashier display
-      const filteredProducts = freshProducts.filter(p => p.visibleToCashier !== false && !p.expenseOnly);
-      console.log(`✅ Filtered to ${filteredProducts.length} visible products`);
-      
-      // 4. Update UI with fresh products
-      setProductList(filteredProducts);
-      
-      // 5. Clear cart and selections
+      // 2. Clear cart and selections IMMEDIATELY (user sees this instantly)
       setCart([]);
       setCartItemUnits({});  // Clear unit selections
       setSelectedDiscount(null);
@@ -383,6 +436,27 @@ export default function CashierPOS() {
       
       console.log('✅ Sale completed successfully!');
       alert('✅ Sale completed successfully!');
+      
+      // 3. Refresh product inventory in BACKGROUND (don't block UI)
+      // WebSocket will update product list when stock changes, but also fetch fresh data
+      console.log('🔄 Refreshing product inventory in background...');
+      (async () => {
+        try {
+          const freshProducts = await products.getAll();
+          console.log(`📦 Received ${freshProducts.length} products from server`);
+          
+          // Filter products for cashier display
+          const filteredProducts = freshProducts.filter(p => p.visibleToCashier !== false && !p.expenseOnly);
+          console.log(`✅ Filtered to ${filteredProducts.length} visible products`);
+          
+          // Update UI with fresh products
+          setProductList(filteredProducts);
+        } catch (error) {
+          console.warn('Background product refresh failed:', error);
+          // This is not critical - WebSocket will keep products updated
+        }
+      })();
+      
     } catch (error) {
       console.error('❌ Checkout failed:', error.message, error);
       alert(`❌ Sale failed: ${error.message || 'Unknown error occurred'}`);
@@ -1177,6 +1251,14 @@ export default function CashierPOS() {
           </div>
         </div>
       )}
+
+      {/* Screen Lock PIN Component */}
+      <ScreenLockPin 
+        isLocked={isLocked} 
+        onUnlock={unlock}
+        userPin={user?.pin || '1234'}
+        userName={user?.name}
+      />
     </div>
   );
 }
