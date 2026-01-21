@@ -444,19 +444,59 @@ export default function CashierPOS() {
       }
       
       const saleId = saleResponse.saleId;
-      console.log(`✅ Sale ID: ${saleId}, Stock deductions: ${JSON.stringify(saleResponse.stockDeductions)}`);
+      console.log(`✅ Sale ID: ${saleId}, Stock deductions:`, saleResponse.stockDeductions);
       
-      // 2. Clear cart and selections IMMEDIATELY (user sees this instantly)
+      // 2. Build new sale record with all details
+      const newSale = {
+        id: saleId,
+        items: cartItemsWithUnits,
+        total: finalTotal,
+        discount: discountValue,
+        tax: tax,
+        taxType: taxType,
+        paymentMethod: paymentMethod,
+        accountId: user?.accountId,
+        cashierId: user?.id,
+        cashierName: user?.name || 'Cashier',
+        stockDeductions: saleResponse.stockDeductions || { products: [], expenses: [] },
+        createdAt: new Date().toISOString()
+      };
+      
+      // 3. UPDATE PRODUCT LIST WITH DEDUCTIONS IMMEDIATELY (optimistic stock update)
+      if (saleResponse.stockDeductions?.products) {
+        const updatedProducts = productList.map(product => {
+          const deduction = saleResponse.stockDeductions.products.find(d => d.id === product.id);
+          if (deduction) {
+            return { ...product, quantity: deduction.after };
+          }
+          return product;
+        });
+        setProductList(updatedProducts);
+        console.log('✅ Product quantities updated immediately with stock deductions');
+      }
+      
+      // 4. ADD SALE TO LIST IMMEDIATELY (optimistic update)
+      setData(prev => ({
+        ...prev,
+        sales: [newSale, ...prev.sales]
+      }));
+      console.log('✅ Sale added to UI immediately');
+      
+      // 5. Clear cart and selections IMMEDIATELY (user sees this instantly)
       setCart([]);
-      setCartItemUnits({});  // Clear unit selections
+      setCartItemUnits({});
       setSelectedDiscount(null);
       setTaxType('exclusive');
-      setCheckoutLoading(false);  // CRITICAL: Clear button state
+      setCheckoutLoading(false);
       setIsProcessingSale(false);
       
-      // 3. Show success message
+      // 5. Show success message with deductions
+      const deductionsSummary = saleResponse.stockDeductions?.products
+        ?.map(p => `${p.name}: -${p.deducted}${p.unit}`)
+        .join('\n') || 'None';
+      
       console.log('✅ Sale completed successfully!');
-      alert(`✅ Sale #${saleId} completed!\nAmount: ${finalTotal}\nStock deducted: ${JSON.stringify(saleResponse.stockDeductions.products.map(p => `${p.name}: ${p.deducted}${p.unit}`)).replace(/"/g, '')}`);
+      alert(`✅ SALE COMPLETE!\nSale ID: #${saleId}\nAmount: KSH ${finalTotal.toLocaleString()}\n\nStock Deducted:\n${deductionsSummary}`);
       
       // 4. Refresh product inventory in BACKGROUND (don't block UI)
       console.log('🔄 Refreshing product inventory in background...');
@@ -1011,28 +1051,75 @@ export default function CashierPOS() {
                     <th className="px-4 py-3 text-left text-sm font-semibold text-gray-700">Date & Time</th>
                     <th className="px-4 py-3 text-left text-sm font-semibold text-gray-700">Items</th>
                     <th className="px-4 py-3 text-left text-sm font-semibold text-gray-700">Payment</th>
+                    <th className="px-4 py-3 text-left text-sm font-semibold text-gray-700">Stock Deducted</th>
                     <th className="px-4 py-3 text-left text-sm font-semibold text-gray-700">Total</th>
                   </tr>
                 </thead>
                 <tbody>
-                  {data.sales.slice(-15).reverse().map((sale, i) => (
-                    <tr key={i} className="border-t border-gray-100 hover:bg-gray-50 transition-colors">
-                      <td className="px-4 py-3 text-sm">{new Date(sale.createdAt).toLocaleString()}</td>
-                      <td className="px-4 py-3 text-sm">{sale.items?.length || 0} items</td>
-                      <td className="px-4 py-3 text-sm">
-                        <span className="badge badge-success">{sale.paymentMethod || 'cash'}</span>
-                      </td>
-                      <td className="px-4 py-3 text-sm font-semibold text-green-600">KSH {sale.total?.toLocaleString()}</td>
-                    </tr>
-                  ))}
+                  {data.sales && data.sales.slice(-15).reverse().map((sale, i) => {
+                    const deductionsSummary = sale.stockDeductions?.products
+                      ?.slice(0, 2)
+                      .map(p => `${p.name}: -${p.deducted}${p.unit}`)
+                      .join(', ') + (sale.stockDeductions?.products?.length > 2 ? '...' : '') || 'None';
+                    
+                    return (
+                      <tr key={i} className="border-t border-gray-100 hover:bg-gray-50 transition-colors">
+                        <td className="px-4 py-3 text-sm font-medium">{new Date(sale.createdAt).toLocaleString()}</td>
+                        <td className="px-4 py-3 text-sm">{sale.items?.length || 0} items</td>
+                        <td className="px-4 py-3 text-sm">
+                          <span className="badge badge-success">{sale.paymentMethod || 'cash'}</span>
+                        </td>
+                        <td className="px-4 py-3 text-sm text-orange-600 font-semibold">{deductionsSummary}</td>
+                        <td className="px-4 py-3 text-sm font-semibold text-green-600">KSH {sale.total?.toLocaleString()}</td>
+                      </tr>
+                    );
+                  })}
                 </tbody>
               </table>
             </div>
           </div>
+
+          <div className="card shadow-lg mt-6">
+            <h3 className="text-lg font-semibold mb-4 flex items-center gap-2">
+              <Package className="w-5 h-5 text-orange-600" />
+              Stock Deductions Log
+            </h3>
+            <div className="overflow-x-auto">
+              <table className="w-full text-sm">
+                <thead className="bg-orange-50">
+                  <tr>
+                    <th className="px-4 py-3 text-left font-semibold text-gray-700">Sale ID</th>
+                    <th className="px-4 py-3 text-left font-semibold text-gray-700">Product</th>
+                    <th className="px-4 py-3 text-left font-semibold text-gray-700">Before</th>
+                    <th className="px-4 py-3 text-left font-semibold text-gray-700">Deducted</th>
+                    <th className="px-4 py-3 text-left font-semibold text-gray-700">After</th>
+                    <th className="px-4 py-3 text-left font-semibold text-gray-700">Unit</th>
+                    <th className="px-4 py-3 text-left font-semibold text-gray-700">Time</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {data.sales && data.sales.slice(-20).reverse().map((sale) => 
+                    sale.stockDeductions?.products?.map((deduction, idx) => (
+                      <tr key={`${sale.id}-${idx}`} className="border-t border-orange-100 hover:bg-orange-50 transition-colors">
+                        <td className="px-4 py-3 font-medium text-blue-600">#{sale.id}</td>
+                        <td className="px-4 py-3">{deduction.name}</td>
+                        <td className="px-4 py-3 text-gray-600">{deduction.before}</td>
+                        <td className="px-4 py-3 font-semibold text-red-600">-{deduction.deducted}</td>
+                        <td className="px-4 py-3 font-semibold text-green-600">{deduction.after}</td>
+                        <td className="px-4 py-3 text-gray-600">{deduction.unit}</td>
+                        <td className="px-4 py-3 text-xs text-gray-500">{new Date(sale.createdAt).toLocaleTimeString()}</td>
+                      </tr>
+                    ))
+                  )}
+                </tbody>
+              </table>
+              {(!data.sales || data.sales.length === 0 || !data.sales.some(s => s.stockDeductions?.products?.length > 0)) && (
+                <div className="p-4 text-center text-gray-500">No stock deductions yet</div>
+              )}
+            </div>
+          </div>
         </div>
       )}
-
-      {activeView === 'products' && (
         <div className="p-6 max-w-7xl mx-auto w-full">
           <div className="card shadow-lg">
             <div className="flex justify-between items-center mb-6">

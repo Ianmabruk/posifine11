@@ -102,7 +102,8 @@ export default function AdminDashboard() {
     { id: 'inventory', label: 'Inventory', icon: Layers },
     { id: 'users', label: 'Users', icon: Users },
     { id: 'sales', label: 'Sales', icon: ShoppingBag },
-    { id: 'expenses', label: 'Expenses', icon: TrendingDown }
+    { id: 'expenses', label: 'Expenses', icon: TrendingDown },
+    { id: 'stock-deductions', label: 'Stock Log', icon: Package }
   ];
 
   return (
@@ -211,21 +212,30 @@ export default function AdminDashboard() {
                       <tr>
                         <th className="px-4 py-3 text-left text-sm font-semibold text-gray-700">Date</th>
                         <th className="px-4 py-3 text-left text-sm font-semibold text-gray-700">Items</th>
+                        <th className="px-4 py-3 text-left text-sm font-semibold text-gray-700">Stock Deducted</th>
                         <th className="px-4 py-3 text-left text-sm font-semibold text-gray-700">Payment</th>
                         <th className="px-4 py-3 text-left text-sm font-semibold text-gray-700">Total</th>
                       </tr>
                     </thead>
                     <tbody>
-                      {data.sales.slice(-10).reverse().map((sale, i) => (
-                        <tr key={i} className="border-t border-gray-100 hover:bg-gray-50 transition-colors">
-                          <td className="px-4 py-3 text-sm">{new Date(sale.createdAt).toLocaleDateString()}</td>
-                          <td className="px-4 py-3 text-sm">{sale.items?.length || 0} items</td>
-                          <td className="px-4 py-3 text-sm">
-                            <span className="badge badge-success">{sale.paymentMethod || 'cash'}</span>
-                          </td>
-                          <td className="px-4 py-3 text-sm font-semibold text-green-600">KSH {sale.total?.toLocaleString()}</td>
-                        </tr>
-                      ))}
+                      {data.sales.slice(-10).reverse().map((sale, i) => {
+                        const deductionsSummary = sale.stockDeductions?.products
+                          ?.slice(0, 2)
+                          .map(p => `${p.name}: -${p.deducted}${p.unit}`)
+                          .join(', ') + (sale.stockDeductions?.products?.length > 2 ? '...' : '') || 'None';
+                        
+                        return (
+                          <tr key={i} className="border-t border-gray-100 hover:bg-gray-50 transition-colors">
+                            <td className="px-4 py-3 text-sm">{new Date(sale.createdAt).toLocaleDateString()}</td>
+                            <td className="px-4 py-3 text-sm">{sale.items?.length || 0} items</td>
+                            <td className="px-4 py-3 text-sm text-orange-600 font-semibold">{deductionsSummary}</td>
+                            <td className="px-4 py-3 text-sm">
+                              <span className="badge badge-success">{sale.paymentMethod || 'cash'}</span>
+                            </td>
+                            <td className="px-4 py-3 text-sm font-semibold text-green-600">KSH {sale.total?.toLocaleString()}</td>
+                          </tr>
+                        );
+                      })}
                     </tbody>
                   </table>
                 </div>
@@ -453,21 +463,29 @@ export default function AdminDashboard() {
                     <tr>
                       <th className="px-4 py-3 text-left text-sm font-semibold text-gray-700">Date & Time</th>
                       <th className="px-4 py-3 text-left text-sm font-semibold text-gray-700">Items</th>
+                      <th className="px-4 py-3 text-left text-sm font-semibold text-gray-700">Stock Deducted</th>
                       <th className="px-4 py-3 text-left text-sm font-semibold text-gray-700">Payment Method</th>
                       <th className="px-4 py-3 text-left text-sm font-semibold text-gray-700">Total</th>
                     </tr>
                   </thead>
                   <tbody>
-                    {data.sales.slice().reverse().map((sale, i) => (
-                      <tr key={i} className="border-t border-gray-100 hover:bg-gray-50 transition-colors">
-                        <td className="px-4 py-3 text-sm">{new Date(sale.createdAt).toLocaleString()}</td>
-                        <td className="px-4 py-3 text-sm">{sale.items?.length || 0} items</td>
-                        <td className="px-4 py-3 text-sm">
-                          <span className="badge badge-success">{sale.paymentMethod || 'cash'}</span>
-                        </td>
-                        <td className="px-4 py-3 text-sm font-semibold text-green-600">KSH {sale.total?.toLocaleString()}</td>
-                      </tr>
-                    ))}
+                    {data.sales.slice().reverse().map((sale, i) => {
+                      const deductionsSummary = sale.stockDeductions?.products
+                        ?.map(p => `${p.name}: -${p.deducted}${p.unit}`)
+                        .join(', ') || 'None';
+                      
+                      return (
+                        <tr key={i} className="border-t border-gray-100 hover:bg-gray-50 transition-colors">
+                          <td className="px-4 py-3 text-sm font-medium">{new Date(sale.createdAt).toLocaleString()}</td>
+                          <td className="px-4 py-3 text-sm">{sale.items?.length || 0} items</td>
+                          <td className="px-4 py-3 text-sm text-orange-600 font-semibold text-xs">{deductionsSummary}</td>
+                          <td className="px-4 py-3 text-sm">
+                            <span className="badge badge-success">{sale.paymentMethod || 'cash'}</span>
+                          </td>
+                          <td className="px-4 py-3 text-sm font-semibold text-green-600">KSH {sale.total?.toLocaleString()}</td>
+                        </tr>
+                      );
+                    })}
                   </tbody>
                 </table>
               </div>
@@ -506,6 +524,45 @@ export default function AdminDashboard() {
                     ))}
                   </tbody>
                 </table>
+              </div>
+            </div>
+          )}
+
+          {activeTab === 'stock-deductions' && (
+            <div>
+              <h3 className="text-lg font-semibold mb-4">Stock Deductions Log</h3>
+              <div className="overflow-x-auto">
+                <table className="w-full text-sm">
+                  <thead className="bg-orange-50">
+                    <tr>
+                      <th className="px-4 py-3 text-left font-semibold text-gray-700">Sale ID</th>
+                      <th className="px-4 py-3 text-left font-semibold text-gray-700">Time</th>
+                      <th className="px-4 py-3 text-left font-semibold text-gray-700">Product</th>
+                      <th className="px-4 py-3 text-left font-semibold text-gray-700">Before</th>
+                      <th className="px-4 py-3 text-left font-semibold text-gray-700">Deducted</th>
+                      <th className="px-4 py-3 text-left font-semibold text-gray-700">After</th>
+                      <th className="px-4 py-3 text-left font-semibold text-gray-700">Unit</th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    {data.sales && data.sales.slice().reverse().map((sale) => 
+                      sale.stockDeductions?.products?.map((deduction, idx) => (
+                        <tr key={`${sale.id}-${idx}`} className="border-t border-orange-100 hover:bg-orange-50 transition-colors">
+                          <td className="px-4 py-3 font-medium text-blue-600">#{sale.id}</td>
+                          <td className="px-4 py-3 text-xs text-gray-500">{new Date(sale.createdAt).toLocaleString()}</td>
+                          <td className="px-4 py-3">{deduction.name}</td>
+                          <td className="px-4 py-3 text-gray-600">{deduction.before}</td>
+                          <td className="px-4 py-3 font-semibold text-red-600">-{deduction.deducted}</td>
+                          <td className="px-4 py-3 font-semibold text-green-600">{deduction.after}</td>
+                          <td className="px-4 py-3 text-gray-600">{deduction.unit}</td>
+                        </tr>
+                      ))
+                    )}
+                  </tbody>
+                </table>
+                {(!data.sales || data.sales.length === 0 || !data.sales.some(s => s.stockDeductions?.products?.length > 0)) && (
+                  <div className="p-4 text-center text-gray-500">No stock deductions recorded yet</div>
+                )}
               </div>
             </div>
           )}
