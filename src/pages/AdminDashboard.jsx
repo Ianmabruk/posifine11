@@ -10,7 +10,7 @@ export default function AdminDashboard() {
   const [showAddProduct, setShowAddProduct] = useState(false);
   const [showAddUser, setShowAddUser] = useState(false);
   const [searchTerm, setSearchTerm] = useState('');
-  const [newProduct, setNewProduct] = useState({ name: '', price: '', quantity: '', category: 'raw' });
+  const [newProduct, setNewProduct] = useState({ name: '', price: '', cost: '', category: 'finished', unit: 'pcs' });
   const [newUser, setNewUser] = useState({ name: '', email: '', password: 'changeme123', role: 'cashier' });
 
   useEffect(() => {
@@ -42,22 +42,54 @@ export default function AdminDashboard() {
 
   const handleAddProduct = async (e) => {
     e.preventDefault();
-    await products.create({ ...newProduct, price: parseFloat(newProduct.price), quantity: parseInt(newProduct.quantity) });
-    setNewProduct({ name: '', price: '', quantity: '', category: 'raw' });
-    setShowAddProduct(false);
-    loadData();
+    try {
+      if (!newProduct.name || !newProduct.price) {
+        alert('Please fill in all required fields (Name, Price)');
+        return;
+      }
+
+      console.log('➕ Creating product:', newProduct.name);
+      const result = await products.create({
+        ...newProduct,
+        price: parseFloat(newProduct.price),
+        cost: parseFloat(newProduct.cost || 0),
+        quantity: 0  // Products start with 0 stock, added via batches
+      });
+
+      console.log('✅ Product created:', result.id);
+      setNewProduct({ name: '', price: '', cost: '', category: 'finished', unit: 'pcs' });
+      setShowAddProduct(false);
+
+      // Reload data to show new product
+      await loadData();
+      alert(`✅ Product "${result.name}" added successfully!`);
+    } catch (error) {
+      console.error('❌ Failed to add product:', error);
+      alert(`❌ Failed to add product: ${error.message || 'Unknown error'}`);
+    }
   };
 
   const handleAddUser = async (e) => {
     e.preventDefault();
     try {
-      await users.create(newUser);
+      if (!newUser.name || !newUser.email) {
+        alert('Please fill in all required fields (Name, Email)');
+        return;
+      }
+
+      console.log('➕ Creating user:', newUser.name);
+      const result = await users.create(newUser);
+
+      console.log('✅ User created:', result.id);
       setNewUser({ name: '', email: '', password: 'changeme123', role: 'cashier' });
       setShowAddUser(false);
-      loadData();
-      alert(`User created successfully! Login: ${newUser.email} / ${newUser.password}`);
+
+      // Reload data to show new user
+      await loadData();
+      alert(`✅ User "${result.name}" created successfully! Login: ${result.email} / changeme123`);
     } catch (error) {
-      alert('Failed to create user: ' + error.message);
+      console.error('❌ Failed to create user:', error);
+      alert(`❌ Failed to create user: ${error.message || 'Unknown error'}`);
     }
   };
 
@@ -222,13 +254,12 @@ export default function AdminDashboard() {
                 </button>
               </div>
 
-              {showAddProduct && (
                 <div className="mb-6 p-6 bg-gradient-to-br from-blue-50 to-purple-50 rounded-xl border-2 border-blue-200">
                   <h4 className="font-semibold mb-4 text-lg">Add New Product</h4>
-                  <form onSubmit={handleAddProduct} className="grid grid-cols-1 md:grid-cols-4 gap-4">
+                  <form onSubmit={handleAddProduct} className="grid grid-cols-1 md:grid-cols-3 gap-4">
                     <input
                       type="text"
-                      placeholder="Product Name"
+                      placeholder="Product Name *"
                       className="input"
                       value={newProduct.name}
                       onChange={(e) => setNewProduct({ ...newProduct, name: e.target.value })}
@@ -236,27 +267,48 @@ export default function AdminDashboard() {
                     />
                     <input
                       type="number"
-                      placeholder="Price"
+                      placeholder="Selling Price *"
                       className="input"
                       value={newProduct.price}
                       onChange={(e) => setNewProduct({ ...newProduct, price: e.target.value })}
+                      step="0.01"
                       required
                     />
                     <input
                       type="number"
-                      placeholder="Quantity"
+                      placeholder="Cost Price"
                       className="input"
-                      value={newProduct.quantity}
-                      onChange={(e) => setNewProduct({ ...newProduct, quantity: e.target.value })}
-                      required
+                      value={newProduct.cost}
+                      onChange={(e) => setNewProduct({ ...newProduct, cost: e.target.value })}
+                      step="0.01"
                     />
+                    <select
+                      className="input"
+                      value={newProduct.category}
+                      onChange={(e) => setNewProduct({ ...newProduct, category: e.target.value })}
+                    >
+                      <option value="finished">Finished Good</option>
+                      <option value="raw">Raw Material</option>
+                      <option value="semi-finished">Semi-Finished</option>
+                    </select>
+                    <select
+                      className="input"
+                      value={newProduct.unit}
+                      onChange={(e) => setNewProduct({ ...newProduct, unit: e.target.value })}
+                    >
+                      <option value="pcs">Pieces</option>
+                      <option value="kg">Kilograms</option>
+                      <option value="liters">Liters</option>
+                      <option value="grams">Grams</option>
+                      <option value="ml">Milliliters</option>
+                    </select>
                     <div className="flex gap-2">
-                      <button type="submit" className="btn-primary flex-1">Add</button>
+                      <button type="submit" className="btn-primary flex-1">Add Product</button>
                       <button type="button" onClick={() => setShowAddProduct(false)} className="btn-secondary">Cancel</button>
                     </div>
                   </form>
+                  <p className="text-xs text-gray-600 mt-2">Note: Stock is added separately via Batches. Fields marked with * are required.</p>
                 </div>
-              )}
 
               <div className="overflow-x-auto">
                 <table className="w-full">

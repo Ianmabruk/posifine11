@@ -290,14 +290,19 @@ export default function CashierPOS() {
       if (data.isClockedIn) {
         setIsClockedIn(true);
         setClockedInTime(new Date(data.clockInTime));
+        setCurrentTimeEntry(data);
         console.log('✅ User is clocked in since:', data.clockInTime);
       } else {
         setIsClockedIn(false);
         setClockedInTime(null);
+        setCurrentTimeEntry(null);
         console.log('User is not clocked in');
       }
     } catch (error) {
       console.warn('Failed to check clock status:', error);
+      // Fallback: assume not clocked in
+      setIsClockedIn(false);
+      setClockedInTime(null);
     }
   };
 
@@ -398,6 +403,8 @@ export default function CashierPOS() {
     if (cart.length === 0 || checkoutLoading) return;
     
     setCheckoutLoading(true);
+    setIsProcessingSale(true);  // Add visual feedback
+    
     try {
       const discountValue = selectedDiscount 
         ? (selectedDiscount.type === 'percentage' ? (total * selectedDiscount.value / 100) : selectedDiscount.value)
@@ -437,10 +444,13 @@ export default function CashierPOS() {
       setSelectedDiscount(null);
       setTaxType('exclusive');
       
+      // 3. Hide processing state
+      setIsProcessingSale(false);
+      
       console.log('✅ Sale completed successfully!');
       alert('✅ Sale completed successfully!');
       
-      // 3. Refresh product inventory in BACKGROUND (don't block UI)
+      // 4. Refresh product inventory in BACKGROUND (don't block UI)
       // WebSocket will update product list when stock changes, but also fetch fresh data
       console.log('🔄 Refreshing product inventory in background...');
       (async () => {
@@ -462,6 +472,8 @@ export default function CashierPOS() {
       
     } catch (error) {
       console.error('❌ Checkout failed:', error.message, error);
+      // CRITICAL: Always clear processing state on error
+      setIsProcessingSale(false);
       alert(`❌ Sale failed: ${error.message || 'Unknown error occurred'}`);
     } finally {
       setCheckoutLoading(false);

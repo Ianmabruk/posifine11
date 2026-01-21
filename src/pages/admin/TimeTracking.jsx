@@ -1,31 +1,66 @@
 import { useState, useEffect } from 'react';
+import { useAuth } from '../../context/AuthContext';
+import { timeEntries } from '../../services/api';
 import { Clock, Calendar, User } from 'lucide-react';
 
 export default function TimeTracking() {
+  const { user } = useAuth();
   const [records, setRecords] = useState([]);
   const [filter, setFilter] = useState('all');
+  const [loading, setLoading] = useState(true);
 
   useEffect(() => {
     loadRecords();
+    // Auto-refresh every 30 seconds
+    const interval = setInterval(loadRecords, 30000);
+    return () => clearInterval(interval);
   }, []);
 
-  const loadRecords = () => {
-    const data = JSON.parse(localStorage.getItem('clockRecords') || '[]');
-    setRecords(data.reverse());
+  const loadRecords = async () => {
+    try {
+      setLoading(true);
+      // Fetch from backend API instead of localStorage
+      const data = await timeEntries.getAll();
+      if (Array.isArray(data)) {
+        setRecords(data.reverse());
+        console.log(`✅ Loaded ${data.length} clock records from backend`);
+      }
+    } catch (error) {
+      console.error('Failed to load clock records:', error);
+      setRecords([]);
+    } finally {
+      setLoading(false);
+    }
   };
 
+  const today = new Date().toDateString();
+  
   const filteredRecords = filter === 'all' 
     ? records 
-    : records.filter(r => r.date === new Date().toDateString());
+    : records.filter(r => {
+        try {
+          return new Date(r.date || r.clockInTime).toDateString() === today;
+        } catch {
+          return false;
+        }
+      });
 
-  const totalHoursToday = filteredRecords
-    .filter(r => r.date === new Date().toDateString())
-    .reduce((sum, r) => sum + r.duration, 0) / 60;
+  const totalHoursToday = records
+    .filter(r => {
+      try {
+        return new Date(r.date || r.clockInTime).toDateString() === today && r.duration;
+      } catch {
+        return false;
+      }
+    })
+    .reduce((sum, r) => sum + (r.duration || 0), 0) / 60;
 
-  const formatDuration = (minutes) => {
-    const hours = Math.floor(minutes / 60);
-    const mins = minutes % 60;
-    return `${hours}h ${mins}m`;
+  const formatDuration = (seconds) => {
+    // Handle both seconds and minutes
+    let mins = typeof seconds === 'number' ? (seconds < 120 ? seconds : Math.floor(seconds / 60)) : 0;
+    const hours = Math.floor(mins / 60);
+    const remaining = mins % 60;
+    return `${hours}h ${remaining}m`;
   };
 
   return (
@@ -35,7 +70,7 @@ export default function TimeTracking() {
         <p className="text-sm text-gray-600 mt-1">Monitor cashier clock in/out records</p>
       </div>
 
-      <div className="grid grid-cols-1 md:grid-cols-3 gap-4 md:gap-6">
+        <div className="grid grid-cols-1 md:grid-cols-3 gap-4 md:gap-6">
         <div className="card bg-gradient-to-br from-blue-50 to-blue-100 border-blue-200">
           <div className="flex items-center gap-3">
             <div className="w-12 h-12 bg-blue-600 rounded-xl flex items-center justify-center">
@@ -54,9 +89,17 @@ export default function TimeTracking() {
               <User className="w-6 h-6 text-white" />
             </div>
             <div>
-              <p className="text-sm text-green-700">Active Cashiers</p>
+              <p className="text-sm text-green-700">Active Cashiers Today</p>
               <p className="text-2xl font-bold text-green-900">
-                {new Set(filteredRecords.filter(r => r.date === new Date().toDateString()).map(r => r.userId)).size}
+                {new Set(records
+                  .filter(r => {
+                    try {
+                      return new Date(r.date || r.clockInTime).toDateString() === new Date().toDateString();
+                    } catch {
+                      return false;
+                    }
+                  })
+                  .map(r => r.cashierId || r.userId)).size}
               </p>
             </div>
           </div>
@@ -95,6 +138,13 @@ export default function TimeTracking() {
             >
               Today
             </button>
+            <button
+              onClick={loadRecords}
+              disabled={loading}
+              className="px-4 py-2 rounded-lg text-sm font-medium bg-green-100 text-green-600 hover:bg-green-200 disabled:opacity-50"
+            >
+              {loading ? 'Loading...' : 'Refresh'}
+            </button>
           </div>
         </div>
 
@@ -107,27 +157,46 @@ export default function TimeTracking() {
                 <th className="px-4 py-3 text-left text-sm font-semibold text-gray-700">Clock In</th>
                 <th className="px-4 py-3 text-left text-sm font-semibold text-gray-700">Clock Out</th>
                 <th className="px-4 py-3 text-left text-sm font-semibold text-gray-700">Duration</th>
+                <th className="px-4 py-3 text-left text-sm font-semibold text-gray-700">Status</th>
               </tr>
             </thead>
             <tbody>
               {filteredRecords.length === 0 ? (
                 <tr>
-                  <td colSpan="5" className="px-4 py-8 text-center text-gray-500">
-                    No records found
+                  <td colSpan="6" className="px-4 py-8 text-center text-gray-500">
+                    {loading ? 'Loading records...' : 'No records found'}
                   </td>
                 </tr>
               ) : (
-                filteredRecords.map((record, idx) => (
-                  <tr key={idx} className="border-t border-gray-100 hover:bg-gray-50">
-                    <td className="px-4 py-3 text-sm font-medium">{record.userName}</td>
-                    <td className="px-4 py-3 text-sm">{new Date(record.clockIn).toLocaleDateString()}</td>
-                    <td className="px-4 py-3 text-sm">{new Date(record.clockIn).toLocaleTimeString()}</td>
-                    <td className="px-4 py-3 text-sm">{new Date(record.clockOut).toLocaleTimeString()}</td>
-                    <td className="px-4 py-3 text-sm">
-                      <span className="badge badge-success">{formatDuration(record.duration)}</span>
-                    </td>
-                  </tr>
-                ))
+                filteredRecords.map((record, idx) => {
+                  const clockInTime = new Date(record.clockInTime);
+                  const clockOutTime = record.clockOutTime ? new Date(record.clockOutTime) : null;
+                  
+                  return (
+                    <tr key={idx} className="border-t border-gray-100 hover:bg-gray-50">
+                      <td className="px-4 py-3 text-sm font-medium">{record.cashierName || record.userName}</td>
+                      <td className="px-4 py-3 text-sm">{clockInTime.toLocaleDateString()}</td>
+                      <td className="px-4 py-3 text-sm">{clockInTime.toLocaleTimeString()}</td>
+                      <td className="px-4 py-3 text-sm">
+                        {clockOutTime ? clockOutTime.toLocaleTimeString() : '-'}
+                      </td>
+                      <td className="px-4 py-3 text-sm">
+                        <span className="badge badge-success">
+                          {record.duration ? formatDuration(record.duration) : '-'}
+                        </span>
+                      </td>
+                      <td className="px-4 py-3 text-sm">
+                        <span className={`px-2 py-1 rounded text-xs font-medium ${
+                          record.status === 'clocked_in' 
+                            ? 'bg-green-100 text-green-800' 
+                            : 'bg-gray-100 text-gray-800'
+                        }`}>
+                          {record.status === 'clocked_in' ? '🟢 Clocked In' : '✓ Clocked Out'}
+                        </span>
+                      </td>
+                    </tr>
+                  );
+                })
               )}
             </tbody>
           </table>
