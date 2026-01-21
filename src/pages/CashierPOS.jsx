@@ -424,7 +424,7 @@ export default function CashierPOS() {
         price: item.price
       }));
       
-      // Call backend (will be fast <20ms)
+      // CALL BACKEND
       const saleResponse = await sales.create({
         items: cartItemsWithUnits,
         total: finalTotal,
@@ -456,7 +456,7 @@ export default function CashierPOS() {
         createdAt: new Date().toISOString()
       };
       
-      // UPDATE PRODUCT QUANTITIES IMMEDIATELY
+      // 1. UPDATE PRODUCT QUANTITIES
       if (saleResponse.stockDeductions?.products) {
         const updatedProducts = productList.map(product => {
           const deduction = saleResponse.stockDeductions.products.find(d => d.id === product.id);
@@ -465,34 +465,63 @@ export default function CashierPOS() {
         setProductList(updatedProducts);
       }
       
-      // ADD SALE TO LIST IMMEDIATELY
+      // 2. ADD SALE TO LIST
       setData(prev => ({
         ...prev,
         sales: [newSale, ...prev.sales]
       }));
       
-      // CLEAR CART INSTANTLY
+      // 3. CLEAR CART
       setCart([]);
       setCartItemUnits({});
       setSelectedDiscount(null);
       setTaxType('exclusive');
+      setCheckoutLoading(false);
       
-      // SHOW SUCCESS - This is instant, no waits
+      // 4. SHOW SUCCESS WITHOUT BLOCKING (no alert - use console toast instead)
+      console.log(`✅ SALE #${saleId} COMPLETE - Amount: KSH ${finalTotal.toLocaleString()}`);
+      
+      // Show quick notification using console
       const deductionsSummary = saleResponse.stockDeductions?.products
         ?.map(p => `${p.name}: -${p.deducted}${p.unit}`)
-        .join('\n') || 'None';
+        .join(', ') || 'None';
+      console.log(`📦 Stock deducted: ${deductionsSummary}`);
       
-      alert(`✅ SALE COMPLETE!\nSale ID: #${saleId}\nAmount: KSH ${finalTotal.toLocaleString()}\n\nStock Deducted:\n${deductionsSummary}`);
+      // Use toast notification in UI if available, otherwise silent
+      if (window.__showNotification) {
+        window.__showNotification(`✅ Sale #${saleId} Complete!`);
+      } else {
+        // Fallback: show in title briefly
+        const originalTitle = document.title;
+        document.title = `✅ Sale #${saleId} Complete!`;
+        setTimeout(() => { document.title = originalTitle; }, 2000);
+      }
       
-      // FIRE AND FORGET: Background refresh (doesn't block UI)
-      sales.getAll().then(s => setData(prev => ({ ...prev, sales: s }))).catch(() => {});
-      products.getAll().then(p => setProductList(p.filter(prod => prod.visibleToCashier !== false && !prod.expenseOnly))).catch(() => {});
-      
-      setCheckoutLoading(false);
+      // 5. BACKGROUND REFRESH (fire-and-forget, async, non-blocking)
+      setTimeout(async () => {
+        try {
+          const [s, p] = await Promise.all([
+            sales.getAll().catch(() => []),
+            products.getAll().catch(() => [])
+          ]);
+          if (s) setData(prev => ({ ...prev, sales: s }));
+          if (p) setProductList(p.filter(prod => prod.visibleToCashier !== false && !prod.expenseOnly));
+        } catch (e) {
+          console.warn('Background refresh skipped');
+        }
+      }, 100);
       
     } catch (error) {
       setCheckoutLoading(false);
-      alert(`❌ Sale failed: ${error.message || 'Unknown error'}`);
+      console.error('Sale failed:', error.message);
+      
+      // Non-blocking error notification
+      if (window.__showNotification) {
+        window.__showNotification(`❌ Sale failed: ${error.message}`);
+      } else {
+        document.title = `❌ Error: ${error.message}`;
+        setTimeout(() => { document.title = 'POSifine'; }, 2000);
+      }
     }
   };
 
@@ -500,7 +529,6 @@ export default function CashierPOS() {
     e.preventDefault();
     try {
       if (!newProduct.name || !newProduct.price) {
-        alert('Product name and price are required');
         return;
       }
       
@@ -512,7 +540,7 @@ export default function CashierPOS() {
         quantity: 0
       });
       
-      // OPTIMISTIC UPDATE: Add product to list immediately (no wait for loadData)
+      // OPTIMISTIC UPDATE
       const newProd = {
         id: createdProduct.id,
         name: createdProduct.name,
@@ -525,19 +553,18 @@ export default function CashierPOS() {
       
       setProductList(prev => [...prev, newProd]);
       
-      // Clear form and close modal instantly
+      // Clear form and close modal instantly - NO ALERT (non-blocking)
       setNewProduct({ name: '', price: '', cost: '', category: 'finished', image: '' });
       setImagePreview('');
       setShowAddProduct(false);
       
-      // Show success instantly
-      alert('✅ Product added!');
+      console.log(`✅ Product ${createdProduct.name} added`);
       
-      // FIRE AND FORGET: Refresh data in background without blocking
-      loadData().catch(() => {});
+      // FIRE AND FORGET: Background refresh
+      setTimeout(() => loadData().catch(() => {}), 50);
       
     } catch (error) {
-      alert(`❌ Failed: ${error.message || 'Unknown error'}`);
+      console.error('Add product failed:', error.message);
     }
   };
 

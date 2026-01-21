@@ -44,7 +44,6 @@ export default function AdminDashboard() {
     e.preventDefault();
     try {
       if (!newProduct.name || !newProduct.price) {
-        alert('Please fill in Name and Price');
         return;
       }
 
@@ -63,12 +62,13 @@ export default function AdminDashboard() {
 
       setNewProduct({ name: '', price: '', cost: '', category: 'finished', unit: 'pcs' });
       setShowAddProduct(false);
-      alert(`✅ Product added!`);
+      
+      console.log(`✅ Product ${result.name} added`);
       
       // FIRE AND FORGET: Refresh in background
-      loadData().catch(() => {});
+      setTimeout(() => loadData().catch(() => {}), 50);
     } catch (error) {
-      alert(`❌ Failed: ${error.message || 'Unknown error'}`);
+      console.error('Add product failed:', error.message);
     }
   };
 
@@ -76,7 +76,6 @@ export default function AdminDashboard() {
     e.preventDefault();
     try {
       if (!newUser.name || !newUser.email) {
-        alert('Please fill in Name and Email');
         return;
       }
 
@@ -90,13 +89,13 @@ export default function AdminDashboard() {
 
       setNewUser({ name: '', email: '', password: 'changeme123', role: 'cashier' });
       setShowAddUser(false);
-      alert(`✅ User created!`);
+      
+      console.log(`✅ User ${result.name} created`);
       
       // FIRE AND FORGET: Refresh in background
-      loadData().catch(() => {});
+      setTimeout(() => loadData().catch(() => {}), 50);
     } catch (error) {
-      console.error('❌ Failed to create user:', error);
-      alert(`❌ Failed to create user: ${error.message || 'Unknown error'}`);
+      console.error('Add user failed:', error.message);
     }
   };
 
