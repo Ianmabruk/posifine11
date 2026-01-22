@@ -42,13 +42,21 @@ export default function AdminDashboard() {
 
   const handleAddProduct = async (e) => {
     e.preventDefault();
+    console.log('📦 Add Product form submitted');
+    
     try {
       if (!newProduct.name || !newProduct.price) {
+        console.warn('⚠️ Validation failed - missing required fields');
         alert('Please fill in all required fields (Name, Price)');
         return;
       }
 
-      console.log('➕ Creating product:', newProduct.name);
+      console.log('➕ Creating product:', newProduct.name, 'Price:', newProduct.price, 'Unit:', newProduct.unit);
+      
+      if (!products || typeof products.create !== 'function') {
+        throw new Error('Products API not properly loaded');
+      }
+      
       const result = await products.create({
         ...newProduct,
         price: parseFloat(newProduct.price),
@@ -56,15 +64,20 @@ export default function AdminDashboard() {
         quantity: 0  // Products start with 0 stock, added via batches
       });
 
-      console.log('✅ Product created:', result.id);
+      if (!result || !result.id) {
+        throw new Error('Invalid response from server - no product ID returned');
+      }
+
+      console.log('✅ Product created:', result.id, result.name);
       setNewProduct({ name: '', price: '', cost: '', category: 'finished', unit: 'pcs' });
       setShowAddProduct(false);
 
       // Reload data to show new product
+      console.log('🔄 Reloading inventory...');
       await loadData();
       alert(`✅ Product "${result.name}" added successfully!`);
     } catch (error) {
-      console.error('❌ Failed to add product:', error);
+      console.error('❌ Failed to add product:', error.message, error);
       alert(`❌ Failed to add product: ${error.message || 'Unknown error'}`);
     }
   };
@@ -258,12 +271,24 @@ export default function AdminDashboard() {
                     />
                   </div>
                 </div>
-                <button onClick={() => setShowAddProduct(true)} className="btn-primary flex items-center gap-2 bg-gradient-to-r from-blue-600 to-purple-600 hover:from-blue-700 hover:to-purple-700">
+                <button 
+                  onClick={() => {
+                    try {
+                      console.log('🛒 Add Product button clicked');
+                      setShowAddProduct(true);
+                    } catch (err) {
+                      console.error('❌ Button handler error:', err);
+                      alert(`Error: ${err.message}`);
+                    }
+                  }} 
+                  className="btn-primary flex items-center gap-2 bg-gradient-to-r from-blue-600 to-purple-600 hover:from-blue-700 hover:to-purple-700 transition-all duration-200"
+                >
                   <Plus className="w-4 h-4" />
                   Add Product
                 </button>
               </div>
 
+              {showAddProduct && (
                 <div className="mb-6 p-6 bg-gradient-to-br from-blue-50 to-purple-50 rounded-xl border-2 border-blue-200">
                   <h4 className="font-semibold mb-4 text-lg">Add New Product</h4>
                   <form onSubmit={handleAddProduct} className="grid grid-cols-1 md:grid-cols-3 gap-4">
@@ -319,6 +344,7 @@ export default function AdminDashboard() {
                   </form>
                   <p className="text-xs text-gray-600 mt-2">Note: Stock is added separately via Batches. Fields marked with * are required.</p>
                 </div>
+              )}
 
               <div className="overflow-x-auto">
                 <table className="w-full">
