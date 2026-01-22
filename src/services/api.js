@@ -1,315 +1,593 @@
-/**
- * Centralized API Service Layer
- * Handles all HTTP requests, error handling, and response parsing
- * This is the single source of truth for all API interactions
- */
 
-// ============================================================
-// BASE CONFIGURATION
-// ============================================================
+// Updated API Service Layer - Connected to Deployed Backend
 
-// Get API base URL from environment or default to localhost
-export const BASE_API_URL = import.meta.env.VITE_API_BASE || 'http://localhost:5000/api';
+const getBaseUrl = () => {
+  // Use environment variable if available, otherwise use localhost for development
+  return import.meta.env.VITE_API_BASE || 'http://localhost:5000/api';
+};
 
-// ============================================================
-// CORE REQUEST FUNCTION
-// ============================================================
+const BASE_API_URL = getBaseUrl();
 
-/**
- * Universal fetch wrapper with error handling and auth
- * @param {string} endpoint - API endpoint (without base URL)
- * @param {object} options - Fetch options (method, body, headers)
- * @returns {Promise<any>} - Parsed JSON response
- * @throws {Error} - With descriptive message for debugging
- */
-async function request(endpoint, options = {}) {
-  const url = `${BASE_API_URL}${endpoint}`;
-  const token = localStorage.getItem('token');
+const getToken = () => localStorage.getItem('token');
+
+// Retry logic for network failures (handles Render free tier spindown)
+const requestWithRetry = async (endpoint, options = {}, retryCount = 0, maxRetries = 3) => {
+  const token = getToken();
   
-  const headers = {
-    'Content-Type': 'application/json',
-    ...options.headers
+  const cleanEndpoint = endpoint.startsWith('/') ? endpoint : `/${endpoint}`;
+  
+  const config = {
+    ...options,
+    headers: {
+      'Content-Type': 'application/json',
+      ...(token && !(cleanEndpoint.startsWith('/auth') && cleanEndpoint !== '/auth/me') && !cleanEndpoint.includes('/main-admin/auth/login') && { Authorization: `Bearer ${token}` }),
+      ...options.headers
+    }
   };
 
-  if (token) {
-    headers['Authorization'] = `Bearer ${token}`;
-  }
-
   try {
-    console.log(`[API] 📤 ${options.method || 'GET'} ${endpoint}`, options.body ? JSON.parse(options.body) : '');
-    
-    const response = await fetch(url, {
-      ...options,
-      headers
-    });
+    const response = await fetch(`${BASE_API_URL}${cleanEndpoint}`, config);
 
-    // Read response body once
-    const contentType = response.headers.get('content-type');
-    let data = null;
-    
-    if (contentType && contentType.includes('application/json')) {
-      data = await response.json();
-    } else {
-      data = await response.text();
+    if (response.status === 401) {
+      // For login endpoints, return the error response instead of throwing
+      if (cleanEndpoint.includes('/auth/login') || cleanEndpoint.includes('/main-admin/auth/login')) {
+        const errorData = await response.json().catch(() => ({ error: 'Unauthorized' }));
+        throw new Error(errorData.error || 'Invalid credentials');
+      }
+      
+      // For other endpoints, clear tokens and redirect
+      localStorage.removeItem('token');
+      localStorage.removeItem('user');
+      const path = window.location.pathname || '';
+      if (!path.includes('/login') && !path.includes('/signup') && !path.includes('/auth') && !path.includes('/main.admin')) {
+        try {
+          window.location.href = '/login';
+        } catch (e) {}
+      }
+      const err = new Error('Unauthorized');
+      err.status = 401;
+      throw err;
     }
 
-    console.log(`[API] 📥 ${response.status} ${endpoint}`, data);
-
-    // Check for HTTP errors
-    if (!response.ok) {
-      const errorMessage = data?.message || data?.error || `HTTP ${response.status}`;
-      console.error(`[API] ❌ Error: ${errorMessage}`);
-      throw new Error(errorMessage);
+    if (response.status === 500) {
+      throw new Error('Server error 500 - Backend unavailable');
     }
 
-    // Ensure we have a successful response structure
-    if (typeof data === 'object' && data !== null) {
-      return data;
+    if (response.ok) {
+      if (response.status === 204) {
+        return { success: true };
+      }
+      return await response.json();
     }
 
-    return data;
+    const errorData = await response.json().catch(() => ({ error: 'Network error' }));
+    throw new Error(errorData.error || `HTTP ${response.status}: ${response.statusText}`);
+
   } catch (error) {
-    console.error(`[API] ❌ Request failed: ${endpoint}`, error);
+    // Retry on network errors (fetch failures)
+    if (error.name === 'TypeError' && error.message.includes('fetch')) {
+      console.error(`API Fetch Error (attempt ${retryCount + 1}/${maxRetries + 1}):`, error);
+      console.error("Attempted URL:", `${BASE_API_URL}${cleanEndpoint}`);
+      
+      // If not max retries, wait and retry
+      if (retryCount < maxRetries) {
+        const delayMs = Math.min(1000 * Math.pow(2, retryCount), 10000); // Exponential backoff: 1s, 2s, 4s
+        console.log(`Retrying in ${delayMs}ms...`);
+        await new Promise(resolve => setTimeout(resolve, delayMs));
+        return requestWithRetry(endpoint, options, retryCount + 1, maxRetries);
+      }
+      
+      // All retries failed
+      throw new Error('Cannot connect to server. The server may be waking up. Please try again in a moment.');
+    }
     throw error;
   }
-}
+};
 
-// ============================================================
-// PRODUCTS API
-// ============================================================
+const request = (endpoint, options = {}) => {
+  return requestWithRetry(endpoint, options, 0, 3);
+};
 
+
+// Authentication API
+export const auth = {
+  login: (credentials) => request('/auth/login', {
+    method: 'POST',
+    body: JSON.stringify(credentials)
+  }),
+  
+  pinLogin: (credentials) => request('/auth/pin-login', {
+    method: 'POST',
+    body: JSON.stringify(credentials)
+  }),
+  
+  signup: (data) => request('/auth/signup', {
+    method: 'POST',
+    body: JSON.stringify(data)
+  }),
+  
+  signupWithPayment: (data) => request('/signup-with-payment', {
+    method: 'POST',
+    body: JSON.stringify(data)
+  }),
+  
+  me: () => request('/auth/me'),
+  
+  updatePin: (pin) => request('/auth/update-pin', {
+    method: 'POST',
+    body: JSON.stringify({ pin })
+  })
+};
+
+
+// Users API
+export const users = {
+  getAll: () => request('/users'),
+  
+  create: (userData) => request('/users', {
+    method: 'POST',
+    body: JSON.stringify(userData)
+  }),
+  
+  update: (id, userData) => request(`/users/${id}`, {
+    method: 'PUT',
+    body: JSON.stringify(userData)
+  }),
+  
+  delete: (id) => request(`/users/${id}`, {
+    method: 'DELETE'
+  }),
+  
+  setPin: (id, pin) => request(`/users/${id}/set-pin`, {
+    method: 'POST',
+    body: JSON.stringify({ pin })
+  }),
+  
+  lock: (id, locked) => request(`/users/${id}/lock`, {
+    method: 'POST',
+    body: JSON.stringify({ locked })
+  })
+};
+
+// Products API
 export const products = {
-  getAll: () => {
-    console.log('[PRODUCTS] Fetching all products...');
-    return request('/products');
-  },
-
-  create: (productData) => {
-    console.log('[PRODUCTS] Creating product:', productData);
-    return request('/products', {
-      method: 'POST',
-      body: JSON.stringify(productData)
-    });
-  },
-
-  update: (id, productData) => {
-    console.log(`[PRODUCTS] Updating product ${id}:`, productData);
-    return request(`/products/${id}`, {
-      method: 'PUT',
-      body: JSON.stringify(productData)
-    });
-  },
-
-  delete: (id) => {
-    console.log(`[PRODUCTS] Deleting product ${id}`);
-    return request(`/products/${id}`, {
-      method: 'DELETE'
-    });
-  }
+  getAll: () => request('/products'),
+  
+  create: (productData) => request('/products', {
+    method: 'POST',
+    body: JSON.stringify(productData)
+  }),
+  
+  update: (id, productData) => request(`/products/${id}`, {
+    method: 'PUT',
+    body: JSON.stringify(productData)
+  }),
+  
+  delete: (id) => request(`/products/${id}`, {
+    method: 'DELETE'
+  }),
+  
+  // Update product stock/inventory
+  updateStock: (id, stockData) => request(`/products/${id}/stock`, {
+    method: 'PUT',
+    body: JSON.stringify(stockData)
+  }),
+  
+  getMaxProducible: (id) => request(`/products/${id}/max-producible`),
+  
+  // Weight-based pricing management
+  getWeightPricing: (id) => request(`/products/${id}/weight-pricing`),
+  
+  addWeightPrice: (id, weight, price) => request(`/products/${id}/weight-pricing`, {
+    method: 'POST',
+    body: JSON.stringify({ weight, price })
+  }),
+  
+  updateWeightPrice: (id, weight, price) => request(`/products/${id}/weight-pricing`, {
+    method: 'PUT',
+    body: JSON.stringify({ weight, price })
+  }),
+  
+  deleteWeightPrice: (id, weight) => request(`/products/${id}/weight-pricing`, {
+    method: 'DELETE',
+    body: JSON.stringify({ weight })
+  })
 };
 
-// ============================================================
-// SALES API - CRITICAL FOR SALE COMPLETION
-// ============================================================
-
+// Sales API
 export const sales = {
-  /**
-   * Fetch all sales for the current account
-   */
-  getAll: () => {
-    console.log('[SALES] Fetching all sales...');
-    return request('/sales');
-  },
-
-  /**
-   * Create a new sale - THIS IS THE CRITICAL FUNCTION
-   * 
-   * Flow:
-   * 1. Send cart items, totals, and payment info to backend
-   * 2. Backend validates stock availability
-   * 3. Backend deducts stock from inventory
-   * 4. Backend creates sale record
-   * 5. Backend creates auto-expenses
-   * 6. Return { success: true, saleId, ... }
-   * 7. Frontend clears cart and reloads data
-   */
-  create: (saleData) => {
-    console.log('[SALES] 🛒 Creating sale with data:', saleData);
-    
-    return request('/sales', {
-      method: 'POST',
-      body: JSON.stringify(saleData)
-    }).then(response => {
-      console.log('[SALES] ✅ Sale created successfully:', response);
-      
-      // CRITICAL: Verify success flag
-      if (response.success === false) {
-        console.error('[SALES] ❌ Server returned success: false');
-        throw new Error(response.error || 'Sale creation failed');
-      }
-      
-      return response;
-    });
-  },
-
-  /**
-   * Delete a sale
-   */
-  delete: (id) => {
-    console.log(`[SALES] Deleting sale ${id}`);
-    return request(`/sales/${id}`, {
-      method: 'DELETE'
-    });
-  },
-
-  /**
-   * Admin complete sale endpoint
-   */
-  adminComplete: (saleData) => {
-    console.log('[SALES] 👨‍💼 Admin creating sale:', saleData);
-    
-    return request('/admin-complete-sale', {
-      method: 'POST',
-      body: JSON.stringify(saleData)
-    }).then(response => {
-      console.log('[SALES] ✅ Admin sale created:', response);
-      
-      if (response.success === false) {
-        throw new Error(response.error || 'Admin sale creation failed');
-      }
-      
-      return response;
-    });
-  }
+  getAll: () => request('/sales'),
+  
+  create: (saleData) => request('/sales', {
+    method: 'POST',
+    body: JSON.stringify(saleData)
+  }),
+  
+  delete: (id) => request(`/sales/${id}`, {
+    method: 'DELETE'
+  }),
+  
+  // Admin complete sale with immediate deduction
+  adminComplete: (saleData) => request('/admin-complete-sale', {
+    method: 'POST',
+    body: JSON.stringify(saleData)
+  })
 };
 
-// ============================================================
-// EXPENSES API
-// ============================================================
-
+// Expenses API
 export const expenses = {
-  getAll: () => {
-    console.log('[EXPENSES] Fetching all expenses...');
-    return request('/expenses');
-  },
-
-  create: (expenseData) => {
-    console.log('[EXPENSES] Creating expense:', expenseData);
-    return request('/expenses', {
-      method: 'POST',
-      body: JSON.stringify(expenseData)
-    });
-  },
-
-  update: (id, expenseData) => {
-    console.log(`[EXPENSES] Updating expense ${id}:`, expenseData);
-    return request(`/expenses/${id}`, {
-      method: 'PUT',
-      body: JSON.stringify(expenseData)
-    });
-  },
-
-  delete: (id) => {
-    console.log(`[EXPENSES] Deleting expense ${id}`);
-    return request(`/expenses/${id}`, {
-      method: 'DELETE'
-    });
-  }
+  getAll: () => request('/expenses'),
+  
+  create: (expenseData) => request('/expenses', {
+    method: 'POST',
+    body: JSON.stringify(expenseData)
+  }),
+  
+  update: (id, expenseData) => request(`/expenses/${id}`, {
+    method: 'PUT',
+    body: JSON.stringify(expenseData)
+  }),
+  
+  delete: (id) => request(`/expenses/${id}`, {
+    method: 'DELETE'
+  })
 };
 
-// ============================================================
-// STATS API - FOR DASHBOARD TOTALS
-// ============================================================
-
+// Statistics API
 export const stats = {
-  /**
-   * Get dashboard statistics
-   * Returns: { totalSales, totalExpenses, profit }
-   */
-  get: () => {
-    console.log('[STATS] Fetching dashboard statistics...');
-    return request('/stats').catch(err => {
-      console.warn('[STATS] Stats fetch failed, returning zeros:', err);
-      // Return default stats if fetch fails
-      return {
-        totalSales: 0,
-        totalExpenses: 0,
-        profit: 0
-      };
-    });
-  }
+  get: () => request('/stats')
 };
 
-// ============================================================
-// BATCHES API
-// ============================================================
+// Reminders API
+export const reminders = {
+  getAll: () => request('/reminders'),
+  getToday: () => request('/reminders/today'),
+  create: (reminderData) => request('/reminders', {
+    method: 'POST',
+    body: JSON.stringify(reminderData)
+  }),
+  update: (id, reminderData) => request(`/reminders/${id}`, {
+    method: 'PUT',
+    body: JSON.stringify(reminderData)
+  }),
+  delete: (id) => request(`/reminders/${id}`, {
+    method: 'DELETE'
+  })
+};
 
+// Price History API
+export const priceHistory = {
+  getAll: () => request('/price-history'),
+  create: (priceData) => request('/price-history', {
+    method: 'POST',
+    body: JSON.stringify(priceData)
+  })
+};
+
+// Service Fees API
+export const serviceFees = {
+  getAll: () => request('/service-fees'),
+  create: (feeData) => request('/service-fees', {
+    method: 'POST',
+    body: JSON.stringify(feeData)
+  }),
+  update: (id, feeData) => request(`/service-fees/${id}`, {
+    method: 'PUT',
+    body: JSON.stringify(feeData)
+  }),
+  delete: (id) => request(`/service-fees/${id}`, {
+    method: 'DELETE'
+  })
+};
+
+// Discounts API
+export const discounts = {
+  getAll: () => request('/discounts'),
+  create: (discountData) => request('/discounts', {
+    method: 'POST',
+    body: JSON.stringify(discountData)
+  }),
+  update: (id, discountData) => request(`/discounts/${id}`, {
+    method: 'PUT',
+    body: JSON.stringify(discountData)
+  }),
+  delete: (id) => request(`/discounts/${id}`, {
+    method: 'DELETE'
+  })
+};
+
+// Credit Requests API
+export const creditRequests = {
+  getAll: () => request('/credit-requests'),
+  create: (requestData) => request('/credit-requests', {
+    method: 'POST',
+    body: JSON.stringify(requestData)
+  }),
+  update: (id, data) => request(`/credit-requests/${id}`, {
+    method: 'PUT',
+    body: JSON.stringify(data)
+  }),
+  approve: (id) => request(`/credit-requests/${id}/approve`, {
+    method: 'POST'
+  }),
+  reject: (id) => request(`/credit-requests/${id}/reject`, {
+    method: 'POST'
+  })
+};
+
+// Settings API
+export const settings = {
+  get: () => request('/settings'),
+  update: (settingsData) => request('/settings', {
+    method: 'PUT',
+    body: JSON.stringify(settingsData)
+  })
+};
+
+// Time Entries API - for clock in/out tracking
+export const timeEntries = {
+  getAll: () => request('/time-entries'),
+  
+  getStatus: () => request('/clock-status'),
+  
+  create: (action) => request('/time-entries', {
+    method: 'POST',
+    body: JSON.stringify({ action })
+  }),
+  
+  update: (id, data) => request(`/time-entries/${id}`, {
+    method: 'PUT',
+    body: JSON.stringify(data)
+  }),
+  
+  delete: (id) => request(`/time-entries/${id}`, {
+    method: 'DELETE'
+  })
+};
+
+// Batches API
 export const batches = {
   getAll: (productId) => {
     const url = productId ? `/batches?productId=${productId}` : '/batches';
-    console.log('[BATCHES] Fetching batches:', url);
     return request(url);
   },
-
-  create: (batchData) => {
-    console.log('[BATCHES] Creating batch:', batchData);
-    return request('/batches', {
-      method: 'POST',
-      body: JSON.stringify(batchData)
-    });
-  }
+  create: (batchData) => request('/batches', {
+    method: 'POST',
+    body: JSON.stringify(batchData)
+  })
 };
 
-// ============================================================
-// DISCOUNTS API
-// ============================================================
+// Production API
+export const production = {
+  getAll: () => request('/production'),
+  create: (productionData) => request('/production', {
+    method: 'POST',
+    body: JSON.stringify(productionData)
+  })
+};
 
-export const discounts = {
-  getAll: () => {
-    console.log('[DISCOUNTS] Fetching discounts...');
-    return request('/discounts');
+// Categories API
+export const categories = {
+  generateCode: (data) => request('/categories/generate-code', {
+    method: 'POST',
+    body: JSON.stringify(data)
+  })
+};
+
+// Image Upload API
+export const uploadImage = (imageData) => request('/upload-image', {
+  method: 'POST',
+  body: JSON.stringify(imageData)
+});
+
+// Main Admin API (for owner dashboard)
+export const mainAdmin = {
+  login: (credentials) => {
+    // Use owner token for main admin requests
+    return request('/main-admin/auth/login', {
+      method: 'POST',
+      body: JSON.stringify(credentials)
+    });
   },
-
-  create: (discountData) => {
-    console.log('[DISCOUNTS] Creating discount:', discountData);
-    return request('/discounts', {
-      method: 'POST',
-      body: JSON.stringify(discountData)
+  getUsers: () => {
+    const token = localStorage.getItem('token') || localStorage.getItem('ownerToken') || localStorage.getItem('mainAdminToken');
+    return request('/main-admin/users', {
+      headers: {
+        'Authorization': `Bearer ${token}`
+      }
     });
-  }
-};
-
-// ============================================================
-// TIME ENTRIES API
-// ============================================================
-
-export const timeEntries = {
-  getAll: () => {
-    console.log('[TIME ENTRIES] Fetching time entries...');
-    return request('/time-entries');
   },
-
-  create: (action) => {
-    console.log(`[TIME ENTRIES] Clock ${action}...`);
-    return request('/time-entries', {
+  getStats: () => {
+    const token = localStorage.getItem('token') || localStorage.getItem('ownerToken') || localStorage.getItem('mainAdminToken');
+    return request('/main-admin/stats', {
+      headers: {
+        'Authorization': `Bearer ${token}`
+      }
+    });
+  },
+  getActivities: () => {
+    const token = localStorage.getItem('token') || localStorage.getItem('ownerToken') || localStorage.getItem('mainAdminToken');
+    return request('/main-admin/activities', {
+      headers: {
+        'Authorization': `Bearer ${token}`
+      }
+    });
+  },
+  getSalesAll: () => {
+    const token = localStorage.getItem('token') || localStorage.getItem('ownerToken') || localStorage.getItem('mainAdminToken');
+    return request('/main-admin/sales-all', {
+      headers: {
+        'Authorization': `Bearer ${token}`
+      }
+    });
+  },
+  getTimeEntriesAll: () => {
+    const token = localStorage.getItem('token') || localStorage.getItem('ownerToken') || localStorage.getItem('mainAdminToken');
+    return request('/main-admin/time-entries-all', {
+      headers: {
+        'Authorization': `Bearer ${token}`
+      }
+    });
+  },
+  lockUser: (userId, locked) => {
+    const token = localStorage.getItem('token') || localStorage.getItem('ownerToken') || localStorage.getItem('mainAdminToken');
+    return request(`/main-admin/users/${userId}/lock`, {
       method: 'POST',
-      body: JSON.stringify({ action })
+      headers: {
+        'Authorization': `Bearer ${token}`
+      },
+      body: JSON.stringify({ locked })
+    });
+  },
+  changePlan: (userId, plan) => {
+    const token = localStorage.getItem('token') || localStorage.getItem('ownerToken') || localStorage.getItem('mainAdminToken');
+    return request(`/main-admin/users/${userId}/plan`, {
+      method: 'POST',
+      headers: {
+        'Authorization': `Bearer ${token}`
+      },
+      body: JSON.stringify({ plan })
+    });
+  },
+  clearData: (type) => {
+    const token = localStorage.getItem('token') || localStorage.getItem('ownerToken') || localStorage.getItem('mainAdminToken');
+    return request('/main-admin/system/clear-data', {
+      method: 'POST',
+      headers: {
+        'Authorization': `Bearer ${token}`
+      },
+      body: JSON.stringify({ type })
+    });
+  },
+  getSubscribers: () => {
+    const token = localStorage.getItem('token') || localStorage.getItem('ownerToken') || localStorage.getItem('mainAdminToken');
+    return request('/main-admin/subscribers', {
+      headers: {
+        'Authorization': `Bearer ${token}`
+      }
+    });
+  },
+  getSubscribersAnalytics: () => {
+    const token = localStorage.getItem('token') || localStorage.getItem('ownerToken') || localStorage.getItem('mainAdminToken');
+    return request('/main-admin/subscribers/analytics', {
+      headers: {
+        'Authorization': `Bearer ${token}`
+      }
+    });
+  },
+  getUsersWithSubscriptions: () => {
+    const token = localStorage.getItem('token') || localStorage.getItem('ownerToken') || localStorage.getItem('mainAdminToken');
+    return request('/main-admin/users-with-subscriptions', {
+      headers: {
+        'Authorization': `Bearer ${token}`
+      }
     });
   }
 };
 
-// ============================================================
-// EXPORT DEFAULT
-// ============================================================
+// Utility function to check if backend is available
+export const checkBackendHealth = async () => {
+  try {
+    const response = await fetch(`${BASE_API_URL}/auth/me`, {
+      headers: {
+        'Authorization': `Bearer ${getToken() || 'invalid'}`
+      }
+    });
+    // If we get 200 or 401, the backend is alive. 
+    // If we get connection refused, it throws.
+    return response.status < 500;
+  } catch (error) {
+    return false;
+  }
+};
 
-export default {
-  request,
-  products,
-  sales,
-  expenses,
-  stats,
-  batches,
-  discounts,
-  timeEntries,
-  BASE_API_URL
+// Export base URL for other components to use
+export { BASE_API_URL };
+
+// WebSocket-backed product subscription helper
+let __ws = null;
+let __wsCallbacks = new Set();
+
+function _getWsUrl() {
+  const wsBase = BASE_API_URL.replace(/\/api$/, '');
+  const proto = wsBase.startsWith('https') ? 'wss' : 'ws';
+  return `${proto}://${wsBase.replace(/^https?:\/\//, '')}/api/ws/products`;
+}
+
+function _ensureWs() {
+  if (__ws && (__ws.readyState === WebSocket.OPEN || __ws.readyState === WebSocket.CONNECTING)) return;
+  const token = getToken();
+  const url = _getWsUrl() + (token ? `?token=${encodeURIComponent(token)}` : '');
+  __ws = new WebSocket(url);
+  __ws.onopen = () => {
+    console.debug('Products WS connected');
+  };
+  __ws.onmessage = (ev) => {
+    let data = null;
+    try { data = JSON.parse(ev.data); } catch (e) { return; }
+    __wsCallbacks.forEach(cb => {
+      try { cb(data); } catch (e) { console.error('ws callback error', e); }
+    });
+  };
+  __ws.onclose = () => {
+    console.debug('Products WS closed');
+    __ws = null;
+  };
+  __ws.onerror = (e) => {
+    console.error('Products WS error', e);
+  };
+}
+
+export function subscribeProducts(onMessage) {
+  if (typeof onMessage !== 'function') throw new Error('subscribeProducts requires a callback');
+  __wsCallbacks.add(onMessage);
+  _ensureWs();
+  // return unsubscribe
+  return () => {
+    __wsCallbacks.delete(onMessage);
+    if (__ws && __wsCallbacks.size === 0) {
+      try { __ws.close(); } catch (e) {}
+      __ws = null;
+    }
+  };
+}
+
+export function unsubscribeAllProductSubscriptions() {
+  __wsCallbacks.clear();
+  if (__ws) {
+    try { __ws.close(); } catch (e) {}
+    __ws = null;
+  }
+}
+
+// Recipes API
+export const recipes = {
+  getAll: () => request('/recipes'),
+  create: (data) => request('/recipes', {
+    method: 'POST',
+    body: JSON.stringify(data)
+  }),
+  update: (id, data) => request(`/recipes/${id}`, {
+    method: 'PUT',
+    body: JSON.stringify(data)
+  }),
+  delete: (id) => request(`/recipes/${id}`, {
+    method: 'DELETE'
+  })
+};
+
+// Cashier Notes API
+export const cashierNotes = {
+  getAll: () => request('/cashier-notes'),
+  create: (data) => request('/cashier-notes', {
+    method: 'POST',
+    body: JSON.stringify(data)
+  }),
+  markAsRead: (id) => request(`/cashier-notes/${id}`, {
+    method: 'PUT',
+    body: JSON.stringify({ read: true })
+  }),
+  delete: (id) => request(`/cashier-notes/${id}`, {
+    method: 'DELETE'
+  })
 };

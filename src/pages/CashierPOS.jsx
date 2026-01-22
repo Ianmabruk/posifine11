@@ -1,12 +1,19 @@
 import { useState, useEffect } from 'react';
 import { useAuth } from '../context/AuthContext';
-import { products, sales, expenses, stats, batches, subscribeProducts, unsubscribeAllProductSubscriptions } from '../services/api';
+import { useProducts } from '../context/ProductsContext';
+import { useScreenLock } from '../context/ScreenLockContext';
+import { products, sales, expenses, stats, batches, subscribeProducts, unsubscribeAllProductSubscriptions, discounts, timeEntries, creditRequests } from '../services/api';
 import websocketService from '../services/websocketService';
 import { BASE_API_URL } from '../services/api';
-import { ShoppingCart, Trash2, LogOut, Plus, Minus, DollarSign, TrendingDown, Package, Edit2, Search, BarChart3, Camera, Upload, AlertTriangle, Clock, Play, Square } from 'lucide-react';
+import { ShoppingCart, Trash2, LogOut, Plus, Minus, DollarSign, TrendingDown, Package, Edit2, Search, BarChart3, Camera, Upload, AlertTriangle, Clock, Play, Square, Settings, Lock, CreditCard, X } from 'lucide-react';
+import DiscountSelector from '../components/DiscountSelector';
+import ProductCard from '../components/ProductCard';
+import ScreenLockPin from '../components/ScreenLockPin';
 
 export default function CashierPOS() {
   const { user, logout } = useAuth();
+  const { products: globalProducts, refreshProducts } = useProducts();
+  const { isLocked, lock, unlock } = useScreenLock();
   const [productList, setProductList] = useState([]);
   const [batchList, setBatchList] = useState([]);
   const [cart, setCart] = useState([]);
@@ -20,6 +27,9 @@ export default function CashierPOS() {
   const [newProduct, setNewProduct] = useState({ name: '', price: '', cost: '', category: 'finished', image: '' });
   const [newStock, setNewStock] = useState({ quantity: '', expiryDate: '', batchNumber: '', cost: '' });
   const [showAddExpense, setShowAddExpense] = useState(false);
+  const [showCreditRequest, setShowCreditRequest] = useState(false);
+  const [creditRequestForm, setCreditRequestForm] = useState({ customerName: '', amount: '', reason: '', notes: '' });
+  const [creditRequestSubmitting, setCreditRequestSubmitting] = useState(false);
   const [newExpense, setNewExpense] = useState({ description: '', amount: '', category: '' });
   const [imagePreview, setImagePreview] = useState('');
   const [discountList, setDiscountList] = useState([]);
@@ -28,17 +38,22 @@ export default function CashierPOS() {
   const [isClockedIn, setIsClockedIn] = useState(false);
   const [currentTimeEntry, setCurrentTimeEntry] = useState(null);
   const [clockedInTime, setClockedInTime] = useState(null);
-  const [isProcessingSale, setIsProcessingSale] = useState(false);
+  const [cartItemUnits, setCartItemUnits] = useState({});  // Track units for each cart item
+  const [checkoutLoading, setCheckoutLoading] = useState(false);  // Prevent double-submit
+  const [isAutoRefreshing, setIsAutoRefreshing] = useState(false);  // Auto-refresh indicator
+  const [isProcessingSale, setIsProcessingSale] = useState(false);  // Processing sale state
+  const [lastProductUpdate, setLastProductUpdate] = useState(Date.now());  // Track updates
+  const [productUpdateCount, setProductUpdateCount] = useState(0);  // Update count
 
   useEffect(() => {
     loadData();
+    refreshProducts();
+    
     // Restore session data from localStorage
     const savedCart = localStorage.getItem(`cart_${user?.id}`);
     const savedPaymentMethod = localStorage.getItem(`paymentMethod_${user?.id}`);
     const savedDiscount = localStorage.getItem(`selectedDiscount_${user?.id}`);
     const savedTaxType = localStorage.getItem(`taxType_${user?.id}`);
-    const savedClockStatus = localStorage.getItem(`clockStatus_${user?.id}`);
-    const savedClockInTime = localStorage.getItem(`clockInTime_${user?.id}`);
     
     if (savedCart) {
       try {
@@ -57,16 +72,90 @@ export default function CashierPOS() {
       } catch (e) {}
     }
     
-    if (savedClockStatus === 'clocked_in') {
-      setIsClockedIn(true);
-      if (savedClockInTime) {
-        setClockedInTime(new Date(savedClockInTime));
-      }
-    }
-    
-    // Check actual clock status from backend
+    // Check clock status from backend
     checkClockStatus();
+
+    // Connect to WebSocket for real-time stock updates
+    const token = localStorage.getItem('token');
+    if (token) {
+      websocketService.connect(token, (data) => {
+        console.log('📡 WebSocket callback received:', data);
+        
+        if (data && data.allProducts) {
+          console.log(`📦 Merging ${data.allProducts.length} products from WebSocket`);
+          const filtered = data.allProducts.filter(p => p.visibleToCashier !== false && !p.expenseOnly);
+          setProductList(filtered);
+        }
+        
+        if (data && data.productId !== undefined && data.newQuantity !== undefined) {
+          console.log(`📦 Stock update for product ${data.productId}: ${data.newQuantity}${data.unit || ''}`);
+          setProductList(prev => {
+            const updated = prev.map(p => 
+              p.id === data.productId 
+                ? { ...p, quantity: data.newQuantity } 
+                : p
+            );
+            return updated;
+          });
+        }
+        
+        if (data && data.discounts) {
+          console.log('📊 Discount list updated');
+          setDiscountList(data.discounts);
+        }
+        
+        if (data && data.sale) {
+          console.log('💰 Sale detected, reloading stats');
+          loadData();
+        }
+      }).catch((error) => {
+        console.warn('⚠️ WebSocket connection failed:', error);
+      });
+    }
+
+    const unsub = subscribeProducts((msg) => {
+      try {
+        if (!msg) return;
+        console.log('📨 Product subscription message:', msg.type);
+        if (msg.type === 'initial' || msg.type === 'products_snapshot' || msg.type === 'product_created' || msg.type === 'product_updated' || msg.type === 'product_deleted') {
+          products.getAll().then(p => {
+            const filtered = p.filter(prod => prod.visibleToCashier !== false && !prod.expenseOnly);
+            console.log(`✅ Subscription update: ${filtered.length} products`);
+            setProductList(filtered);
+          }).catch((err) => {
+            console.error('Failed to fetch products from subscription:', err);
+          });
+        }
+      } catch (e) {
+        console.error('❌ Product subscription handler error', e);
+      }
+    });
+
+    // Set up automatic product refresh every 30 seconds
+    const refreshInterval = setInterval(() => {
+      console.log('🔄 Auto-refreshing products...');
+      setIsAutoRefreshing(true);
+      refreshProducts().finally(() => setIsAutoRefreshing(false));
+    }, 30000);
+
+    return () => {
+      clearInterval(refreshInterval);
+      try { unsub(); } catch (e) {}
+      websocketService.disconnect();
+    };
   }, [user?.id]);
+
+  // Sync with global products from ProductsContext
+  useEffect(() => {
+    if (globalProducts) {
+      const visibleProducts = globalProducts.filter(p => 
+        p.visibleToCashier !== false && !p.expenseOnly && !p.pendingDelete
+      );
+      setProductList(visibleProducts);
+      setLastProductUpdate(Date.now());
+      setProductUpdateCount(prev => prev + 1);
+    }
+  }, [globalProducts]);
 
   // Subscribe to real-time product updates
   useEffect(() => {
@@ -74,32 +163,60 @@ export default function CashierPOS() {
     const token = localStorage.getItem('token');
     if (token) {
       websocketService.connect(token, (data) => {
-        // When stock update received, reload products to show new stock
+        console.log('📡 WebSocket callback received:', data);
+        
+        // Handle all product updates
         if (data && data.allProducts) {
+          console.log(`📦 Merging ${data.allProducts.length} products from WebSocket`);
           const filtered = data.allProducts.filter(p => p.visibleToCashier !== false && !p.expenseOnly);
           setProductList(filtered);
         }
+        
+        // Handle individual stock updates
+        if (data && data.productId !== undefined && data.newQuantity !== undefined) {
+          console.log(`📦 Stock update for product ${data.productId}: ${data.newQuantity}${data.unit || ''}`);
+          setProductList(prev => {
+            // Find and update the product in current list
+            const updated = prev.map(p => 
+              p.id === data.productId 
+                ? { ...p, quantity: data.newQuantity } 
+                : p
+            );
+            return updated;
+          });
+        }
+        
         // When discounts updated, refresh discount list
         if (data && data.discounts) {
+          console.log('📊 Discount list updated');
           setDiscountList(data.discounts);
         }
+        
         // When new sale created, reload data to show updated stats
         if (data && data.sale) {
+          console.log('💰 Sale detected, reloading stats');
           loadData();
         }
       }).catch((error) => {
-        console.warn('WebSocket connection failed:', error);
+        console.warn('⚠️ WebSocket connection failed:', error);
       });
     }
 
     const unsub = subscribeProducts((msg) => {
       try {
         if (!msg) return;
+        console.log('📨 Product subscription message:', msg.type);
         if (msg.type === 'initial' || msg.type === 'products_snapshot' || msg.type === 'product_created' || msg.type === 'product_updated' || msg.type === 'product_deleted') {
-          products.getAll().then(p => setProductList(p.filter(prod => prod.visibleToCashier !== false && !prod.expenseOnly))).catch(() => {});
+          products.getAll().then(p => {
+            const filtered = p.filter(prod => prod.visibleToCashier !== false && !prod.expenseOnly);
+            console.log(`✅ Subscription update: ${filtered.length} products`);
+            setProductList(filtered);
+          }).catch((err) => {
+            console.error('Failed to fetch products from subscription:', err);
+          });
         }
       } catch (e) {
-        console.error('Product subscription handler error', e);
+        console.error('❌ Product subscription handler error', e);
       }
     });
 
@@ -129,104 +246,80 @@ export default function CashierPOS() {
   // Clock in function
   const handleClockIn = async () => {
     try {
-      const response = await fetch(`${BASE_API_URL}/time-entries`, {
-        method: 'POST',
-        headers: {
-          'Authorization': `Bearer ${localStorage.getItem('token')}`,
-          'Content-Type': 'application/json'
-        },
-        body: JSON.stringify({ action: 'clock_in' })
-      });
-      
-      if (response.ok) {
-        const entry = await response.json();
-        setCurrentTimeEntry(entry);
-        setIsClockedIn(true);
-        const now = new Date();
-        setClockedInTime(now);
-        localStorage.setItem(`clockStatus_${user?.id}`, 'clocked_in');
-        localStorage.setItem(`clockInTime_${user?.id}`, now.toISOString());
-        alert('Clocked in successfully!');
-      }
+      setIsProcessingSale(true);
+      const result = await timeEntries.create('clock_in');
+      setCurrentTimeEntry(result);
+      setIsClockedIn(true);
+      const clockInTime = new Date(result.clockInTime);
+      setClockedInTime(clockInTime);
+      localStorage.setItem(`clockIn_${user?.id}_${new Date().toDateString()}`, clockInTime.toISOString());
+      console.log('✅ Clocked in successfully');
+      alert('✅ Clocked in successfully at ' + clockInTime.toLocaleTimeString());
     } catch (error) {
       console.error('Clock in failed:', error);
-      alert('Failed to clock in');
+      alert('❌ Clock in failed: ' + (error.message || 'Unknown error'));
+    } finally {
+      setIsProcessingSale(false);
     }
   };
 
   // Clock out function
   const handleClockOut = async () => {
     try {
-      const response = await fetch(`${BASE_API_URL}/time-entries`, {
-        method: 'POST',
-        headers: {
-          'Authorization': `Bearer ${localStorage.getItem('token')}`,
-          'Content-Type': 'application/json'
-        },
-        body: JSON.stringify({ action: 'clock_out' })
-      });
-      
-      if (response.ok) {
-        const entry = await response.json();
-        setCurrentTimeEntry(entry);
-        setIsClockedIn(false);
-        setClockedInTime(null);
-        localStorage.removeItem(`clockStatus_${user?.id}`);
-        localStorage.removeItem(`clockInTime_${user?.id}`);
-        const hours = Math.floor(entry.duration / 60);
-        const minutes = entry.duration % 60;
-        alert(`Clocked out successfully! Total time: ${hours}h ${minutes}m`);
-      }
+      setIsProcessingSale(true);
+      const result = await timeEntries.create('clock_out');
+      setCurrentTimeEntry(result);
+      setIsClockedIn(false);
+      setClockedInTime(null);
+      localStorage.removeItem(`clockIn_${user?.id}_${new Date().toDateString()}`);
+      console.log('✅ Clocked out successfully');
+      const durationStr = result.duration ? `${result.duration} minutes` : 'unknown duration';
+      alert('✅ Clocked out successfully. Duration: ' + durationStr);
     } catch (error) {
       console.error('Clock out failed:', error);
-      alert('Failed to clock out');
+      alert('❌ Clock out failed: ' + (error.message || 'Unknown error'));
+    } finally {
+      setIsProcessingSale(false);
     }
   };
 
   // Check clock status from backend
   const checkClockStatus = async () => {
     try {
-      const response = await fetch(`${BASE_API_URL}/time-entries/today`, {
-        headers: { 'Authorization': `Bearer ${localStorage.getItem('token')}` }
-      });
-      
-      if (response.ok) {
-        const entries = await response.json();
-        const activeEntry = entries.find(e => e.cashierId === user?.id && e.status === 'clocked_in');
-        
-        if (activeEntry) {
-          setCurrentTimeEntry(activeEntry);
-          setIsClockedIn(true);
-          setClockedInTime(new Date(activeEntry.clockInTime));
-        }
+      const data = await timeEntries.getStatus();
+      if (data.isClockedIn) {
+        setIsClockedIn(true);
+        setClockedInTime(new Date(data.clockInTime));
+        setCurrentTimeEntry(data);
+        console.log('✅ User is clocked in since:', data.clockInTime);
+      } else {
+        setIsClockedIn(false);
+        setClockedInTime(null);
+        setCurrentTimeEntry(null);
+        console.log('User is not clocked in');
       }
     } catch (error) {
       console.warn('Failed to check clock status:', error);
+      // Fallback: assume not clocked in
+      setIsClockedIn(false);
+      setClockedInTime(null);
     }
   };
 
   const loadData = async () => {
     try {
-      const [p, s, e, st, b] = await Promise.all([
+      const [p, s, e, st, b, d] = await Promise.all([
         products.getAll(),
         sales.getAll(),
         expenses.getAll(),
         stats.get(),
-        batches.getAll()
+        batches.getAll(),
+        discounts.getAll().catch(() => [])  // Fallback to empty array if discounts fail
       ]);
       setProductList(p.filter(prod => prod.visibleToCashier !== false && !prod.expenseOnly));
       setData({ sales: s, expenses: e, stats: st });
       setBatchList(b);
-      
-      // Load discounts
-      try {
-        const discounts = await fetch(`${BASE_API_URL}/discounts`, {
-          headers: { 'Authorization': `Bearer ${localStorage.getItem('token')}` }
-        }).then(r => r.json());
-        setDiscountList(discounts || []);
-      } catch (err) {
-        console.warn('Failed to load discounts:', err);
-      }
+      setDiscountList(d || []);
     } catch (error) {
       console.error('Failed to load data:', error);
     }
@@ -307,175 +400,165 @@ export default function CashierPOS() {
   const total = cart.reduce((sum, item) => sum + (item.price * item.quantity), 0);
 
   const handleCheckout = async () => {
-    console.log('='.repeat(60));
-    console.log('🛒 SALE LIFECYCLE STARTED');
-    console.log('='.repeat(60));
+    if (cart.length === 0 || checkoutLoading) return;
     
-    if (cart.length === 0) {
-      console.warn('[CHECKOUT] Cart is empty, aborting');
-      return;
-    }
-    
-    // ============================================================
-    // STEP 1: SET LOADING STATE (Button shows "Processing...")
-    // ============================================================
-    setIsProcessingSale(true);
-    console.log('[CHECKOUT] 1️⃣  Loading state set to TRUE');
+    setCheckoutLoading(true);
+    setIsProcessingSale(true);  // Add visual feedback
     
     try {
-      // ============================================================
-      // STEP 2: CALCULATE TOTALS
-      // ============================================================
-      console.log('[CHECKOUT] 2️⃣  Calculating totals...');
-      
       const discountValue = selectedDiscount 
-        ? (selectedDiscount.type === 'percentage' 
-          ? (total * selectedDiscount.value / 100) 
-          : selectedDiscount.value)
+        ? (selectedDiscount.type === 'percentage' ? (total * selectedDiscount.value / 100) : selectedDiscount.value)
         : 0;
       
-      console.log(`   - Subtotal: KSH ${total.toLocaleString()}`);
-      console.log(`   - Discount: KSH ${discountValue.toLocaleString()}`);
-      
-      const subtotalAfterDiscount = total - discountValue;
-      
-      const tax = subtotalAfterDiscount * 0.16; // Kenya standard: 16% VAT
-      console.log(`   - Tax (16%): KSH ${tax.toLocaleString()} (${taxType})`);
+      const tax = taxType === 'inclusive' 
+        ? (total * 0.16)  // Kenya standard tax 16%
+        : (total * 0.16);
       
       const finalTotal = taxType === 'inclusive'
-        ? subtotalAfterDiscount
-        : (subtotalAfterDiscount + tax);
+        ? (total - discountValue)
+        : (total - discountValue + tax);
       
-      console.log(`   - Final Total: KSH ${finalTotal.toLocaleString()}`);
+      // Include unit information for each item
+      const cartItemsWithUnits = cart.map(item => ({
+        productId: item.id,
+        quantity: item.quantity,
+        unit: cartItemUnits[item.id] || item.unit || 'piece',  // Use selected unit or default
+        price: item.price
+      }));
       
-      // ============================================================
-      // STEP 3: PREPARE SALE PAYLOAD
-      // ============================================================
-      console.log('[CHECKOUT] 3️⃣  Preparing sale payload...');
-      
-      const salePayload = {
-        items: cart.map(item => ({
-          productId: item.id,
-          quantity: item.quantity,
-          price: item.price
-        })),
+      // 1. Create the sale record
+      console.log('📤 Creating sale with items:', cartItemsWithUnits);
+      const saleResponse = await sales.create({
+        items: cartItemsWithUnits,
         total: finalTotal,
         discount: discountValue,
         tax: tax,
         taxType: taxType,
-        paymentMethod: paymentMethod
+        paymentMethod
+      });
+      
+      console.log('✅ Sale created successfully:', saleResponse);
+      
+      if (!saleResponse || !saleResponse.saleId) {
+        throw new Error('Invalid sale response - no saleId returned');
+      }
+      
+      const saleId = saleResponse.saleId;
+      console.log(`✅ Sale ID: ${saleId}, Stock deductions:`, saleResponse.stockDeductions);
+      
+      // 2. Build new sale record with all details
+      const newSale = {
+        id: saleId,
+        items: cartItemsWithUnits,
+        total: finalTotal,
+        discount: discountValue,
+        tax: tax,
+        taxType: taxType,
+        paymentMethod: paymentMethod,
+        accountId: user?.accountId,
+        cashierId: user?.id,
+        cashierName: user?.name || 'Cashier',
+        stockDeductions: saleResponse.stockDeductions || { products: [], expenses: [] },
+        createdAt: new Date().toISOString()
       };
       
-      console.log('   - Sale Payload:', salePayload);
-      console.log(`   - Item count: ${salePayload.items.length}`);
-      
-      // ============================================================
-      // STEP 4: SEND TO BACKEND API
-      // ============================================================
-      console.log('[CHECKOUT] 4️⃣  📤 Sending to /api/sales...');
-      
-      const response = await sales.create(salePayload);
-      
-      console.log('[CHECKOUT] 4️⃣  📥 Received response:', response);
-      
-      // ============================================================
-      // STEP 5: VERIFY SUCCESS RESPONSE
-      // ============================================================
-      console.log('[CHECKOUT] 5️⃣  Verifying success response...');
-      
-      if (!response.success) {
-        const errorMsg = response.error || response.message || 'Unknown error from server';
-        console.error('[CHECKOUT] ❌ Server returned failure:', errorMsg);
-        throw new Error(errorMsg);
+      // 3. UPDATE PRODUCT LIST WITH DEDUCTIONS IMMEDIATELY (optimistic stock update)
+      if (saleResponse.stockDeductions?.products) {
+        const updatedProducts = productList.map(product => {
+          const deduction = saleResponse.stockDeductions.products.find(d => d.id === product.id);
+          if (deduction) {
+            return { ...product, quantity: deduction.after };
+          }
+          return product;
+        });
+        setProductList(updatedProducts);
+        console.log('✅ Product quantities updated immediately with stock deductions');
       }
       
-      console.log('   ✅ Server confirmed: success = true');
-      console.log('   - Sale ID:', response.saleId);
-      console.log('   - Processing time:', response.processingTime);
-      console.log('   - Stock deductions:', response.stockDeductions);
+      // 4. ADD SALE TO LIST IMMEDIATELY (optimistic update)
+      setData(prev => ({
+        ...prev,
+        sales: [newSale, ...prev.sales]
+      }));
+      console.log('✅ Sale added to UI immediately');
       
-      // ============================================================
-      // STEP 6: CLEAR CART & LOCAL STATE
-      // ============================================================
-      console.log('[CHECKOUT] 6️⃣  Clearing cart and local state...');
-      
+      // 5. Clear cart and selections IMMEDIATELY (user sees this instantly)
       setCart([]);
+      setCartItemUnits({});
       setSelectedDiscount(null);
       setTaxType('exclusive');
-      localStorage.removeItem(`cart_${user?.id}`);
+      setCheckoutLoading(false);
+      setIsProcessingSale(false);
       
-      console.log('   ✅ Cart cleared');
+      // 5. Show success message with deductions
+      const deductionsSummary = saleResponse.stockDeductions?.products
+        ?.map(p => `${p.name}: -${p.deducted}${p.unit}`)
+        .join('\n') || 'None';
       
-      // ============================================================
-      // STEP 7: RELOAD DASHBOARD DATA
-      // ============================================================
-      console.log('[CHECKOUT] 7️⃣  Reloading dashboard data...');
+      console.log('✅ Sale completed successfully!');
+      alert(`✅ SALE COMPLETE!\nSale ID: #${saleId}\nAmount: KSH ${finalTotal.toLocaleString()}\n\nStock Deducted:\n${deductionsSummary}`);
       
-      await loadData();
-      
-      console.log('[CHECKOUT] 7️⃣  ✅ Dashboard data reloaded');
-      console.log(`   - New total sales: KSH ${data.stats?.totalSales?.toLocaleString() || 0}`);
-      console.log(`   - New expenses: KSH ${data.stats?.totalExpenses?.toLocaleString() || 0}`);
-      console.log(`   - New profit: KSH ${data.stats?.profit?.toLocaleString() || 0}`);
-      
-      // ============================================================
-      // STEP 8: SUCCESS NOTIFICATION
-      // ============================================================
-      console.log('[CHECKOUT] 8️⃣  ✅ SALE COMPLETE!');
-      console.log('='.repeat(60));
-      
-      alert('✅ Sale completed successfully!\n\n' +
-            `Sale ID: ${response.saleId}\n` +
-            `Total: KSH ${finalTotal.toLocaleString()}\n` +
-            `Payment: ${paymentMethod}`);
+      // 4. Refresh product inventory in BACKGROUND (don't block UI)
+      console.log('🔄 Refreshing product inventory in background...');
+      (async () => {
+        try {
+          const freshProducts = await products.getAll();
+          console.log(`📦 Received ${freshProducts.length} products from server`);
+          
+          // Filter products for cashier display
+          const filteredProducts = freshProducts.filter(p => p.visibleToCashier !== false && !p.expenseOnly);
+          console.log(`✅ Filtered to ${filteredProducts.length} visible products`);
+          
+          // Update UI with fresh products
+          setProductList(filteredProducts);
+        } catch (error) {
+          console.warn('Background product refresh failed:', error);
+          // This is not critical - WebSocket will keep products updated
+        }
+      })();
       
     } catch (error) {
-      // ============================================================
-      // ERROR HANDLING
-      // ============================================================
-      console.error('[CHECKOUT] ❌ ERROR DURING CHECKOUT:', error.message);
-      console.error('[CHECKOUT] Full error:', error);
-      console.log('='.repeat(60));
-      
-      // Check if it's a network error
-      if (error instanceof TypeError && error.message.includes('fetch')) {
-        console.error('[CHECKOUT] 🌐 Network error - backend may be unreachable');
-        alert('❌ Network error: Could not reach server.\n\n' +
-              'Please check:\n' +
-              '1. Backend server is running\n' +
-              '2. Correct API URL in .env\n' +
-              '3. CORS is configured properly');
-      } else {
-        alert(`❌ Sale failed: ${error.message}\n\nPlease try again.`);
-      }
-      
-    } finally {
-      // ============================================================
-      // FINALLY: ALWAYS STOP LOADING
-      // ============================================================
-      console.log('[CHECKOUT] 🔧 Finally block: Stopping loading state...');
+      console.error('❌ Checkout failed:', error.message, error);
+      // CRITICAL: Always clear all processing states on error
+      setCheckoutLoading(false);
       setIsProcessingSale(false);
-      console.log('[CHECKOUT] Loading state set to FALSE - Button is no longer processing');
+      alert(`❌ Sale failed: ${error.message || 'Unknown error occurred'}`);
+    } finally {
+      // Double-check: ensure button is always unblocked
+      setCheckoutLoading(false);
+      setIsProcessingSale(false);
     }
   };
 
   const handleAddProduct = async (e) => {
     e.preventDefault();
     try {
-      await products.create({ 
+      console.log('➕ Creating new product:', newProduct.name);
+      
+      // Create the product
+      const createdProduct = await products.create({ 
         ...newProduct, 
         price: parseFloat(newProduct.price),
         cost: parseFloat(newProduct.cost || 0),
         quantity: 0 // Stock managed through batches
       });
+      
+      console.log('✅ Product created:', createdProduct);
+      
+      // Clear form
       setNewProduct({ name: '', price: '', cost: '', category: 'finished', image: '' });
       setImagePreview('');
       setShowAddProduct(false);
-      await loadData(); // Reload all data immediately
-      alert('Product added successfully!');
+      
+      // Refresh all data to show new product everywhere
+      console.log('🔄 Reloading data...');
+      await loadData();
+      
+      console.log('✅ Product added successfully!');
+      alert('✅ Product added successfully!');
     } catch (error) {
-      console.error('Failed to add product:', error);
-      alert('Failed to add product');
+      console.error('❌ Failed to add product:', error.message, error);
+      alert(`❌ Failed to add product: ${error.message || 'Unknown error'}`);
     }
   };
 
@@ -530,6 +613,34 @@ export default function CashierPOS() {
     } catch (error) {
       console.error('Failed to add expense:', error);
       alert('Failed to add expense');
+    }
+  };
+
+  const handleCreditRequest = async (e) => {
+    e.preventDefault();
+    if (!creditRequestForm.customerName || !creditRequestForm.amount) {
+      alert('Please fill in all required fields');
+      return;
+    }
+    
+    setCreditRequestSubmitting(true);
+    try {
+      const response = await creditRequests.create({
+        customerName: creditRequestForm.customerName,
+        amount: parseFloat(creditRequestForm.amount),
+        reason: creditRequestForm.reason,
+        notes: creditRequestForm.notes
+      });
+      
+      console.log('✅ Credit request submitted:', response);
+      setCreditRequestForm({ customerName: '', amount: '', reason: '', notes: '' });
+      setShowCreditRequest(false);
+      alert('✅ Credit request submitted successfully!');
+    } catch (error) {
+      console.error('Failed to submit credit request:', error);
+      alert('❌ Failed to submit credit request: ' + (error.message || 'Unknown error'));
+    } finally {
+      setCreditRequestSubmitting(false);
     }
   };
 
@@ -601,6 +712,10 @@ export default function CashierPOS() {
             <button onClick={handleClearData} className="px-4 py-2 rounded-lg font-medium transition-all bg-orange-100 hover:bg-orange-200 text-orange-600 border border-orange-300 flex items-center gap-2">
               <Trash2 className="w-4 h-4" />
               Clear
+            </button>
+            <button onClick={() => setShowCreditRequest(true)} className="px-4 py-2 rounded-lg font-medium transition-all bg-blue-100 hover:bg-blue-200 text-blue-600 border border-blue-300 flex items-center gap-2">
+              <CreditCard className="w-4 h-4" />
+              Request Credit
             </button>
             {isClockedIn && clockedInTime && (
               <div className="ml-auto text-right text-xs">
@@ -747,7 +862,7 @@ export default function CashierPOS() {
                           <Trash2 className="w-4 h-4" />
                         </button>
                       </div>
-                      <div className="flex items-center justify-between">
+                      <div className="flex items-center justify-between mb-2">
                         <div className="flex items-center gap-2">
                           <button onClick={() => updateQuantity(item.id, -1)} className="w-8 h-8 rounded-lg bg-white shadow-sm flex items-center justify-center hover:bg-gray-100 transition-colors">
                             <Minus className="w-4 h-4" />
@@ -758,6 +873,41 @@ export default function CashierPOS() {
                           </button>
                         </div>
                         <span className="font-bold text-green-600">KSH {(item.price * item.quantity).toLocaleString()}</span>
+                      </div>
+                      
+                      {/* UNIT SELECTOR */}
+                      <div className="flex gap-2 items-center mt-2">
+                        <label className="text-xs font-semibold text-gray-600">Unit:</label>
+                        <select 
+                          value={cartItemUnits[item.id] || item.unit || 'piece'}
+                          onChange={(e) => {
+                            setCartItemUnits({
+                              ...cartItemUnits,
+                              [item.id]: e.target.value
+                            });
+                          }}
+                          className="text-xs px-2 py-1 border border-gray-300 rounded bg-white"
+                        >
+                          <option value="piece">Piece</option>
+                          <option value="kg">Kilogram (kg)</option>
+                          <option value="g">Grams (g)</option>
+                          <option value="l">Liters (L)</option>
+                        </select>
+                        <input 
+                          type="number" 
+                          step="0.01"
+                          min="0.01"
+                          max="999"
+                          placeholder="qty"
+                          defaultValue={item.quantity}
+                          className="text-xs px-2 py-1 border border-gray-300 rounded w-16"
+                          onChange={(e) => {
+                            const newQty = parseFloat(e.target.value);
+                            if (!isNaN(newQty) && newQty > 0) {
+                              updateQuantity(item.id, newQty - item.quantity);
+                            }
+                          }}
+                        />
                       </div>
                     </div>
                   ))}
@@ -844,26 +994,8 @@ export default function CashierPOS() {
                 </select>
               </div>
 
-              <button 
-                onClick={handleCheckout} 
-                disabled={cart.length === 0 || isProcessingSale} 
-                className={`btn-primary w-full py-4 text-lg font-semibold shadow-lg transition-all ${
-                  isProcessingSale 
-                    ? 'bg-gray-400 cursor-not-allowed opacity-75' 
-                    : 'bg-gradient-to-r from-green-600 to-teal-600 hover:from-green-700 hover:to-teal-700 active:scale-95'
-                }`}
-              >
-                {isProcessingSale ? (
-                  <>
-                    <span className="inline-block animate-spin mr-2">⏳</span>
-                    Processing Sale...
-                  </>
-                ) : (
-                  <>
-                    <span className="inline-block mr-2">✓</span>
-                    Complete Sale
-                  </>
-                )}
+              <button onClick={handleCheckout} disabled={cart.length === 0 || checkoutLoading} className="btn-primary w-full py-4 text-lg bg-gradient-to-r from-green-600 to-teal-600 hover:from-green-700 hover:to-teal-700 shadow-lg disabled:opacity-50 disabled:cursor-not-allowed">
+                {checkoutLoading ? '⏳ Processing Sale...' : 'Complete Sale'}
               </button>
             </div>
           </div>
@@ -919,28 +1051,75 @@ export default function CashierPOS() {
                     <th className="px-4 py-3 text-left text-sm font-semibold text-gray-700">Date & Time</th>
                     <th className="px-4 py-3 text-left text-sm font-semibold text-gray-700">Items</th>
                     <th className="px-4 py-3 text-left text-sm font-semibold text-gray-700">Payment</th>
+                    <th className="px-4 py-3 text-left text-sm font-semibold text-gray-700">Stock Deducted</th>
                     <th className="px-4 py-3 text-left text-sm font-semibold text-gray-700">Total</th>
                   </tr>
                 </thead>
                 <tbody>
-                  {data.sales.slice(-15).reverse().map((sale, i) => (
-                    <tr key={i} className="border-t border-gray-100 hover:bg-gray-50 transition-colors">
-                      <td className="px-4 py-3 text-sm">{new Date(sale.createdAt).toLocaleString()}</td>
-                      <td className="px-4 py-3 text-sm">{sale.items?.length || 0} items</td>
-                      <td className="px-4 py-3 text-sm">
-                        <span className="badge badge-success">{sale.paymentMethod || 'cash'}</span>
-                      </td>
-                      <td className="px-4 py-3 text-sm font-semibold text-green-600">KSH {sale.total?.toLocaleString()}</td>
-                    </tr>
-                  ))}
+                  {data.sales && data.sales.slice(-15).reverse().map((sale, i) => {
+                    const deductionsSummary = sale.stockDeductions?.products
+                      ?.slice(0, 2)
+                      .map(p => `${p.name}: -${p.deducted}${p.unit}`)
+                      .join(', ') + (sale.stockDeductions?.products?.length > 2 ? '...' : '') || 'None';
+                    
+                    return (
+                      <tr key={i} className="border-t border-gray-100 hover:bg-gray-50 transition-colors">
+                        <td className="px-4 py-3 text-sm font-medium">{new Date(sale.createdAt).toLocaleString()}</td>
+                        <td className="px-4 py-3 text-sm">{sale.items?.length || 0} items</td>
+                        <td className="px-4 py-3 text-sm">
+                          <span className="badge badge-success">{sale.paymentMethod || 'cash'}</span>
+                        </td>
+                        <td className="px-4 py-3 text-sm text-orange-600 font-semibold">{deductionsSummary}</td>
+                        <td className="px-4 py-3 text-sm font-semibold text-green-600">KSH {sale.total?.toLocaleString()}</td>
+                      </tr>
+                    );
+                  })}
                 </tbody>
               </table>
             </div>
           </div>
+
+          <div className="card shadow-lg mt-6">
+            <h3 className="text-lg font-semibold mb-4 flex items-center gap-2">
+              <Package className="w-5 h-5 text-orange-600" />
+              Stock Deductions Log
+            </h3>
+            <div className="overflow-x-auto">
+              <table className="w-full text-sm">
+                <thead className="bg-orange-50">
+                  <tr>
+                    <th className="px-4 py-3 text-left font-semibold text-gray-700">Sale ID</th>
+                    <th className="px-4 py-3 text-left font-semibold text-gray-700">Product</th>
+                    <th className="px-4 py-3 text-left font-semibold text-gray-700">Before</th>
+                    <th className="px-4 py-3 text-left font-semibold text-gray-700">Deducted</th>
+                    <th className="px-4 py-3 text-left font-semibold text-gray-700">After</th>
+                    <th className="px-4 py-3 text-left font-semibold text-gray-700">Unit</th>
+                    <th className="px-4 py-3 text-left font-semibold text-gray-700">Time</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {data.sales && data.sales.slice(-20).reverse().map((sale) => 
+                    sale.stockDeductions?.products?.map((deduction, idx) => (
+                      <tr key={`${sale.id}-${idx}`} className="border-t border-orange-100 hover:bg-orange-50 transition-colors">
+                        <td className="px-4 py-3 font-medium text-blue-600">#{sale.id}</td>
+                        <td className="px-4 py-3">{deduction.name}</td>
+                        <td className="px-4 py-3 text-gray-600">{deduction.before}</td>
+                        <td className="px-4 py-3 font-semibold text-red-600">-{deduction.deducted}</td>
+                        <td className="px-4 py-3 font-semibold text-green-600">{deduction.after}</td>
+                        <td className="px-4 py-3 text-gray-600">{deduction.unit}</td>
+                        <td className="px-4 py-3 text-xs text-gray-500">{new Date(sale.createdAt).toLocaleTimeString()}</td>
+                      </tr>
+                    ))
+                  )}
+                </tbody>
+              </table>
+              {(!data.sales || data.sales.length === 0 || !data.sales.some(s => s.stockDeductions?.products?.length > 0)) && (
+                <div className="p-4 text-center text-gray-500">No stock deductions yet</div>
+              )}
+            </div>
+          </div>
         </div>
       )}
-
-      {activeView === 'products' && (
         <div className="p-6 max-w-7xl mx-auto w-full">
           <div className="card shadow-lg">
             <div className="flex justify-between items-center mb-6">
@@ -1216,6 +1395,102 @@ export default function CashierPOS() {
           </div>
         </div>
       )}
+
+      {/* Credit Request Modal */}
+      {showCreditRequest && (
+        <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50 p-4">
+          <div className="bg-white rounded-2xl shadow-2xl max-w-md w-full max-h-96 overflow-y-auto">
+            <div className="bg-gradient-to-r from-blue-500 to-indigo-600 p-6 text-white flex justify-between items-center sticky top-0">
+              <h2 className="text-2xl font-bold flex items-center gap-2">
+                <CreditCard />
+                Request Credit
+              </h2>
+              <button onClick={() => setShowCreditRequest(false)} className="hover:bg-white/20 p-2 rounded-lg transition">
+                <X size={24} />
+              </button>
+            </div>
+            <form onSubmit={handleCreditRequest} className="p-6 space-y-4">
+              <div>
+                <label className="block text-sm font-medium mb-2">Customer Name *</label>
+                <input
+                  type="text"
+                  placeholder="Enter customer name"
+                  value={creditRequestForm.customerName}
+                  onChange={(e) => setCreditRequestForm({ ...creditRequestForm, customerName: e.target.value })}
+                  className="w-full px-4 py-3 rounded-lg border focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                  required
+                  disabled={creditRequestSubmitting}
+                />
+              </div>
+              <div>
+                <label className="block text-sm font-medium mb-2">Amount (KES) *</label>
+                <input
+                  type="number"
+                  placeholder="0.00"
+                  value={creditRequestForm.amount}
+                  onChange={(e) => setCreditRequestForm({ ...creditRequestForm, amount: e.target.value })}
+                  className="w-full px-4 py-3 rounded-lg border focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                  min="0"
+                  step="0.01"
+                  required
+                  disabled={creditRequestSubmitting}
+                />
+              </div>
+              <div>
+                <label className="block text-sm font-medium mb-2">Reason</label>
+                <select
+                  value={creditRequestForm.reason}
+                  onChange={(e) => setCreditRequestForm({ ...creditRequestForm, reason: e.target.value })}
+                  className="w-full px-4 py-3 rounded-lg border focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                  disabled={creditRequestSubmitting}
+                >
+                  <option value="">Select reason...</option>
+                  <option value="regular_customer">Regular Customer</option>
+                  <option value="emergency">Emergency</option>
+                  <option value="bulk_order">Bulk Order</option>
+                  <option value="other">Other</option>
+                </select>
+              </div>
+              <div>
+                <label className="block text-sm font-medium mb-2">Notes</label>
+                <textarea
+                  placeholder="Add any additional notes..."
+                  value={creditRequestForm.notes}
+                  onChange={(e) => setCreditRequestForm({ ...creditRequestForm, notes: e.target.value })}
+                  className="w-full px-4 py-3 rounded-lg border focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                  rows="3"
+                  disabled={creditRequestSubmitting}
+                />
+              </div>
+              <div className="flex gap-2 pt-4">
+                <button
+                  type="submit"
+                  disabled={creditRequestSubmitting}
+                  className="flex-1 bg-gradient-to-r from-blue-500 to-indigo-600 text-white py-3 rounded-lg font-bold hover:shadow-lg transition disabled:opacity-50 disabled:cursor-not-allowed"
+                >
+                  {creditRequestSubmitting ? 'Submitting...' : 'Submit Request'}
+                </button>
+                <button
+                  type="button"
+                  onClick={() => setShowCreditRequest(false)}
+                  disabled={creditRequestSubmitting}
+                  className="flex-1 bg-gray-200 text-gray-700 py-3 rounded-lg font-bold hover:bg-gray-300 transition disabled:opacity-50"
+                >
+                  Cancel
+                </button>
+              </div>
+            </form>
+          </div>
+        </div>
+      )}
+
+      {/* Screen Lock PIN Component */}
+      <ScreenLockPin 
+        isLocked={isLocked} 
+        onUnlock={unlock}
+        userPin={user?.pin || '1234'}
+        userName={user?.name}
+      />
     </div>
   );
 }
