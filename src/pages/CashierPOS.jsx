@@ -9,6 +9,7 @@ import { ShoppingCart, Trash2, LogOut, Plus, Minus, DollarSign, TrendingDown, Pa
 import DiscountSelector from '../components/DiscountSelector';
 import ProductCard from '../components/ProductCard';
 import ScreenLockPin from '../components/ScreenLockPin';
+import LowStockAlert from '../components/LowStockAlert';
 
 export default function CashierPOS() {
   const { user, logout } = useAuth();
@@ -438,14 +439,15 @@ export default function CashierPOS() {
         price: item.price
       }));
       
-      // 1. Create the sale record
-      console.log('📤 Creating sale with items:', cartItemsWithUnits);
+      // 1. Create the sale record using atomic API
+      console.log('📤 Creating ATOMIC sale with items:', cartItemsWithUnits);
       console.log('💰 Total:', finalTotal, 'Discount:', discountValue, 'Tax:', tax, 'Tax Type:', taxType);
       
       if (!sales || typeof sales.create !== 'function') {
         throw new Error('Sales API not properly loaded');
       }
       
+      // ATOMIC SALE: Returns instantly with complete result or error
       const saleResponse = await sales.create({
         items: cartItemsWithUnits,
         total: finalTotal,
@@ -455,10 +457,15 @@ export default function CashierPOS() {
         paymentMethod
       });
       
-      console.log('✅ Sale created successfully:', saleResponse);
+      console.log('✅ ATOMIC Sale completed successfully:', saleResponse);
       
       if (!saleResponse) {
         throw new Error('No response from server');
+      }
+      
+      if (!saleResponse.success) {
+        // API returned {success: false, error: ...}
+        throw new Error(saleResponse.error || 'Sale creation failed');
       }
       
       if (!saleResponse.saleId) {
@@ -467,7 +474,7 @@ export default function CashierPOS() {
       }
       
       const saleId = saleResponse.saleId;
-      console.log(`✅ Sale ID: ${saleId}, Stock deductions:`, saleResponse.stockDeductions);
+      console.log(`✅ Sale ID: ${saleId}, Processing Time: ${saleResponse.processingTime}, Stock deductions:`, saleResponse.stockDeductions);
       
       // 2. Build new sale record with all details
       const newSale = {
@@ -486,16 +493,9 @@ export default function CashierPOS() {
       };
       
       // 3. UPDATE PRODUCT LIST WITH DEDUCTIONS IMMEDIATELY (optimistic stock update)
-      if (saleResponse.stockDeductions?.products) {
-        const updatedProducts = productList.map(product => {
-          const deduction = saleResponse.stockDeductions.products.find(d => d.id === product.id);
-          if (deduction) {
-            return { ...product, quantity: deduction.after };
-          }
-          return product;
-        });
-        setProductList(updatedProducts);
-        console.log('✅ Product quantities updated immediately with stock deductions');
+      if (saleResponse.updatedProducts) {
+        setProductList(saleResponse.updatedProducts);
+        console.log('✅ Product quantities updated with atomic deductions');
       }
       
       // 4. ADD SALE TO LIST IMMEDIATELY (optimistic update)
@@ -510,19 +510,19 @@ export default function CashierPOS() {
       setCartItemUnits({});
       setSelectedDiscount(null);
       setTaxType('exclusive');
-      setCheckoutLoading(false);
-      setIsProcessingSale(false);
       
-      // 5. Show success message with deductions
-      const deductionsSummary = saleResponse.stockDeductions?.products
-        ?.map(p => `${p.name}: -${p.deducted}${p.unit}`)
-        .join('\n') || 'None';
+      // 6. Show success message with deductions
+      const deductionsSummary = saleResponse.stockDeductions?.map?.(d => 
+        `${d.name || d.productName}: -${d.quantity}${d.unit}`
+      ).join('\n') || 'None';
       
       console.log('✅ Sale completed successfully!');
-      alert(`✅ SALE COMPLETE!\nSale ID: #${saleId}\nAmount: KSH ${finalTotal.toLocaleString()}\n\nStock Deducted:\n${deductionsSummary}`);
+      console.log('🔔 Low-stock warnings:', saleResponse.lowStockWarnings);
       
-      // 4. Refresh product inventory in BACKGROUND (don't block UI)
-      console.log('🔄 Refreshing product inventory in background...');
+      alert(`✅ SALE COMPLETE!\nSale ID: #${saleId}\nAmount: KSH ${finalTotal.toLocaleString()}\nTime: ${saleResponse.processingTime}\n\nStock Deducted:\n${deductionsSummary}`);
+      
+      // 7. Refresh product inventory and check for low-stock warnings in BACKGROUND
+      console.log('🔄 Refreshing product inventory and checking warnings in background...');
       (async () => {
         try {
           const freshProducts = await products.getAll();
@@ -534,6 +534,14 @@ export default function CashierPOS() {
           
           // Update UI with fresh products
           setProductList(filteredProducts);
+          
+          // Check for low-stock warnings
+          if (saleResponse.lowStockWarnings && saleResponse.lowStockWarnings.length > 0) {
+            const warningsList = saleResponse.lowStockWarnings
+              .map(w => `${w.name}: ${w.quantity}${w.unit} (⚠️ Low!)`)
+              .join('\n');
+            console.warn('⚠️ Low-stock warning:\n' + warningsList);
+          }
         } catch (error) {
           console.warn('Background product refresh failed:', error);
           // This is not critical - WebSocket will keep products updated
@@ -542,12 +550,9 @@ export default function CashierPOS() {
       
     } catch (error) {
       console.error('❌ Checkout failed:', error.message, error);
-      // CRITICAL: Always clear all processing states on error
-      setCheckoutLoading(false);
-      setIsProcessingSale(false);
       alert(`❌ Sale failed: ${error.message || 'Unknown error occurred'}`);
     } finally {
-      // Double-check: ensure button is always unblocked
+      // Always clear processing states
       setCheckoutLoading(false);
       setIsProcessingSale(false);
     }
@@ -702,6 +707,7 @@ export default function CashierPOS() {
 
   return (
     <div className="min-h-screen bg-gradient-to-br from-gray-50 to-gray-100 flex flex-col">
+      <LowStockAlert />
       <nav className="bg-white/80 backdrop-blur-md border-b border-gray-200 px-6 py-4 sticky top-0 z-50 shadow-sm">
         <div className="flex items-center justify-between">
           <div>

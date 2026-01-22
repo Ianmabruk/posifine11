@@ -167,6 +167,9 @@ export const products = {
     method: 'DELETE'
   }),
   
+  // Get low-stock warnings (products below threshold)
+  getLowStockWarnings: () => request('/products/low-stock-warnings'),
+  
   // Update product stock/inventory
   updateStock: (id, stockData) => request(`/products/${id}/stock`, {
     method: 'PUT',

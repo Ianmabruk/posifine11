@@ -12,9 +12,29 @@ export default function AdminDashboard() {
   const [searchTerm, setSearchTerm] = useState('');
   const [newProduct, setNewProduct] = useState({ name: '', price: '', cost: '', category: 'finished', unit: 'pcs' });
   const [newUser, setNewUser] = useState({ name: '', email: '', password: 'changeme123', role: 'cashier' });
+  const [lastUpdateTime, setLastUpdateTime] = useState(null);
 
+  // Load data on mount
   useEffect(() => {
     loadData();
+  }, []);
+
+  // Add polling for live stats (every 5 seconds)
+  useEffect(() => {
+    const pollInterval = setInterval(async () => {
+      try {
+        const st = await stats.get();
+        setData(prev => ({
+          ...prev,
+          stats: st || {}
+        }));
+        setLastUpdateTime(new Date().toLocaleTimeString());
+      } catch (error) {
+        console.warn('Stats polling failed:', error);
+      }
+    }, 5000); // Poll every 5 seconds
+
+    return () => clearInterval(pollInterval);
   }, []);
 
   const loadData = async () => {
@@ -34,6 +54,7 @@ export default function AdminDashboard() {
         stats: st || {},
         users: Array.isArray(u) ? u : []
       });
+      setLastUpdateTime(new Date().toLocaleTimeString());
     } catch (error) {
       console.error('Failed to load data:', error);
       setData({ products: [], sales: [], expenses: [], stats: {}, users: [] });
@@ -125,7 +146,7 @@ export default function AdminDashboard() {
         <div className="flex items-center justify-between">
           <div>
             <h1 className="text-2xl font-bold bg-gradient-to-r from-blue-600 to-purple-600 bg-clip-text text-transparent">Admin Dashboard</h1>
-            <p className="text-xs text-gray-500 mt-0.5">Professional Plan - KSH 1,600/month</p>
+            <p className="text-xs text-gray-500 mt-0.5">Professional Plan - KSH 1,600/month • Live Updates Every 5s {lastUpdateTime && `• Last: ${lastUpdateTime}`}</p>
           </div>
           <div className="flex items-center gap-4">
             <div className="text-right">
