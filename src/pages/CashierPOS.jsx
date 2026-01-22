@@ -400,23 +400,35 @@ export default function CashierPOS() {
   const total = cart.reduce((sum, item) => sum + (item.price * item.quantity), 0);
 
   const handleCheckout = async () => {
-    if (cart.length === 0 || checkoutLoading) return;
+    console.log('🛒 handleCheckout called, cart:', cart, 'checkoutLoading:', checkoutLoading);
+    
+    if (cart.length === 0 || checkoutLoading) {
+      console.log('⚠️ Checkout blocked: cart empty or already processing');
+      return;
+    }
     
     setCheckoutLoading(true);
     setIsProcessingSale(true);  // Add visual feedback
     
     try {
+      console.log('💳 Processing checkout...');
       const discountValue = selectedDiscount 
         ? (selectedDiscount.type === 'percentage' ? (total * selectedDiscount.value / 100) : selectedDiscount.value)
         : 0;
       
-      const tax = taxType === 'inclusive' 
-        ? (total * 0.16)  // Kenya standard tax 16%
-        : (total * 0.16);
+      // Calculate tax properly
+      let tax = 0;
+      let finalTotal = 0;
       
-      const finalTotal = taxType === 'inclusive'
-        ? (total - discountValue)
-        : (total - discountValue + tax);
+      if (taxType === 'inclusive') {
+        // Tax already included in total, so we extract it
+        tax = (total / 1.16) * 0.16;
+        finalTotal = total - discountValue;
+      } else {
+        // Tax needs to be added
+        tax = (total - discountValue) * 0.16;
+        finalTotal = total - discountValue + tax;
+      }
       
       // Include unit information for each item
       const cartItemsWithUnits = cart.map(item => ({
@@ -428,6 +440,12 @@ export default function CashierPOS() {
       
       // 1. Create the sale record
       console.log('📤 Creating sale with items:', cartItemsWithUnits);
+      console.log('💰 Total:', finalTotal, 'Discount:', discountValue, 'Tax:', tax, 'Tax Type:', taxType);
+      
+      if (!sales || typeof sales.create !== 'function') {
+        throw new Error('Sales API not properly loaded');
+      }
+      
       const saleResponse = await sales.create({
         items: cartItemsWithUnits,
         total: finalTotal,
@@ -439,7 +457,12 @@ export default function CashierPOS() {
       
       console.log('✅ Sale created successfully:', saleResponse);
       
-      if (!saleResponse || !saleResponse.saleId) {
+      if (!saleResponse) {
+        throw new Error('No response from server');
+      }
+      
+      if (!saleResponse.saleId) {
+        console.error('❌ Invalid response structure:', saleResponse);
         throw new Error('Invalid sale response - no saleId returned');
       }
       
@@ -994,7 +1017,19 @@ export default function CashierPOS() {
                 </select>
               </div>
 
-              <button onClick={handleCheckout} disabled={cart.length === 0 || checkoutLoading} className="btn-primary w-full py-4 text-lg bg-gradient-to-r from-green-600 to-teal-600 hover:from-green-700 hover:to-teal-700 shadow-lg disabled:opacity-50 disabled:cursor-not-allowed">
+              <button 
+                onClick={() => {
+                  try {
+                    console.log('🛒 Complete Sale button clicked');
+                    handleCheckout();
+                  } catch (err) {
+                    console.error('❌ Button handler error:', err);
+                    alert(`Error: ${err.message}`);
+                  }
+                }} 
+                disabled={cart.length === 0 || checkoutLoading} 
+                className="btn-primary w-full py-4 text-lg bg-gradient-to-r from-green-600 to-teal-600 hover:from-green-700 hover:to-teal-700 shadow-lg disabled:opacity-50 disabled:cursor-not-allowed transition-all duration-200"
+              >
                 {checkoutLoading ? '⏳ Processing Sale...' : 'Complete Sale'}
               </button>
             </div>
