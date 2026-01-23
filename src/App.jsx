@@ -150,6 +150,7 @@ function App() {
               
               {/* Owner Main Admin Routes */}
               <Route path="/main.admin/*" element={<MainAdmin />} />
+              <Route path="/main-admin" element={<ProtectedRoute ownerOnly><MainAdmin /></ProtectedRoute>} />
               
               {/* Regular User Routes */}
               <Route path="/dashboard" element={<ProtectedRoute><DashboardRouter /></ProtectedRoute>} />

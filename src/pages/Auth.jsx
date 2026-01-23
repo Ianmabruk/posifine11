@@ -146,17 +146,29 @@ export default function Auth() {
         console.log(`✅ User ${res.user.name} ${action} successfully`);
         
         // Redirect based on user role and plan
-        if (res.user.role === 'admin') {
-          navigate('/admin');
-        } else if (res.user.role === 'cashier') {
-          navigate('/dashboard/cashier');
-        } else {
-          // Fallback based on plan
-          if (res.user.plan === 'basic') {
-            navigate('/dashboard/cashier');
+        if (res.user.role === 'owner') {
+          // Owner/Main Admin → Main Admin Dashboard
+          navigate('/main-admin');
+        } else if (res.user.role === 'admin') {
+          // Admin user
+          if (res.user.plan === 'custom') {
+            // Custom admin → Business-aware admin dashboard
+            navigate('/admin');
+          } else if (res.user.plan === 'ultra') {
+            // Ultra admin → Ultra admin dashboard
+            navigate('/admin');
+          } else if (res.user.plan === 'basic') {
+            // Basic admin → Basic admin dashboard
+            navigate('/admin');
           } else {
             navigate('/admin');
           }
+        } else if (res.user.role === 'cashier') {
+          // Cashier → Cashier POS dashboard
+          navigate('/dashboard/cashier');
+        } else {
+          // Fallback redirect
+          navigate('/dashboard');
         }
 
     } catch (err) {
