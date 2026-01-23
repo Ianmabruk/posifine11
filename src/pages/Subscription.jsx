@@ -8,6 +8,8 @@ export default function Subscription() {
   const [showDemoForm, setShowDemoForm] = useState(false);
   const [demoData, setDemoData] = useState({ name: '', email: '', company: '' });
   const navigate = useNavigate();
+  
+  console.log('✅ Subscription component mounted, navigate available:', typeof navigate);
 
   // Updated pricing: Basic=1000, Ultra=2500, Pro=3400, Custom=3500
   const plans = [
@@ -47,24 +49,6 @@ export default function Subscription() {
       ]
     },
     {
-      id: 'pro',
-      name: 'Pro',
-      price: 3400,
-      icon: Gem,
-      color: 'from-orange-500 to-red-600',
-      popular: false,
-      features: [
-        '✓ All Ultra Features',
-        '✓ Recipe/BOM Builder',
-        '✓ COGS Calculation',
-        '✓ Composite Products',
-        '✓ Advanced Reporting',
-        '✓ Multi-location Support',
-        '✓ API Access',
-        '✓ Dedicated Support'
-      ]
-    },
-    {
       id: 'custom',
       name: 'Custom',
       price: 3500,
@@ -72,7 +56,7 @@ export default function Subscription() {
       color: 'from-pink-500 to-rose-600',
       popular: false,
       features: [
-        '✓ All Pro Features',
+        '✓ All Ultra Features',
         '✓ Business Type Builder',
         '✓ Custom Feature Selection',
         '✓ White-label Options',
@@ -84,17 +68,42 @@ export default function Subscription() {
     }
   ];
 
-  const handleGetStarted = async () => {
-    const plan = plans.find(p => p.id === selected);
-    localStorage.setItem('selectedPlan', JSON.stringify(plan));
-    localStorage.setItem('planId', selected);
+  const handleGetStarted = (e) => {
+    e?.preventDefault?.();
+    console.log('[BUTTON] Get Started clicked, selected plan:', selected);
+    console.log('[BUTTON] Available plans:', plans.map(p => p.id));
     
-    // If custom plan, go to BuildPOS for business type selection
-    if (selected === 'custom') {
-      navigate('/build-pos', { state: { plan } });
-    } else {
-      // Otherwise go directly to signup
-      navigate('/auth/signup', { state: { plan, planId: selected } });
+    const plan = plans.find(p => p.id === selected);
+    console.log('[BUTTON] Found plan:', plan);
+    
+    if (!plan) {
+      console.error('[BUTTON] Plan not found!');
+      alert('Please select a plan first');
+      return;
+    }
+    
+    try {
+      // Store plan data (without icon which can't be serialized)
+      const planData = {
+        id: plan.id,
+        name: plan.name,
+        price: plan.price
+      };
+      
+      localStorage.setItem('selectedPlan', JSON.stringify(planData));
+      localStorage.setItem('planId', selected);
+      console.log('[BUTTON] Stored to localStorage, navigating...');
+      
+      if (selected === 'custom') {
+        console.log('[BUTTON] Custom plan - going to /build-pos');
+        navigate('/build-pos');
+      } else {
+        console.log('[BUTTON] Standard plan - going to /auth/signup');
+        navigate('/auth/signup');
+      }
+    } catch (error) {
+      console.error('[BUTTON] Error:', error);
+      alert('Error: ' + error.message);
     }
   };
 
@@ -135,7 +144,7 @@ export default function Subscription() {
           <p className="text-gray-600 text-base md:text-lg">Pick the perfect plan and unlock your POS potential</p>
         </div>
 
-        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4 md:gap-6 mb-8 md:mb-12">
+        <div className="grid grid-cols-1 md:grid-cols-3 gap-4 md:gap-6 mb-8 md:mb-12">
           {plans.map((plan) => {
             const Icon = plan.icon;
             return (
@@ -181,16 +190,18 @@ export default function Subscription() {
           })}
         </div>
 
-        <div className="flex flex-col md:flex-row gap-4 items-center justify-center">
+        <div className="flex flex-col md:flex-row gap-4 items-center justify-center mt-8">
           <button 
+            type="button"
             onClick={handleGetStarted}
-            className="btn-primary px-8 md:px-12 py-3 md:py-4 text-base md:text-lg bg-gradient-to-r from-blue-600 to-purple-600 hover:from-blue-700 hover:to-purple-700 shadow-lg hover:shadow-xl transform hover:scale-105 transition-all"
+            className="cursor-pointer px-8 md:px-12 py-3 md:py-4 text-base md:text-lg font-bold bg-gradient-to-r from-blue-600 to-purple-600 text-white rounded-lg shadow-lg hover:shadow-xl transform hover:scale-105 transition-all active:scale-95"
           >
             Get Started
           </button>
           <button 
+            type="button"
             onClick={() => setShowDemoForm(true)}
-            className="btn-secondary px-8 md:px-12 py-3 md:py-4 text-base md:text-lg border-2 border-gray-300 hover:border-gray-400 transition-all"
+            className="cursor-pointer px-8 md:px-12 py-3 md:py-4 text-base md:text-lg font-bold border-2 border-gray-300 bg-white text-gray-700 rounded-lg hover:border-gray-400 transition-all"
           >
             Request Free Demo
           </button>

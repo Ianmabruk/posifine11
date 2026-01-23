@@ -3,6 +3,7 @@ import { AuthProvider, useAuth } from './context/AuthContext';
 import { ProductsProvider } from './context/ProductsContext';
 import { ScreenLockProvider, useScreenLock } from './context/ScreenLockContext';
 import AdminDashboard from './pages/admin/AdminDashboard';
+import BusinessAwareAdminRouter from './pages/BusinessAwareAdminRouter';
 import PaymentInput from './pages/PaymentInput';
 import BasicDashboard from './pages/BasicDashboard';
 import Landing from './pages/Landing';
@@ -147,7 +148,7 @@ function App() {
               {/* Regular User Routes */}
               <Route path="/dashboard" element={<ProtectedRoute><DashboardRouter /></ProtectedRoute>} />
               <Route path="/dashboard/cashier" element={<ProtectedRoute><CashierPOS /></ProtectedRoute>} />
-              <Route path="/admin/*" element={<ProtectedRoute adminOnly><AdminDashboard /></ProtectedRoute>} />
+              <Route path="/admin/*" element={<ProtectedRoute adminOnly><BusinessAwareAdminRouter /></ProtectedRoute>} />
               
               {/* Legacy redirects */}
               <Route path="/login" element={<Navigate to="/auth/login" />} />
