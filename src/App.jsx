@@ -11,6 +11,12 @@ import Auth from './pages/Auth';
 import Subscription from './pages/Subscription';
 import BuildPOS from './pages/BuildPOS';
 import CashierPOS from './pages/CashierPOS';
+import BarCashierPOS from './pages/cashier/BarCashierPOS';
+import HospitalCashierPOS from './pages/cashier/HospitalCashierPOS';
+import SchoolCashierPOS from './pages/cashier/SchoolCashierPOS';
+import KioskCashierPOS from './pages/cashier/KioskCashierPOS';
+import PetrolCashierPOS from './pages/cashier/PetrolCashierPOS';
+import ShoesCashierPOS from './pages/cashier/ShoesCashierPOS';
 import MainAdmin from './pages/MainAdmin';
 import ReminderModal from './components/ReminderModal';
 import ScreenLock from './components/ScreenLock';
@@ -148,6 +154,15 @@ function App() {
               {/* Regular User Routes */}
               <Route path="/dashboard" element={<ProtectedRoute><DashboardRouter /></ProtectedRoute>} />
               <Route path="/dashboard/cashier" element={<ProtectedRoute><CashierPOS /></ProtectedRoute>} />
+              
+              {/* Business-Specific Cashier Routes */}
+              <Route path="/cashier/bar" element={<ProtectedRoute><BarCashierPOS /></ProtectedRoute>} />
+              <Route path="/cashier/hospital" element={<ProtectedRoute><HospitalCashierPOS /></ProtectedRoute>} />
+              <Route path="/cashier/school" element={<ProtectedRoute><SchoolCashierPOS /></ProtectedRoute>} />
+              <Route path="/cashier/kiosk" element={<ProtectedRoute><KioskCashierPOS /></ProtectedRoute>} />
+              <Route path="/cashier/petrol" element={<ProtectedRoute><PetrolCashierPOS /></ProtectedRoute>} />
+              <Route path="/cashier/shoes" element={<ProtectedRoute><ShoesCashierPOS /></ProtectedRoute>} />
+              
               <Route path="/admin/*" element={<ProtectedRoute adminOnly><BusinessAwareAdminRouter /></ProtectedRoute>} />
               
               {/* Legacy redirects */}
