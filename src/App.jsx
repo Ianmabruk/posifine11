@@ -8,6 +8,7 @@ import BasicDashboard from './pages/BasicDashboard';
 import Landing from './pages/Landing';
 import Auth from './pages/Auth';
 import Subscription from './pages/Subscription';
+import BuildPOS from './pages/BuildPOS';
 import CashierPOS from './pages/CashierPOS';
 import MainAdmin from './pages/MainAdmin';
 import ReminderModal from './components/ReminderModal';
@@ -138,6 +139,7 @@ function App() {
               <Route path="/auth/login" element={<Auth />} />
               <Route path="/auth/signup" element={<Auth />} />
               <Route path="/plans" element={<Subscription />} />
+              <Route path="/build-pos" element={<BuildPOS />} />
               
               {/* Owner Main Admin Routes */}
               <Route path="/main.admin/*" element={<MainAdmin />} />

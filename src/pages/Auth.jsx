@@ -94,9 +94,14 @@ export default function Auth() {
       } else {
         const selectedPlan = getSelectedPlan();
         const planId = localStorage.getItem('planId') || selectedPlan?.id || 'basic';
+        const businessType = localStorage.getItem('selectedBusinessType');
+        const selectedFeatures = localStorage.getItem('selectedFeatures');
+        
         res = await auth.signup({
           ...formData,
-          planId: planId
+          planId: planId,
+          businessType: businessType,
+          selectedFeatures: selectedFeatures ? JSON.parse(selectedFeatures) : []
         });
       }
       

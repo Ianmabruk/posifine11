@@ -1,7 +1,7 @@
 import { useState } from 'react';
 import { BASE_API_URL } from '../services/api';
 import { useNavigate } from 'react-router-dom';
-import { Check, Crown, Zap, ArrowLeft } from 'lucide-react';
+import { Check, Crown, Zap, ArrowLeft, Gem, Star } from 'lucide-react';
 
 export default function Subscription() {
   const [selected, setSelected] = useState('ultra');
@@ -9,62 +9,92 @@ export default function Subscription() {
   const [demoData, setDemoData] = useState({ name: '', email: '', company: '' });
   const navigate = useNavigate();
 
+  // Updated pricing: Basic=1000, Ultra=2500, Pro=3400, Custom=3500
   const plans = [
     {
-      id: 'ultra',
-      name: 'Ultra Package (Unlimited)',
-      price: 3000,
-      icon: Crown,
-      color: 'from-blue-600 to-purple-600',
-      popular: true,
-      features: [
-        'Admin Dashboard + Cashier POS',
-        'Full Inventory Management',
-        'Recipe/BOM Builder',
-        'Composite Products Support',
-        'Automatic Stock Deduction',
-        'COGS Calculation',
-        'User Management',
-        'Permission Controls',
-        'Expense Tracking',
-        'Advanced Analytics',
-        'Unlimited Cashiers',
-        'Priority Support'
-      ]
-    },
-    {
       id: 'basic',
-      name: 'Basic Package',
-      price: 1600,
+      name: 'Basic',
+      price: 1000,
       icon: Zap,
       color: 'from-green-500 to-teal-600',
       popular: false,
       features: [
-        'Admin Dashboard + Cashier POS',
-        'Basic Inventory Management',
-        'Sales Tracking',
-        'Daily/Weekly Sales Summaries',
-        'Basic Profit/Loss View',
-        'Email Notifications',
-        'Record Products Sold',
-        '1 Cashier Only'
+        '✓ Admin Dashboard + Cashier POS',
+        '✓ Basic Inventory Management',
+        '✓ Sales Tracking',
+        '✓ Daily/Weekly Reports',
+        '✓ Basic Profit/Loss View',
+        '✓ Email Support',
+        '✓ 1 Cashier Only'
+      ]
+    },
+    {
+      id: 'ultra',
+      name: 'Ultra',
+      price: 2500,
+      icon: Crown,
+      color: 'from-blue-600 to-purple-600',
+      popular: true,
+      features: [
+        '✓ Admin Dashboard + Cashier POS',
+        '✓ Full Inventory Management',
+        '✓ Automatic Stock Deduction',
+        '✓ User Management (Unlimited)',
+        '✓ Permission Controls',
+        '✓ Expense Tracking',
+        '✓ Advanced Analytics',
+        '✓ Priority Support'
+      ]
+    },
+    {
+      id: 'pro',
+      name: 'Pro',
+      price: 3400,
+      icon: Gem,
+      color: 'from-orange-500 to-red-600',
+      popular: false,
+      features: [
+        '✓ All Ultra Features',
+        '✓ Recipe/BOM Builder',
+        '✓ COGS Calculation',
+        '✓ Composite Products',
+        '✓ Advanced Reporting',
+        '✓ Multi-location Support',
+        '✓ API Access',
+        '✓ Dedicated Support'
+      ]
+    },
+    {
+      id: 'custom',
+      name: 'Custom',
+      price: 3500,
+      icon: Star,
+      color: 'from-pink-500 to-rose-600',
+      popular: false,
+      features: [
+        '✓ All Pro Features',
+        '✓ Business Type Builder',
+        '✓ Custom Feature Selection',
+        '✓ White-label Options',
+        '✓ Custom Integrations',
+        '✓ Dedicated Account Manager',
+        '✓ Priority On-boarding',
+        '✓ Custom Support'
       ]
     }
   ];
 
-
-
-  const handleSubscribe = async () => {
-    console.log('handleSubscribe called with selected:', selected);
+  const handleGetStarted = async () => {
     const plan = plans.find(p => p.id === selected);
-    console.log('Found plan:', plan);
-    try {
-      localStorage.setItem('selectedPlan', JSON.stringify(plan));
-      localStorage.setItem('planId', selected);
+    localStorage.setItem('selectedPlan', JSON.stringify(plan));
+    localStorage.setItem('planId', selected);
+    
+    // If custom plan, go to BuildPOS for business type selection
+    if (selected === 'custom') {
+      navigate('/build-pos', { state: { plan } });
+    } else {
+      // Otherwise go directly to signup
       navigate('/auth/signup', { state: { plan, planId: selected } });
-      console.log('Navigation attempted to /auth/signup with planId:', selected);
-    } catch (error) {
-      console.error('Navigation error:', error);
     }
   };
 
@@ -88,7 +118,7 @@ export default function Subscription() {
 
   return (
     <div className="min-h-screen bg-gradient-to-br from-indigo-50 via-purple-50 to-pink-50 py-6 md:py-12 px-4 md:px-6">
-      <div className="max-w-6xl mx-auto">
+      <div className="max-w-7xl mx-auto">
         <div className="flex items-center gap-4 mb-8">
           <button 
             onClick={() => navigate('/')}
@@ -98,51 +128,51 @@ export default function Subscription() {
             Back to Home
           </button>
         </div>
-        <div className="text-center mb-8 md:mb-12 animate-fade-in">
+        <div className="text-center mb-12 md:mb-16">
           <h1 className="text-3xl md:text-5xl font-bold mb-3 md:mb-4 bg-gradient-to-r from-blue-600 to-purple-600 bg-clip-text text-transparent">
             Choose Your Plan
           </h1>
-          <p className="text-gray-600 text-base md:text-lg">Select the perfect plan for your business needs</p>
+          <p className="text-gray-600 text-base md:text-lg">Pick the perfect plan and unlock your POS potential</p>
         </div>
 
-        <div className="grid grid-cols-1 md:grid-cols-2 gap-6 md:gap-8 mb-6 md:mb-8">
+        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4 md:gap-6 mb-8 md:mb-12">
           {plans.map((plan) => {
             const Icon = plan.icon;
             return (
               <div
                 key={plan.id}
                 onClick={() => setSelected(plan.id)}
-                className={`card cursor-pointer transition-all transform hover:scale-105 relative ${
+                className={`card cursor-pointer transition-all transform ${
                   selected === plan.id 
-                    ? 'ring-4 ring-blue-600 shadow-2xl bg-gradient-to-br from-blue-50 to-purple-50' 
-                    : 'hover:shadow-xl'
-                }`}
+                    ? 'ring-4 ring-blue-600 shadow-2xl scale-105 bg-gradient-to-br from-blue-50 to-purple-50' 
+                    : 'hover:shadow-lg hover:scale-102'
+                } relative`}
               >
                 {plan.popular && (
-                  <div className="absolute -top-4 left-1/2 -translate-x-1/2">
-                    <span className="bg-gradient-to-r from-blue-600 to-purple-600 text-white px-4 py-1 rounded-full text-sm font-semibold shadow-lg">
+                  <div className="absolute -top-3 left-1/2 -translate-x-1/2">
+                    <span className="bg-gradient-to-r from-blue-600 to-purple-600 text-white px-3 py-1 rounded-full text-xs font-bold shadow-lg">
                       Most Popular
                     </span>
                   </div>
                 )}
                 
-                <div className="flex items-center gap-3 mb-3 md:mb-4">
-                  <div className={`w-10 h-10 md:w-12 md:h-12 rounded-xl bg-gradient-to-br ${plan.color} flex items-center justify-center`}>
-                    <Icon className="w-5 h-5 md:w-6 md:h-6 text-white" />
+                <div className="flex items-center gap-2 mb-3">
+                  <div className={`w-10 h-10 rounded-xl bg-gradient-to-br ${plan.color} flex items-center justify-center`}>
+                    <Icon className="w-5 h-5 text-white" />
                   </div>
-                  <h3 className="text-xl md:text-2xl font-bold">{plan.name}</h3>
+                  <h3 className="text-lg md:text-xl font-bold">{plan.name}</h3>
                 </div>
                 
-                <div className="mb-4 md:mb-6">
-                  <span className="text-3xl md:text-4xl font-bold">KSH {plan.price}</span>
-                  <span className="text-gray-600 text-sm md:text-base">/month</span>
+                <div className="mb-4">
+                  <span className="text-2xl md:text-3xl font-bold">KSH {plan.price}</span>
+                  <span className="text-gray-600 text-xs md:text-sm">/month</span>
                 </div>
                 
-                <ul className="space-y-2 md:space-y-3">
+                <ul className="space-y-2">
                   {plan.features.map((feature, i) => (
-                    <li key={i} className="flex items-start gap-2">
-                      <Check className="w-4 h-4 md:w-5 md:h-5 text-green-600 flex-shrink-0 mt-0.5" />
-                      <span className="text-xs md:text-sm">{feature}</span>
+                    <li key={i} className="flex items-start gap-2 text-xs md:text-sm">
+                      <Check className="w-4 h-4 text-green-600 flex-shrink-0 mt-0.5" />
+                      <span>{feature}</span>
                     </li>
                   ))}
                 </ul>
@@ -151,15 +181,9 @@ export default function Subscription() {
           })}
         </div>
 
-        <div className="flex flex-col md:flex-row gap-4 items-center justify-center animate-fade-in">
+        <div className="flex flex-col md:flex-row gap-4 items-center justify-center">
           <button 
-            onClick={() => {
-              console.log('Get Started clicked with plan:', selected);
-              const plan = plans.find(p => p.id === selected);
-              console.log('Selected plan:', plan);
-              localStorage.setItem('selectedPlan', JSON.stringify(plan));
-              navigate('/auth/signup');
-            }}
+            onClick={handleGetStarted}
             className="btn-primary px-8 md:px-12 py-3 md:py-4 text-base md:text-lg bg-gradient-to-r from-blue-600 to-purple-600 hover:from-blue-700 hover:to-purple-700 shadow-lg hover:shadow-xl transform hover:scale-105 transition-all"
           >
             Get Started
@@ -171,7 +195,7 @@ export default function Subscription() {
             Request Free Demo
           </button>
         </div>
-        <p className="text-xs md:text-sm text-gray-500 mt-3 md:mt-4 text-center">Secure payment • Cancel anytime</p>
+        <p className="text-xs md:text-sm text-gray-500 mt-4 text-center">Secure payment • Cancel anytime</p>
 
         {/* Demo Request Modal */}
         {showDemoForm && (
