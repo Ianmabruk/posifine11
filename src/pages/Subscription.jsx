@@ -1,7 +1,7 @@
 import { useState } from 'react';
 import { BASE_API_URL } from '../services/api';
 import { useNavigate } from 'react-router-dom';
-import { Check, Crown, Zap, ArrowLeft, Gem, Star } from 'lucide-react';
+import { Check, Crown, Zap, ArrowLeft } from 'lucide-react';
 
 export default function Subscription() {
   const [selected, setSelected] = useState('ultra');
@@ -11,7 +11,7 @@ export default function Subscription() {
   
   console.log('✅ Subscription component mounted, navigate available:', typeof navigate);
 
-  // Updated pricing: Basic=1000, Ultra=2500, Pro=3400, Custom=3500
+  // Updated pricing: Basic=1000, Ultra=2500
   const plans = [
     {
       id: 'basic',
@@ -47,24 +47,6 @@ export default function Subscription() {
         '✓ Advanced Analytics',
         '✓ Priority Support'
       ]
-    },
-    {
-      id: 'custom',
-      name: 'Custom',
-      price: 3500,
-      icon: Star,
-      color: 'from-pink-500 to-rose-600',
-      popular: false,
-      features: [
-        '✓ All Ultra Features',
-        '✓ Business Type Builder',
-        '✓ Custom Feature Selection',
-        '✓ White-label Options',
-        '✓ Custom Integrations',
-        '✓ Dedicated Account Manager',
-        '✓ Priority On-boarding',
-        '✓ Custom Support'
-      ]
     }
   ];
 
@@ -94,13 +76,9 @@ export default function Subscription() {
       localStorage.setItem('planId', selected);
       console.log('[BUTTON] Stored to localStorage, navigating...');
       
-      if (selected === 'custom') {
-        console.log('[BUTTON] Custom plan - going to /build-pos');
-        navigate('/build-pos');
-      } else {
-        console.log('[BUTTON] Standard plan - going to /auth/signup');
-        navigate('/auth/signup');
-      }
+      // All plans go directly to signup
+      console.log('[BUTTON] Going to /auth/signup');
+      navigate('/auth/signup');
     } catch (error) {
       console.error('[BUTTON] Error:', error);
       alert('Error: ' + error.message);
@@ -144,8 +122,7 @@ export default function Subscription() {
           <p className="text-gray-600 text-base md:text-lg">Pick the perfect plan and unlock your POS potential</p>
         </div>
 
-        <div className="grid grid-cols-1 md:grid-cols-3 gap-4 md:gap-6 mb-8 md:mb-12">
-          {plans.map((plan) => {
+        <div className="grid grid-cols-1 md:grid-cols-2 gap-4 md:gap-8 mb-8 md:mb-12 max-w-5xl mx-auto">{plans.map((plan) => {
             const Icon = plan.icon;
             return (
               <div
