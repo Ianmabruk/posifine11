@@ -1,7 +1,10 @@
 [build]
   command = "npm run build"
   publish = "dist"
-  environment = { NODE_VERSION = "18" }
+
+[build.environment]
+  NODE_VERSION = "18"
+  VITE_API_BASE = "https://universal-backend-w0x1.onrender.com/api"
 
 # Handle SPA routing - all routes go to index.html
 [[redirects]]
@@ -19,7 +22,3 @@
   for = "/assets/*"
     [headers.values]
       Cache-Control = "public, max-age=31536000, immutable"
-
-# Environment variables for build time
-[build.environment]
-  VITE_API_BASE = "https://universal-backend-w0x1.onrender.com/api"
