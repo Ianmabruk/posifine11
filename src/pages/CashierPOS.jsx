@@ -563,26 +563,29 @@ export default function CashierPOS() {
     try {
       console.log('➕ Creating new product:', newProduct.name);
       
-      // Create the product
+      // Create the product with visibleToCashier flag
       const createdProduct = await products.create({ 
         ...newProduct, 
         price: parseFloat(newProduct.price),
         cost: parseFloat(newProduct.cost || 0),
-        quantity: 0 // Stock managed through batches
+        quantity: 0, // Stock managed through batches
+        visibleToCashier: true, // ✅ CRITICAL: Make product visible to cashier
+        expenseOnly: false // ✅ Not an expense-only item
       });
       
       console.log('✅ Product created:', createdProduct);
+      
+      // Optimistic update: Add product to the list immediately
+      if (createdProduct) {
+        setProductList(prev => [...prev, createdProduct]);
+      }
       
       // Clear form
       setNewProduct({ name: '', price: '', cost: '', category: 'finished', image: '' });
       setImagePreview('');
       setShowAddProduct(false);
       
-      // Refresh all data to show new product everywhere
-      console.log('🔄 Reloading data...');
-      await loadData();
-      
-      console.log('✅ Product added successfully!');
+      console.log('✅ Product added successfully and visible in POS!');
       alert('✅ Product added successfully!');
     } catch (error) {
       console.error('❌ Failed to add product:', error.message, error);
