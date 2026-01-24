@@ -20,13 +20,6 @@
     [headers.values]
       Cache-Control = "public, max-age=31536000, immutable"
 
-# Environment variables - set in Netlify dashboard
-[env]
-  [env.production]
-    VITE_API_BASE = "https://your-backend-url.onrender.com/api"
-  
-  [env.staging]
-    VITE_API_BASE = "https://staging-backend-url.onrender.com/api"
-  
-  [env.develop]
-    VITE_API_BASE = "http://localhost:5000/api"
+# Environment variables for build time
+[build.environment]
+  VITE_API_BASE = "https://universal-backend-w0x1.onrender.com/api"
