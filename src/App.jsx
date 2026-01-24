@@ -166,7 +166,9 @@ function App() {
               <Route path="/cashier/petrol" element={<ProtectedRoute><PetrolCashierPOS /></ProtectedRoute>} />
               <Route path="/cashier/shoes" element={<ProtectedRoute><ShoesCashierPOS /></ProtectedRoute>} />
               
-              <Route path="/admin/*" element={<ProtectedRoute adminOnly><BusinessAwareAdminRouter /></ProtectedRoute>} />
+              {/* Admin Dashboard - OLD version for ALL subscriptions */}
+              <Route path="/admin/*" element={<ProtectedRoute adminOnly><AdminDashboard /></ProtectedRoute>} />
+              <Route path="/admin" element={<ProtectedRoute adminOnly><AdminDashboard /></ProtectedRoute>} />
               
               {/* Legacy redirects */}
               <Route path="/login" element={<Navigate to="/auth/login" />} />
