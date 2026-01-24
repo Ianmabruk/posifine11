@@ -2,7 +2,7 @@ import { BrowserRouter, Routes, Route, Navigate } from 'react-router-dom';
 import { AuthProvider, useAuth } from './context/AuthContext';
 import { ProductsProvider } from './context/ProductsContext';
 import { ScreenLockProvider, useScreenLock } from './context/ScreenLockContext';
-import SimpleAdminDashboard from './pages/SimpleAdminDashboard';
+import AdminDashboard from './pages/AdminDashboard';
 import BusinessAwareAdminRouter from './pages/BusinessAwareAdminRouter';
 import PaymentInput from './pages/PaymentInput';
 import BasicDashboard from './pages/BasicDashboard';
@@ -166,8 +166,8 @@ function App() {
               <Route path="/cashier/petrol" element={<ProtectedRoute><PetrolCashierPOS /></ProtectedRoute>} />
               <Route path="/cashier/shoes" element={<ProtectedRoute><ShoesCashierPOS /></ProtectedRoute>} />
               
-              {/* Admin Dashboard - SIMPLE OLD version for ALL subscriptions */}
-              <Route path="/admin/*" element={<ProtectedRoute adminOnly><SimpleAdminDashboard /></ProtectedRoute>} />
+              {/* Admin Dashboard - ORIGINAL OLD version with tabs */}
+              <Route path="/admin/*" element={<ProtectedRoute adminOnly><AdminDashboard /></ProtectedRoute>} />
               <Route path="/admin" element={<ProtectedRoute adminOnly><SimpleAdminDashboard /></ProtectedRoute>} />
               
               {/* Legacy redirects */}
