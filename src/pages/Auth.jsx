@@ -145,27 +145,21 @@ export default function Auth() {
         const action = isLogin ? 'logged in' : 'signed up';
         console.log(`✅ User ${res.user.name} ${action} successfully`);
         
-        // Redirect based on user role and plan
+        // CRITICAL: Role-based redirect (MUST MATCH SPEC)
+        // 1. Owner/Main Admin → Main Admin Dashboard
+        // 2. Admin (any plan) → Old Admin Dashboard /admin
+        // 3. Cashier → Cashier Dashboard /cashier
+        
         if (res.user.role === 'owner') {
           // Owner/Main Admin → Main Admin Dashboard
           navigate('/main-admin');
         } else if (res.user.role === 'admin') {
-          // Admin user
-          if (res.user.plan === 'custom') {
-            // Custom admin → Business-aware admin dashboard
-            navigate('/admin');
-          } else if (res.user.plan === 'ultra') {
-            // Ultra admin → Ultra admin dashboard
-            navigate('/admin');
-          } else if (res.user.plan === 'basic') {
-            // Basic admin → Basic admin dashboard
-            navigate('/admin');
-          } else {
-            navigate('/admin');
-          }
+          // Admin user → OLD ADMIN DASHBOARD (regardless of plan type)
+          // This is the CRITICAL fix: subscription success MUST go to /admin
+          navigate('/admin');
         } else if (res.user.role === 'cashier') {
           // Cashier → Cashier POS dashboard
-          navigate('/dashboard/cashier');
+          navigate('/cashier');
         } else {
           // Fallback redirect
           navigate('/dashboard');

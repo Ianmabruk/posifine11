@@ -103,7 +103,7 @@ function ProtectedRoute({ children, adminOnly = false, ultraOnly = false, ownerO
   } else {
     // Regular route protection
     if (!user) return <Navigate to="/auth/login" />;
-    if (!user.active) return <Navigate to="/plans" />;
+    if (!user.active) return <Navigate to="/choose-subscription" />;
     if (adminOnly && user.role !== 'admin') return <Navigate to="/dashboard" />;
     if (ultraOnly && (user.role !== 'admin' || user.plan !== 'ultra')) return <Navigate to="/dashboard" />;
   }
@@ -124,7 +124,7 @@ function ProtectedRoute({ children, adminOnly = false, ultraOnly = false, ownerO
 function DashboardRouter() {
   const { user } = useAuth();
   
-  if (!user || !user.active) return <Navigate to="/plans" />;
+  if (!user || !user.active) return <Navigate to="/choose-subscription" />;
   
   // Route based on ROLE, not package
   if (user.role === 'admin') {
@@ -142,10 +142,12 @@ function App() {
         <ScreenLockProvider>
           <BrowserRouter future={{ v7_startTransition: true, v7_relativeSplatPath: true }}>
             <Routes>
-              <Route path="/" element={<Landing />} />
+              <Route path="/" element={<Navigate to="/get-started" />} />
+              <Route path="/get-started" element={<Landing />} />
+              <Route path="/choose-subscription" element={<Subscription />} />
               <Route path="/auth/login" element={<Auth />} />
               <Route path="/auth/signup" element={<Auth />} />
-              <Route path="/plans" element={<Subscription />} />
+              <Route path="/plans" element={<Navigate to="/choose-subscription" />} />
               <Route path="/build-pos" element={<BuildPOS />} />
               
               {/* Owner Main Admin Routes */}
@@ -169,9 +171,9 @@ function App() {
               {/* Legacy redirects */}
               <Route path="/login" element={<Navigate to="/auth/login" />} />
               <Route path="/signup" element={<Navigate to="/auth/signup" />} />
-              <Route path="/subscription" element={<Navigate to="/plans" />} />
-              <Route path="/payment" element={<Navigate to="/plans" />} />
-              <Route path="/cashier" element={<Navigate to="/dashboard/cashier" />} />
+              <Route path="/subscription" element={<Navigate to="/choose-subscription" />} />
+              <Route path="/payment" element={<Navigate to="/choose-subscription" />} />
+              <Route path="/cashier" element={<ProtectedRoute><Navigate to="/dashboard/cashier" /></ProtectedRoute>} />
             </Routes>
           </BrowserRouter>
         </ScreenLockProvider>

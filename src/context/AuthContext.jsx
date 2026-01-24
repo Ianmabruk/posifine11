@@ -150,7 +150,7 @@ export const AuthProvider = ({ children }) => {
     localStorage.removeItem('token');
     localStorage.removeItem('user');
     setUser(null);
-    window.location.href = '/login';
+    window.location.href = '/auth/login';
   };
 
   const isAuthenticated = () => !!user && !!localStorage.getItem('token');
