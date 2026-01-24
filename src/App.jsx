@@ -2,7 +2,7 @@ import { BrowserRouter, Routes, Route, Navigate } from 'react-router-dom';
 import { AuthProvider, useAuth } from './context/AuthContext';
 import { ProductsProvider } from './context/ProductsContext';
 import { ScreenLockProvider, useScreenLock } from './context/ScreenLockContext';
-import AdminDashboard from './pages/AdminDashboard';
+import AdminDashboard from './pages/admin/AdminDashboard';
 import BusinessAwareAdminRouter from './pages/BusinessAwareAdminRouter';
 import PaymentInput from './pages/PaymentInput';
 import BasicDashboard from './pages/BasicDashboard';
