@@ -10,6 +10,12 @@ import DiscountSelector from '../components/DiscountSelector';
 import ProductCard from '../components/ProductCard';
 import ScreenLockPin from '../components/ScreenLockPin';
 import LowStockAlert from '../components/LowStockAlert';
+// Import optimized transaction service
+import { 
+  completeSaleTransaction, 
+  invalidateProductCache,
+  optimisticInventoryUpdate 
+} from '../services/transactionService';
 
 export default function CashierPOS() {
   const { user, logout } = useAuth();
@@ -401,156 +407,186 @@ export default function CashierPOS() {
   const total = cart.reduce((sum, item) => sum + (item.price * item.quantity), 0);
 
   const handleCheckout = async () => {
-    console.log('🛒 handleCheckout called, cart:', cart, 'checkoutLoading:', checkoutLoading);
+    console.log('🛒 [Checkout] Starting optimized checkout flow');
     
+    // Prevent double submission
     if (cart.length === 0 || checkoutLoading) {
-      console.log('⚠️ Checkout blocked: cart empty or already processing');
+      console.log('⚠️ [Checkout] Blocked: cart empty or already processing');
       return;
     }
     
     setCheckoutLoading(true);
-    setIsProcessingSale(true);  // Add visual feedback
+    setIsProcessingSale(true);
+    
+    // Save cart state for potential rollback
+    const savedCart = [...cart];
+    const savedCartUnits = {...cartItemUnits};
+    const savedDiscount = selectedDiscount;
+    const savedTaxType = taxType;
     
     try {
-      console.log('💳 Processing checkout...');
+      // Calculate totals
+      const subtotal = cart.reduce((sum, item) => sum + (item.price * item.quantity), 0);
       const discountValue = selectedDiscount 
-        ? (selectedDiscount.type === 'percentage' ? (total * selectedDiscount.value / 100) : selectedDiscount.value)
+        ? (selectedDiscount.type === 'percentage' ? (subtotal * selectedDiscount.value / 100) : selectedDiscount.value)
         : 0;
       
-      // Calculate tax properly
-      let tax = 0;
+      // Calculate tax based on type
+      let taxAmount = 0;
       let finalTotal = 0;
       
       if (taxType === 'inclusive') {
-        // Tax already included in total, so we extract it
-        tax = (total / 1.16) * 0.16;
-        finalTotal = total - discountValue;
+        // Tax already included in total, extract it
+        taxAmount = (subtotal / 1.16) * 0.16;
+        finalTotal = subtotal - discountValue;
       } else {
         // Tax needs to be added
-        tax = (total - discountValue) * 0.16;
-        finalTotal = total - discountValue + tax;
+        taxAmount = (subtotal - discountValue) * 0.16;
+        finalTotal = subtotal - discountValue + taxAmount;
       }
       
-      // Include unit information for each item
-      const cartItemsWithUnits = cart.map(item => ({
+      // Prepare cart items with units
+      const cartItems = cart.map(item => ({
         productId: item.id,
         quantity: item.quantity,
-        unit: cartItemUnits[item.id] || item.unit || 'piece',  // Use selected unit or default
-        price: item.price
+        unit: cartItemUnits[item.id] || item.unit || 'piece',
+        price: item.price,
+        name: item.name
       }));
       
-      // 1. Create the sale record using atomic API
-      console.log('📤 Creating ATOMIC sale with items:', cartItemsWithUnits);
-      console.log('💰 Total:', finalTotal, 'Discount:', discountValue, 'Tax:', tax, 'Tax Type:', taxType);
-      
-      if (!sales || typeof sales.create !== 'function') {
-        throw new Error('Sales API not properly loaded');
-      }
-      
-      // ATOMIC SALE: Returns instantly with complete result or error
-      const saleResponse = await sales.create({
-        items: cartItemsWithUnits,
+      console.log('💳 [Checkout] Processing sale:', {
+        items: cartItems.length,
         total: finalTotal,
         discount: discountValue,
-        tax: tax,
-        taxType: taxType,
-        paymentMethod
+        tax: taxAmount
       });
       
-      console.log('✅ ATOMIC Sale completed successfully:', saleResponse);
-      
-      if (!saleResponse) {
-        throw new Error('No response from server');
-      }
-      
-      if (!saleResponse.success) {
-        // API returned {success: false, error: ...}
-        throw new Error(saleResponse.error || 'Sale creation failed');
-      }
-      
-      if (!saleResponse.saleId) {
-        console.error('❌ Invalid response structure:', saleResponse);
-        throw new Error('Invalid sale response - no saleId returned');
-      }
-      
-      const saleId = saleResponse.saleId;
-      console.log(`✅ Sale ID: ${saleId}, Processing Time: ${saleResponse.processingTime}, Stock deductions:`, saleResponse.stockDeductions);
-      
-      // 2. Build new sale record with all details
-      const newSale = {
-        id: saleId,
-        items: cartItemsWithUnits,
-        total: finalTotal,
-        discount: discountValue,
-        tax: tax,
-        taxType: taxType,
-        paymentMethod: paymentMethod,
-        accountId: user?.accountId,
-        cashierId: user?.id,
-        cashierName: user?.name || 'Cashier',
-        stockDeductions: saleResponse.stockDeductions || { products: [], expenses: [] },
-        createdAt: new Date().toISOString()
-      };
-      
-      // 3. UPDATE PRODUCT LIST WITH DEDUCTIONS IMMEDIATELY (optimistic stock update)
-      if (saleResponse.updatedProducts) {
-        setProductList(saleResponse.updatedProducts);
-        console.log('✅ Product quantities updated with atomic deductions');
-      }
-      
-      // 4. ADD SALE TO LIST IMMEDIATELY (optimistic update)
-      setData(prev => ({
-        ...prev,
-        sales: [newSale, ...prev.sales]
-      }));
-      console.log('✅ Sale added to UI immediately');
-      
-      // 5. Clear cart and selections IMMEDIATELY (user sees this instantly)
-      setCart([]);
-      setCartItemUnits({});
-      setSelectedDiscount(null);
-      setTaxType('exclusive');
-      
-      // 6. Show success message with deductions
-      const deductionsSummary = saleResponse.stockDeductions?.map?.(d => 
-        `${d.name || d.productName}: -${d.quantity}${d.unit}`
-      ).join('\n') || 'None';
-      
-      console.log('✅ Sale completed successfully!');
-      console.log('🔔 Low-stock warnings:', saleResponse.lowStockWarnings);
-      
-      alert(`✅ SALE COMPLETE!\nSale ID: #${saleId}\nAmount: KSH ${finalTotal.toLocaleString()}\nTime: ${saleResponse.processingTime}\n\nStock Deducted:\n${deductionsSummary}`);
-      
-      // 7. Refresh product inventory and check for low-stock warnings in BACKGROUND
-      console.log('🔄 Refreshing product inventory and checking warnings in background...');
-      (async () => {
-        try {
-          const freshProducts = await products.getAll();
-          console.log(`📦 Received ${freshProducts.length} products from server`);
+      // ====================================================================
+      // CALL OPTIMIZED TRANSACTION SERVICE
+      // ====================================================================
+      const result = await completeSaleTransaction(
+        {
+          items: cartItems,
+          total: finalTotal,
+          discount: discountValue,
+          tax: taxAmount,
+          taxType: taxType,
+          paymentMethod: paymentMethod,
+          shiftId: currentTimeEntry?.id
+        },
+        // onOptimisticUpdate - called IMMEDIATELY before API
+        (optimisticData) => {
+          console.log('⚡ [Checkout] Optimistic update:', optimisticData.action);
+          // Clear cart instantly for user feedback
+          setCart([]);
+          setCartItemUnits({});
+          setSelectedDiscount(null);
+          setTaxType('exclusive');
+        },
+        // onSuccess - called with server response
+        (successData) => {
+          console.log(`✅ [Checkout] Sale completed in ${successData.clientElapsedMs.toFixed(1)}ms ${successData.performanceGrade}`);
           
-          // Filter products for cashier display
-          const filteredProducts = freshProducts.filter(p => p.visibleToCashier !== false && !p.expenseOnly);
-          console.log(`✅ Filtered to ${filteredProducts.length} visible products`);
-          
-          // Update UI with fresh products
-          setProductList(filteredProducts);
-          
-          // Check for low-stock warnings
-          if (saleResponse.lowStockWarnings && saleResponse.lowStockWarnings.length > 0) {
-            const warningsList = saleResponse.lowStockWarnings
-              .map(w => `${w.name}: ${w.quantity}${w.unit} (⚠️ Low!)`)
-              .join('\n');
-            console.warn('⚠️ Low-stock warning:\n' + warningsList);
+          // Update products with server response (most accurate)
+          if (successData.updatedProducts && successData.updatedProducts.length > 0) {
+            setProductList(successData.updatedProducts);
+            console.log('📦 [Checkout] Products updated from server');
+          } else {
+            // Fallback: apply optimistic update to current products
+            const updatedProducts = optimisticInventoryUpdate(productList, successData.stockDeductions);
+            setProductList(updatedProducts);
+            console.log('📦 [Checkout] Products updated optimistically');
           }
-        } catch (error) {
-          console.warn('Background product refresh failed:', error);
-          // This is not critical - WebSocket will keep products updated
+          
+          // Invalidate cache to force fresh data on next fetch
+          invalidateProductCache();
+          
+          // Add sale to local data
+          const newSale = {
+            id: successData.saleId,
+            items: cartItems,
+            total: finalTotal,
+            discount: discountValue,
+            tax: taxAmount,
+            taxType: taxType,
+            paymentMethod: paymentMethod,
+            accountId: user?.accountId,
+            cashierId: user?.id,
+            cashierName: user?.name || 'Cashier',
+            stockDeductions: successData.stockDeductions || {},
+            createdAt: successData.timestamp || new Date().toISOString()
+          };
+          
+          setData(prev => ({
+            ...prev,
+            sales: [newSale, ...prev.sales]
+          }));
+          
+          // Show success message
+          const deductionsSummary = successData.stockDeductions?.products?.map?.(d => 
+            `${d.name || d.productName}: -${d.quantity || d.deducted}${d.unit || ''}`
+          ).join('\n') || 'Stock updated';
+          
+          alert(
+            `✅ SALE COMPLETE!\n\n` +
+            `Sale ID: #${successData.saleId}\n` +
+            `Amount: KSH ${finalTotal.toLocaleString()}\n` +
+            `Time: ${successData.processingTime || successData.clientElapsedMs.toFixed(1) + 'ms'}\n` +
+            `Performance: ${successData.performanceGrade}\n\n` +
+            `Stock Deducted:\n${deductionsSummary}`
+          );
+          
+          // Show low stock warnings if any
+          if (successData.lowStockWarnings && successData.lowStockWarnings.length > 0) {
+            const warnings = successData.lowStockWarnings
+              .map(w => `⚠️ ${w.name}: ${w.quantity}${w.unit} (Low Stock!)`)
+              .join('\n');
+            console.warn('⚠️ [Checkout] Low stock warnings:\n' + warnings);
+            setTimeout(() => alert('Low Stock Alert:\n\n' + warnings), 1000);
+          }
+          
+          // Background: refresh products from server
+          setTimeout(() => {
+            products.getAll()
+              .then(freshProducts => {
+                const filtered = freshProducts.filter(p => 
+                  p.visibleToCashier !== false && !p.expenseOnly
+                );
+                setProductList(filtered);
+                console.log('🔄 [Checkout] Background refresh complete');
+              })
+              .catch(err => console.warn('Background refresh failed:', err));
+          }, 100);
+        },
+        // onError - called on failure
+        (errorData) => {
+          console.error(`❌ [Checkout] Failed after ${errorData.elapsedMs.toFixed(1)}ms:`, errorData.error);
+          
+          // Rollback optimistic update if needed
+          if (errorData.needsRollback) {
+            setCart(savedCart);
+            setCartItemUnits(savedCartUnits);
+            setSelectedDiscount(savedDiscount);
+            setTaxType(savedTaxType);
+            console.log('🔄 [Checkout] Rolled back to previous state');
+          }
+          
+          alert(`❌ Sale Failed:\n\n${errorData.error}\n\nPlease try again.`);
         }
-      })();
+      );
+      
+      console.log('✅ [Checkout] Transaction completed successfully');
       
     } catch (error) {
-      console.error('❌ Checkout failed:', error.message, error);
-      alert(`❌ Sale failed: ${error.message || 'Unknown error occurred'}`);
+      console.error('❌ [Checkout] Unexpected error:', error);
+      
+      // Rollback on unexpected error
+      setCart(savedCart);
+      setCartItemUnits(savedCartUnits);
+      setSelectedDiscount(savedDiscount);
+      setTaxType(savedTaxType);
+      
+      alert(`❌ Checkout Failed:\n\n${error.message || 'Unknown error occurred'}\n\nYour cart has been restored.`);
     } finally {
       // Always clear processing states
       setCheckoutLoading(false);

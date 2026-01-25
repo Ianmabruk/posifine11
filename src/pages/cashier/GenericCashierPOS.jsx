@@ -4,6 +4,12 @@ import { useNavigate } from 'react-router-dom';
 import { Plus, Clock, ShoppingCart, AlertCircle, TrendingUp } from 'lucide-react';
 import MonitorDashboard from './MonitorDashboard';
 import ClockInOut from './ClockInOut';
+// Import optimized transaction service
+import { 
+  completeSaleTransaction,
+  clockInTransaction,
+  invalidateProductCache 
+} from '../../services/transactionService';
 
 export default function GenericCashierPOS() {
   const { user } = useAuth();
@@ -17,26 +23,25 @@ export default function GenericCashierPOS() {
   const [tax, setTax] = useState(0);
   const [loading, setLoading] = useState(false);
 
-  // Clock in on component mount
+  // Clock in on component mount using optimized service
   useEffect(() => {
-    clockIn();
-  }, []);
-
-  const clockIn = async () => {
-    try {
-      const token = localStorage.getItem('token');
-      const res = await fetch(`${import.meta.env.VITE_API_URL || 'http://localhost:5000'}/api/v2/shifts/clock-in`, {
-        method: 'POST',
-        headers: { 'Authorization': `Bearer ${token}` }
-      });
-      const data = await res.json();
-      if (data.shiftId) {
-        setShiftId(data.shiftId);
+    const performClockIn = async () => {
+      try {
+        console.log('🕐 [GenericPOS] Initiating clock-in...');
+        
+        await clockInTransaction((result) => {
+          if (result.success && result.shiftId) {
+            setShiftId(result.shiftId);
+            console.log(`✅ [GenericPOS] Clocked in: Shift ${result.shiftId} (${result.elapsedMs.toFixed(1)}ms)`);
+          }
+        });
+      } catch (error) {
+        console.error('❌ [GenericPOS] Clock-in failed:', error);
       }
-    } catch (error) {
-      console.error('Clock in failed:', error);
-    }
-  };
+    };
+    
+    performClockIn();
+  }, []);
 
   // Fetch products
   useEffect(() => {
@@ -90,39 +95,85 @@ export default function GenericCashierPOS() {
       return;
     }
 
+    // Prevent double submission
+    if (loading) {
+      console.log('⚠️ [GenericPOS] Sale already in progress');
+      return;
+    }
+
     setLoading(true);
+    
+    // Save state for potential rollback
+    const savedItems = [...selectedItems];
+    const savedDiscount = discount;
+    const savedTax = tax;
+    
     try {
-      const token = localStorage.getItem('token');
-      const total = calculateTotal();
+      const subtotal = selectedItems.reduce((sum, item) => sum + (item.price * item.quantity), 0);
+      const taxAmount = (subtotal * tax) / 100;
+      const finalTotal = subtotal + taxAmount - discount;
       
-      const res = await fetch(`${import.meta.env.VITE_API_URL || 'http://localhost:5000'}/api/v2/sales/complete`, {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-          'Authorization': `Bearer ${token}`
-        },
-        body: JSON.stringify({
+      console.log('💳 [GenericPOS] Starting sale transaction');
+      
+      // Use optimized transaction service
+      await completeSaleTransaction(
+        {
           items: selectedItems,
-          total: total,
+          total: finalTotal,
           discount: discount,
-          tax: (selectedItems.reduce((sum, item) => sum + (item.price * item.quantity), 0) * tax) / 100,
+          tax: taxAmount,
+          taxType: 'exclusive',
           paymentMethod: 'cash',
           shiftId: shiftId
-        })
-      });
-
-      const data = await res.json();
-      if (data.success) {
-        alert(`✅ Sale completed! ID: ${data.saleId}`);
-        setSelectedItems([]);
-        setDiscount(0);
-        setTax(0);
-      } else {
-        alert(`❌ Error: ${data.error}`);
-      }
+        },
+        // onOptimisticUpdate
+        (optimisticData) => {
+          console.log('⚡ [GenericPOS] Optimistic update:', optimisticData.action);
+          // Clear cart immediately
+          setSelectedItems([]);
+          setDiscount(0);
+          setTax(0);
+        },
+        // onSuccess
+        (successData) => {
+          console.log(`✅ [GenericPOS] Sale completed in ${successData.clientElapsedMs.toFixed(1)}ms ${successData.performanceGrade}`);
+          
+          // Invalidate cache for fresh data
+          invalidateProductCache();
+          
+          alert(
+            `✅ Sale Completed!\n\n` +
+            `Sale ID: ${successData.saleId}\n` +
+            `Amount: KSH ${finalTotal.toLocaleString()}\n` +
+            `Time: ${successData.processingTime}\n` +
+            `Performance: ${successData.performanceGrade}`
+          );
+        },
+        // onError
+        (errorData) => {
+          console.error(`❌ [GenericPOS] Sale failed after ${errorData.elapsedMs.toFixed(1)}ms:`, errorData.error);
+          
+          // Rollback if needed
+          if (errorData.needsRollback) {
+            setSelectedItems(savedItems);
+            setDiscount(savedDiscount);
+            setTax(savedTax);
+            console.log('🔄 [GenericPOS] Rolled back to previous state');
+          }
+          
+          alert(`❌ Error: ${errorData.error}`);
+        }
+      );
+      
     } catch (error) {
-      console.error('Sale failed:', error);
-      alert('Sale failed. Check console for details.');
+      console.error('❌ [GenericPOS] Unexpected error:', error);
+      
+      // Rollback on unexpected error
+      setSelectedItems(savedItems);
+      setDiscount(savedDiscount);
+      setTax(savedTax);
+      
+      alert(`❌ Sale failed: ${error.message || 'Unknown error occurred'}`);
     } finally {
       setLoading(false);
     }

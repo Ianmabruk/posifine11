@@ -175,7 +175,9 @@ function App() {
               <Route path="/signup" element={<Navigate to="/auth/signup" />} />
               <Route path="/subscription" element={<Navigate to="/choose-subscription" />} />
               <Route path="/payment" element={<Navigate to="/choose-subscription" />} />
-              <Route path="/cashier" element={<ProtectedRoute><Navigate to="/dashboard/cashier" /></ProtectedRoute>} />
+              
+              {/* OLD Cashier route - direct access to old CashierPOS */}
+              <Route path="/cashier" element={<ProtectedRoute><CashierPOS /></ProtectedRoute>} />
             </Routes>
           </BrowserRouter>
         </ScreenLockProvider>
