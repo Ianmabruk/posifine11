@@ -92,14 +92,23 @@ export default function Auth() {
           res = await auth.login({ email: formData.email, password: formData.password });
         }
       } else {
+        // Handle signup
         const selectedPlan = getSelectedPlan();
         const planId = localStorage.getItem('planId') || selectedPlan?.id || 'basic';
         const businessType = localStorage.getItem('selectedBusinessType');
         const selectedFeatures = localStorage.getItem('selectedFeatures');
         
+        // Determine if this should be a main admin (owner) signup
+        // Main admins: ultra and enterprise plans
+        // Regular admins: free and basic plans
+        const isMainAdmin = ['ultra', 'enterprise'].includes(planId);
+        
         res = await auth.signup({
-          ...formData,
-          planId: planId,
+          email: formData.email,
+          password: formData.password,
+          name: formData.name,
+          plan: planId,
+          is_main_admin: isMainAdmin,
           businessType: businessType,
           selectedFeatures: selectedFeatures ? JSON.parse(selectedFeatures) : []
         });
@@ -126,43 +135,59 @@ export default function Auth() {
           name: res.user.name,
           email: res.user.email,
           role: res.user.role,
-          plan: res.user.plan
+          plan: res.user.plan || 'free'
         },
         timestamp: new Date().toISOString(),
-        ip: 'Unknown', // Would be filled by backend in real implementation
+        ip: 'Unknown',
         userAgent: navigator.userAgent
       };
       
       // Store activity in localStorage for main admin to see
       const activities = JSON.parse(localStorage.getItem('authActivities') || '[]');
-      activities.unshift(authActivity); // Add to beginning
+      activities.unshift(authActivity);
       activities.splice(50); // Keep only last 50 activities
       localStorage.setItem('authActivities', JSON.stringify(activities));
 
+      // Login user (saves token and user data)
       await login(res);
       
-        // Show success notification
-        const action = isLogin ? 'logged in' : 'signed up';
-        console.log(`✅ User ${res.user.name} ${action} successfully`);
-        
-        // CRITICAL: Role-based redirect (MUST MATCH SPEC)
-        // 1. Owner/Main Admin → Main Admin Dashboard
-        // 2. Admin (any plan) → Old Admin Dashboard /admin
-        // 3. Cashier → Cashier Dashboard /cashier
-        
-        if (res.user.role === 'owner') {
-          // Owner/Main Admin → Main Admin Dashboard
-          navigate('/main-admin');
-        } else if (res.user.role === 'admin') {
-          // Admin user → OLD ADMIN DASHBOARD (regardless of plan type)
-          // This is the CRITICAL fix: subscription success MUST go to /admin
-          navigate('/admin');
-        } else if (res.user.role === 'cashier') {
-          // Cashier → Cashier POS dashboard
-          navigate('/cashier');
-        } else {
-          // Fallback redirect
-          navigate('/dashboard');
+      // Show success notification
+      const action = isLogin ? 'logged in' : 'signed up';
+      console.log(`✅ User ${res.user.name} ${action} successfully`);
+      console.log(`📍 Role: ${res.user.role}, Plan: ${res.user.plan}`);
+      
+      // ============================================================
+      // CRITICAL: Role-based redirect after signup/login
+      // ============================================================
+      // Role hierarchy:
+      // 1. 'owner' (Main Admin/Super Admin) → /main-admin
+      //    - Full system access, manage all accounts
+      //    - Ultra and Enterprise plans
+      // 
+      // 2. 'admin' (Regular Business Admin) → /admin
+      //    - Manage their own business
+      //    - Free and Basic plans
+      // 
+      // 3. 'cashier' (POS Staff) → /cashier
+      //    - Point of sale operations only
+      // ============================================================
+      
+      if (res.user.role === 'owner') {
+        // Main Admin / Super Admin → Main Admin Dashboard
+        console.log('🔹 Redirecting to Main Admin Dashboard (/main-admin)');
+        navigate('/main-admin');
+      } else if (res.user.role === 'admin') {
+        // Regular Business Admin → Admin Dashboard
+        console.log('🔹 Redirecting to Admin Dashboard (/admin)');
+        navigate('/admin');
+      } else if (res.user.role === 'cashier') {
+        // Cashier → POS Dashboard
+        console.log('🔹 Redirecting to Cashier Dashboard (/cashier)');
+        navigate('/cashier');
+      } else {
+        // Fallback (should not happen with proper role assignment)
+        console.warn('⚠️ Unknown role, redirecting to default dashboard');
+        navigate('/dashboard');
         }
 
     } catch (err) {

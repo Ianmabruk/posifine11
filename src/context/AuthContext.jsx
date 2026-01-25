@@ -157,11 +157,37 @@ export const AuthProvider = ({ children }) => {
   
   const hasRole = (role) => user && (user.role === role);
   
+  // Helper to check if user is owner/main admin
+  const isOwner = () => user && (user.role === 'owner');
+  
   // Helper to check if user is admin
   const isAdmin = () => user && (user.role === 'admin' || user.role === 'main-admin');
   
   // Helper to check if user is cashier
   const isCashier = () => user && (user.role === 'cashier');
+  
+  /**
+   * Get the correct dashboard URL for the current user's role
+   * This ensures consistent redirects across the application
+   * 
+   * Role hierarchy:
+   * - 'owner' (Main Admin/Super Admin) → /main-admin
+   * - 'admin' (Regular Business Admin) → /admin
+   * - 'cashier' (POS Staff) → /cashier
+   */
+  const getDashboardUrl = (userRole = null) => {
+    const role = userRole || user?.role;
+    
+    if (role === 'owner') {
+      return '/main-admin';
+    } else if (role === 'admin') {
+      return '/admin';
+    } else if (role === 'cashier') {
+      return '/cashier';
+    } else {
+      return '/dashboard'; // Fallback
+    }
+  };
 
   // Package-related helper functions
   const isUltraPackage = () => user && (user.plan === 'ultra');
@@ -190,8 +216,10 @@ export const AuthProvider = ({ children }) => {
         logout,
         isAuthenticated,
         hasRole,
+        isOwner,
         isAdmin,
         isCashier,
+        getDashboardUrl,
         isUltraPackage,
         isBasicPackage,
         canEditStock,
