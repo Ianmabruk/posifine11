@@ -82,10 +82,29 @@ export default function Inventory() {
     const token = localStorage.getItem('token');
     if (token) {
       websocketService.connect(token, (data) => {
-        // When stock update received, update product list
+        // When stock update received, merge with existing products (don't replace)
         if (data && data.allProducts && data.allProducts.length > 0) {
           console.log('📦 WebSocket stock update received:', data.allProducts.length, 'products');
-          setProductList(data.allProducts);
+          setProductList(prevList => {
+            // If we have no products yet, use the new data
+            if (prevList.length === 0) {
+              return data.allProducts;
+            }
+            
+            // Merge: Keep existing products but update quantities from WebSocket
+            const productMap = new Map(prevList.map(p => [p.id, p]));
+            data.allProducts.forEach(newProduct => {
+              const existing = productMap.get(newProduct.id);
+              if (existing) {
+                // Update only quantity, keep other fields intact
+                productMap.set(newProduct.id, { ...existing, quantity: newProduct.quantity });
+              } else {
+                // Add new products
+                productMap.set(newProduct.id, newProduct);
+              }
+            });
+            return Array.from(productMap.values());
+          });
         }
       }).catch((error) => {
         console.warn('WebSocket connection failed:', error);
@@ -119,7 +138,7 @@ export default function Inventory() {
       console.log('📦 Initial sync from global context:', globalProducts.length, 'products');
       setProductList(globalProducts);
     }
-  }, [globalProducts.length]); // Only watch length to avoid excessive updates
+  }, []); // Run only once on mount - don't watch globalProducts to avoid resets
 
   const handleImageUpload = (e, isNewProduct = true) => {
     const file = e.target.files[0];
