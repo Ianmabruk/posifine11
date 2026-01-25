@@ -1,6 +1,8 @@
 import { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useAuth } from '../context/AuthContext';
+import { motion, useAnimation, useInView } from 'framer-motion';
+import { useRef } from 'react';
 import { ArrowRight, Check, Zap, Shield, TrendingUp, Users, Package, BarChart3, Layers, DollarSign, Crown, Star, X, Play, Zap as Lightning, Rocket } from 'lucide-react';
 
 // CSS Animations
@@ -156,7 +158,70 @@ const animationStyle = `
   .glow-border {
     animation: pulse-glow 2s infinite;
   }
+
+  @media (prefers-reduced-motion: reduce) {
+    *, *::before, *::after {
+      animation-duration: 0.01ms !important;
+      animation-iteration-count: 1 !important;
+      transition-duration: 0.01ms !important;
+    }
+  }
 `;
+
+// Animated Text Component
+const AnimatedWord = ({ children, delay = 0 }) => (
+  <motion.span
+    initial={{ opacity: 0, y: 20 }}
+    animate={{ opacity: 1, y: 0 }}
+    transition={{ duration: 0.5, delay }}
+    className="inline-block"
+  >
+    {children}
+  </motion.span>
+);
+
+// Scroll Animation Wrapper
+const ScrollReveal = ({ children, delay = 0 }) => {
+  const ref = useRef(null);
+  const isInView = useInView(ref, { once: true, margin: "-100px" });
+  
+  return (
+    <motion.div
+      ref={ref}
+      initial={{ opacity: 0, y: 50 }}
+      animate={isInView ? { opacity: 1, y: 0 } : { opacity: 0, y: 50 }}
+      transition={{ duration: 0.6, delay }}
+    >
+      {children}
+    </motion.div>
+  );
+};
+
+// Rotating Words Animation
+const RotatingWords = () => {
+  const words = ['Retail', 'Restaurants', 'Clinics', 'Supermarkets', 'Bakeries', 'Hotels'];
+  const [index, setIndex] = useState(0);
+
+  useEffect(() => {
+    const interval = setInterval(() => {
+      setIndex((prev) => (prev + 1) % words.length);
+    }, 2000);
+    return () => clearInterval(interval);
+  }, []);
+
+  return (
+    <motion.span
+      key={index}
+      initial={{ opacity: 0, y: 20 }}
+      animate={{ opacity: 1, y: 0 }}
+      exit={{ opacity: 0, y: -20 }}
+      transition={{ duration: 0.5 }}
+      className="text-blue-400 font-bold"
+    >
+      {words[index]}
+    </motion.span>
+  );
+};
 
 export default function Landing() {
   const navigate = useNavigate();
@@ -356,38 +421,74 @@ export default function Landing() {
 
         {/* Hero Content */}
         <div className="relative z-10 max-w-7xl mx-auto px-6 py-20 text-center">
-          <div className="inline-flex items-center gap-2 bg-white/20 backdrop-blur-sm px-4 py-2 rounded-full text-white text-sm font-medium mb-6">
+          <motion.div
+            initial={{ opacity: 0, y: 20 }}
+            animate={{ opacity: 1, y: 0 }}
+            transition={{ duration: 0.6 }}
+            className="inline-flex items-center gap-2 bg-white/20 backdrop-blur-sm px-4 py-2 rounded-full text-white text-sm font-medium mb-6"
+          >
             <Star className="w-4 h-4 fill-yellow-300 text-yellow-300" />
             Trusted by 500+ businesses
-          </div>
+          </motion.div>
           
           <h1 className="text-5xl md:text-7xl font-bold text-white mb-6 leading-tight">
-            Modern POS System<br />
-            <span className="text-blue-200">Built for Growth</span>
+            <AnimatedWord delay={0.2}>The</AnimatedWord>{' '}
+            <AnimatedWord delay={0.3}>
+              <span className="bg-gradient-to-r from-yellow-300 via-pink-300 to-blue-300 bg-clip-text text-transparent">
+                Smart
+              </span>
+            </AnimatedWord>{' '}
+            <AnimatedWord delay={0.4}>POS</AnimatedWord>{' '}
+            <AnimatedWord delay={0.5}>for</AnimatedWord>
+            <br />
+            <RotatingWords />
           </h1>
           
-          <p className="text-xl text-blue-100 mb-8 max-w-2xl mx-auto">
-            Complete inventory management with recipe builder, automatic stock deduction, and real-time analytics. Everything you need to run your business efficiently.
-          </p>
+          <motion.p
+            initial={{ opacity: 0 }}
+            animate={{ opacity: 1 }}
+            transition={{ duration: 0.8, delay: 0.8 }}
+            className="text-xl text-blue-100 mb-8 max-w-2xl mx-auto"
+          >
+            <span className="font-bold text-white">All-in-One</span> inventory management with recipe builder, 
+            <span className="font-bold text-white"> fast</span> automatic stock deduction, and 
+            <span className="font-bold text-white"> secure</span> real-time analytics. Everything you need to run your business efficiently.
+          </motion.p>
           
-          <div className="flex items-center justify-center gap-4">
-            <button 
+          <motion.div
+            initial={{ opacity: 0, y: 20 }}
+            animate={{ opacity: 1, y: 0 }}
+            transition={{ duration: 0.6, delay: 1 }}
+            className="flex items-center justify-center gap-4"
+          >
+            <motion.button
+              whileHover={{ scale: 1.05, boxShadow: "0 20px 40px rgba(0,0,0,0.3)" }}
+              whileTap={{ scale: 0.95 }}
               onClick={() => navigate('/choose-subscription')}
-              className="bg-white text-blue-600 px-8 py-4 rounded-xl font-bold text-lg hover:shadow-2xl transform hover:scale-105 transition-all flex items-center gap-2"
+              className="bg-white text-blue-600 px-8 py-4 rounded-xl font-bold text-lg hover:shadow-2xl transition-all flex items-center gap-2"
             >
               Start Free Trial
               <ArrowRight className="w-5 h-5" />
-            </button>
-            <button 
+            </motion.button>
+            <motion.button
+              whileHover={{ scale: 1.05, backgroundColor: "rgba(255,255,255,0.1)" }}
+              whileTap={{ scale: 0.95 }}
               onClick={() => setShowDemo(true)}
-              className="border-2 border-white text-white px-8 py-4 rounded-xl font-bold text-lg hover:bg-white/10 transition-all flex items-center gap-2"
+              className="border-2 border-white text-white px-8 py-4 rounded-xl font-bold text-lg transition-all flex items-center gap-2"
             >
               <Play className="w-5 h-5" />
               Watch Demo
-            </button>
-          </div>
+            </motion.button>
+          </motion.div>
 
-          <p className="text-blue-200 text-sm mt-4">No credit card required • 30-day free trial</p>
+          <motion.p
+            initial={{ opacity: 0 }}
+            animate={{ opacity: 1 }}
+            transition={{ duration: 0.6, delay: 1.2 }}
+            className="text-blue-200 text-sm mt-4"
+          >
+            No credit card required • 30-day free trial
+          </motion.p>
         </div>
 
         {/* Hero Image/Dashboard Preview */}
@@ -406,24 +507,39 @@ export default function Landing() {
       {/* Features Section */}
       <div className="py-20 px-6 bg-gray-50">
         <div className="max-w-7xl mx-auto">
-          <div className="text-center mb-16">
-            <h2 className="text-4xl md:text-5xl font-bold mb-4 bg-gradient-to-r from-blue-600 to-purple-600 bg-clip-text text-transparent">
-              Everything You Need
-            </h2>
-            <p className="text-xl text-gray-600">Powerful features to streamline your business operations</p>
-          </div>
+          <ScrollReveal>
+            <div className="text-center mb-16">
+              <h2 className="text-4xl md:text-5xl font-bold mb-4">
+                <span className="bg-gradient-to-r from-blue-600 to-purple-600 bg-clip-text text-transparent">
+                  Built for Your Business
+                </span>
+              </h2>
+              <p className="text-xl text-gray-600">
+                Powerful features to <span className="font-bold text-blue-600">streamline</span> your operations
+              </p>
+            </div>
+          </ScrollReveal>
 
           <div className="grid md:grid-cols-2 lg:grid-cols-3 gap-8">
             {features.map((feature, idx) => {
               const Icon = feature.icon;
               return (
-                <div key={idx} className="feature-card bg-white rounded-2xl p-8 shadow-sm hover:shadow-xl transition-all transform hover:-translate-y-2">
-                  <div className="w-14 h-14 bg-gradient-to-br from-blue-600 to-purple-600 rounded-xl flex items-center justify-center mb-4">
-                    <Icon className="w-7 h-7 text-white" />
-                  </div>
-                  <h3 className="text-xl font-bold mb-2">{feature.title}</h3>
-                  <p className="text-gray-600">{feature.desc}</p>
-                </div>
+                <ScrollReveal key={idx} delay={idx * 0.1}>
+                  <motion.div
+                    whileHover={{ y: -8, boxShadow: "0 20px 40px rgba(0,0,0,0.1)" }}
+                    className="bg-white rounded-2xl p-8 shadow-sm hover:shadow-xl transition-all cursor-pointer h-full"
+                  >
+                    <motion.div
+                      whileHover={{ rotate: 360, scale: 1.1 }}
+                      transition={{ duration: 0.6 }}
+                      className="w-14 h-14 bg-gradient-to-br from-blue-600 to-purple-600 rounded-xl flex items-center justify-center mb-4"
+                    >
+                      <Icon className="w-7 h-7 text-white" />
+                    </motion.div>
+                    <h3 className="text-xl font-bold mb-2">{feature.title}</h3>
+                    <p className="text-gray-600">{feature.desc}</p>
+                  </motion.div>
+                </ScrollReveal>
               );
             })}
           </div>
@@ -433,66 +549,90 @@ export default function Landing() {
       {/* Pricing Section */}
       <div className="py-20 px-6">
         <div className="max-w-7xl mx-auto">
-          <div className="text-center mb-16">
-            <h2 className="text-4xl md:text-5xl font-bold mb-4">Simple, Transparent Pricing</h2>
-            <p className="text-xl text-gray-600">Choose the plan that fits your business</p>
-          </div>
+          <ScrollReveal>
+            <div className="text-center mb-16">
+              <h2 className="text-4xl md:text-5xl font-bold mb-4">
+                Simple, <span className="bg-gradient-to-r from-green-600 to-blue-600 bg-clip-text text-transparent">Transparent</span> Pricing
+              </h2>
+              <p className="text-xl text-gray-600">Choose the plan that fits your business</p>
+            </div>
+          </ScrollReveal>
 
           <div className="grid md:grid-cols-2 gap-8 max-w-5xl mx-auto">
             {plans.map((plan, idx) => {
               const Icon = plan.icon;
               return (
-                <div 
-                  key={idx}
-                  className={`plan-card relative bg-white rounded-2xl p-8 shadow-lg hover:shadow-2xl transition-all transform hover:scale-105 ${
-                    plan.popular ? 'ring-4 ring-blue-600' : ''
-                  }`}
-                >
-                  {plan.popular && (
-                    <div className="absolute -top-4 left-1/2 -translate-x-1/2">
-                      <span className="bg-gradient-to-r from-blue-600 to-purple-600 text-white px-4 py-1 rounded-full text-sm font-bold shadow-lg">
-                        Most Popular
-                      </span>
-                    </div>
-                  )}
-
-                  <div className="flex items-center gap-3 mb-6">
-                    <div className={`w-12 h-12 rounded-xl flex items-center justify-center ${
-                      plan.popular ? 'bg-gradient-to-br from-blue-600 to-purple-600' : 'bg-gradient-to-br from-green-600 to-teal-600'
-                    }`}>
-                      <Icon className="w-6 h-6 text-white" />
-                    </div>
-                    <div>
-                      <h3 className="text-2xl font-bold">{plan.name}</h3>
-                      <p className="text-gray-600 text-sm">Package</p>
-                    </div>
-                  </div>
-
-                  <div className="mb-6">
-                    <span className="text-5xl font-bold">KSH {plan.price}</span>
-                    <span className="text-gray-600">/month</span>
-                  </div>
-
-                  <ul className="space-y-3 mb-8">
-                    {plan.features.map((feature, i) => (
-                      <li key={i} className="flex items-start gap-2">
-                        <Check className="w-5 h-5 text-green-600 flex-shrink-0 mt-0.5" />
-                        <span className="text-gray-700">{feature}</span>
-                      </li>
-                    ))}
-                  </ul>
-
-                  <button 
-                    onClick={() => navigate('/choose-subscription')}
-                    className={`w-full py-4 rounded-xl font-bold text-lg transition-all ${
-                      plan.popular 
-                        ? 'bg-gradient-to-r from-blue-600 to-purple-600 text-white hover:shadow-xl transform hover:scale-105' 
-                        : 'bg-gray-100 text-gray-900 hover:bg-gray-200'
+                <ScrollReveal key={idx} delay={idx * 0.2}>
+                  <motion.div
+                    whileHover={{ scale: 1.05, y: -10 }}
+                    transition={{ duration: 0.3 }}
+                    className={`relative bg-white rounded-2xl p-8 shadow-lg hover:shadow-2xl transition-all ${
+                      plan.popular ? 'ring-4 ring-blue-600' : ''
                     }`}
                   >
-                    Get Started
-                  </button>
-                </div>
+                    {plan.popular && (
+                      <motion.div
+                        initial={{ y: -20, opacity: 0 }}
+                        animate={{ y: 0, opacity: 1 }}
+                        transition={{ delay: 0.5, duration: 0.5 }}
+                        className="absolute -top-4 left-1/2 -translate-x-1/2"
+                      >
+                        <span className="bg-gradient-to-r from-blue-600 to-purple-600 text-white px-4 py-1 rounded-full text-sm font-bold shadow-lg">
+                          Most Popular
+                        </span>
+                      </motion.div>
+                    )}
+
+                    <div className="flex items-center gap-3 mb-6">
+                      <motion.div
+                        whileHover={{ rotate: 360 }}
+                        transition={{ duration: 0.6 }}
+                        className={`w-12 h-12 rounded-xl flex items-center justify-center ${
+                          plan.popular ? 'bg-gradient-to-br from-blue-600 to-purple-600' : 'bg-gradient-to-br from-green-600 to-teal-600'
+                        }`}
+                      >
+                        <Icon className="w-6 h-6 text-white" />
+                      </motion.div>
+                      <div>
+                        <h3 className="text-2xl font-bold">{plan.name}</h3>
+                        <p className="text-gray-600 text-sm">Package</p>
+                      </div>
+                    </div>
+
+                    <div className="mb-6">
+                      <span className="text-5xl font-bold">KSH {plan.price}</span>
+                      <span className="text-gray-600">/month</span>
+                    </div>
+
+                    <ul className="space-y-3 mb-8">
+                      {plan.features.map((feature, i) => (
+                        <motion.li
+                          key={i}
+                          initial={{ opacity: 0, x: -20 }}
+                          whileInView={{ opacity: 1, x: 0 }}
+                          transition={{ delay: i * 0.1 }}
+                          className="flex items-start gap-2"
+                        >
+                          <Check className="w-5 h-5 text-green-600 flex-shrink-0 mt-0.5" />
+                          <span className="text-gray-700">{feature}</span>
+                        </motion.li>
+                      ))}
+                    </ul>
+
+                    <motion.button
+                      whileHover={{ scale: 1.05 }}
+                      whileTap={{ scale: 0.95 }}
+                      onClick={() => navigate('/choose-subscription')}
+                      className={`w-full py-4 rounded-xl font-bold text-lg transition-all ${
+                        plan.popular 
+                          ? 'bg-gradient-to-r from-blue-600 to-purple-600 text-white hover:shadow-xl' 
+                          : 'bg-gray-100 text-gray-900 hover:bg-gray-200'
+                      }`}
+                    >
+                      Get Started
+                    </motion.button>
+                  </motion.div>
+                </ScrollReveal>
               );
             })}
           </div>

@@ -142,7 +142,7 @@ function App() {
         <ScreenLockProvider>
           <BrowserRouter future={{ v7_startTransition: true, v7_relativeSplatPath: true }}>
             <Routes>
-              <Route path="/" element={<Navigate to="/get-started" />} />
+              <Route path="/" element={<Landing />} />
               <Route path="/get-started" element={<Landing />} />
               <Route path="/choose-subscription" element={<Subscription />} />
               <Route path="/auth/login" element={<Auth />} />
