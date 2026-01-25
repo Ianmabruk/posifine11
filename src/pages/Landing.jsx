@@ -1,5 +1,6 @@
 import { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
+import { useAuth } from '../context/AuthContext';
 import { ArrowRight, Check, Zap, Shield, TrendingUp, Users, Package, BarChart3, Layers, DollarSign, Crown, Star, X, Play, Zap as Lightning, Rocket } from 'lucide-react';
 
 // CSS Animations
@@ -159,8 +160,25 @@ const animationStyle = `
 
 export default function Landing() {
   const navigate = useNavigate();
+  const { user, loading, isInitialized } = useAuth();
   const [showDemo, setShowDemo] = useState(false);
   const [demoStep, setDemoStep] = useState(0);
+
+  // Redirect logged-in users to their dashboard
+  useEffect(() => {
+    if (isInitialized && !loading && user) {
+      // User is logged in, redirect them to their appropriate dashboard
+      if (user.role === 'owner') {
+        navigate('/main-admin', { replace: true });
+      } else if (user.role === 'admin') {
+        navigate('/admin', { replace: true });
+      } else if (user.role === 'cashier') {
+        navigate('/cashier', { replace: true });
+      } else {
+        navigate('/dashboard', { replace: true });
+      }
+    }
+  }, [user, loading, isInitialized, navigate]);
 
   useEffect(() => {
     // Add animation styles to document
@@ -169,6 +187,18 @@ export default function Landing() {
     document.head.appendChild(style);
     return () => document.head.removeChild(style);
   }, []);
+
+  // Show loading state while checking authentication
+  if (loading || !isInitialized) {
+    return (
+      <div className="min-h-screen flex items-center justify-center bg-gradient-to-br from-blue-600 via-purple-600 to-pink-600">
+        <div className="text-center">
+          <div className="animate-spin rounded-full h-12 w-12 border-b-4 border-white mx-auto mb-4"></div>
+          <p className="text-white text-lg">Loading...</p>
+        </div>
+      </div>
+    );
+  }
 
   const demoSteps = [
     {
