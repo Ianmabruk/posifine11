@@ -165,9 +165,23 @@ export default function Landing() {
   const [demoStep, setDemoStep] = useState(0);
 
   // Redirect logged-in users to their dashboard
+  // ONLY if they are actually authenticated (user exists)
   useEffect(() => {
-    if (isInitialized && !loading && user) {
-      // User is logged in, redirect them to their appropriate dashboard
+    // Wait for auth to initialize before making decisions
+    if (!isInitialized) {
+      console.log('Landing: Auth not initialized yet');
+      return;
+    }
+    
+    // If still loading, don't redirect yet
+    if (loading) {
+      console.log('Landing: Still loading auth');
+      return;
+    }
+    
+    // ONLY redirect if user is actually logged in
+    if (user && user.email) {
+      console.log('Landing: User logged in, redirecting to dashboard', user.role);
       if (user.role === 'owner') {
         navigate('/main-admin', { replace: true });
       } else if (user.role === 'admin') {
@@ -177,7 +191,10 @@ export default function Landing() {
       } else {
         navigate('/dashboard', { replace: true });
       }
+    } else {
+      console.log('Landing: No user, staying on landing page');
     }
+    // If no user, stay on landing page (don't redirect)
   }, [user, loading, isInitialized, navigate]);
 
   useEffect(() => {
@@ -188,8 +205,9 @@ export default function Landing() {
     return () => document.head.removeChild(style);
   }, []);
 
-  // Show loading state while checking authentication
-  if (loading || !isInitialized) {
+  // Don't show loading spinner for non-authenticated users
+  // Only show it briefly during initial auth check
+  if (loading && !isInitialized) {
     return (
       <div className="min-h-screen flex items-center justify-center bg-gradient-to-br from-blue-600 via-purple-600 to-pink-600">
         <div className="text-center">

@@ -291,14 +291,15 @@ export default function Inventory() {
         return;
       }
       
+      // Don't send quantity - stock is managed via "Add Stock" button only
       const updateData = {
         ...editProduct,
         price: parseFloat(editProduct.price),
         cost: parseFloat(editProduct.cost),
-        quantity: parseFloat(editProduct.quantity)
+        quantity: originalProduct.quantity  // Preserve existing quantity
       };
 
-      // OPTIMISTIC UPDATE: Update UI immediately
+      // OPTIMISTIC UPDATE: Update UI immediately with preserved quantity
       const optimisticProduct = { ...originalProduct, ...updateData };
       setProductList(prevList => 
         prevList.map(p => p.id === editProduct.id ? optimisticProduct : p)
@@ -1015,15 +1016,21 @@ export default function Inventory() {
                 />
               </div>
               <div className="grid grid-cols-2 gap-4">
-                <input
-                  type="number"
-                  step="0.01"
-                  placeholder="Quantity"
-                  className="input"
-                  value={editProduct.quantity || ''}
-                  onChange={(e) => setEditProduct({ ...editProduct, quantity: e.target.value })}
-                  required
-                />
+                <div className="relative">
+                  <input
+                    type="number"
+                    step="0.01"
+                    placeholder="Quantity"
+                    className="input bg-gray-100 cursor-not-allowed"
+                    value={editProduct.quantity || ''}
+                    readOnly
+                    disabled
+                    title="Use 'Add Stock' button to update quantity"
+                  />
+                  <span className="absolute right-3 top-3 text-xs text-gray-500">
+                    Read-only
+                  </span>
+                </div>
                 <select
                   className="input"
                   value={editProduct.unit || 'pcs'}
