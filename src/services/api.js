@@ -39,9 +39,14 @@ const requestWithRetry = async (endpoint, options = {}, retryCount = 0, maxRetri
       localStorage.removeItem('token');
       localStorage.removeItem('user');
       const path = window.location.pathname || '';
-      if (!path.includes('/login') && !path.includes('/signup') && !path.includes('/auth') && !path.includes('/main.admin')) {
+      
+      // Public pages that should NOT redirect on 401
+      const publicPaths = ['/', '/get-started', '/choose-subscription', '/plans', '/subscription', '/build-pos', '/login', '/signup', '/auth', '/main.admin'];
+      const isPublicPage = publicPaths.some(p => path === p || path.startsWith(p));
+      
+      if (!isPublicPage) {
         try {
-          window.location.href = '/login';
+          window.location.href = '/auth/login';
         } catch (e) {}
       }
       const err = new Error('Unauthorized');
