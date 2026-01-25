@@ -92,23 +92,17 @@ export default function Auth() {
           res = await auth.login({ email: formData.email, password: formData.password });
         }
       } else {
-        // Handle signup
+        // Handle signup - all signups create admin users
         const selectedPlan = getSelectedPlan();
         const planId = localStorage.getItem('planId') || selectedPlan?.id || 'basic';
         const businessType = localStorage.getItem('selectedBusinessType');
         const selectedFeatures = localStorage.getItem('selectedFeatures');
-        
-        // Determine if this should be a main admin (owner) signup
-        // Main admins: ultra and enterprise plans
-        // Regular admins: free and basic plans
-        const isMainAdmin = ['ultra', 'enterprise'].includes(planId);
         
         res = await auth.signup({
           email: formData.email,
           password: formData.password,
           name: formData.name,
           plan: planId,
-          is_main_admin: isMainAdmin,
           businessType: businessType,
           selectedFeatures: selectedFeatures ? JSON.parse(selectedFeatures) : []
         });
@@ -159,35 +153,36 @@ export default function Auth() {
       // ============================================================
       // CRITICAL: Role-based redirect after signup/login
       // ============================================================
-      // Role hierarchy:
-      // 1. 'owner' (Main Admin/Super Admin) → /main-admin
-      //    - Full system access, manage all accounts
-      //    - Ultra and Enterprise plans
-      // 
-      // 2. 'admin' (Regular Business Admin) → /admin
-      //    - Manage their own business
-      //    - Free and Basic plans
-      // 
-      // 3. 'cashier' (POS Staff) → /cashier
-      //    - Point of sale operations only
+      // SIGNUP: Always goes to /admin (admin dashboard)
+      // LOGIN: Role-based routing
+      //   - 'owner' → /main-admin (accessed via direct URL)
+      //   - 'admin' → /admin (business dashboard)
+      //   - 'cashier' → /cashier (POS dashboard)
       // ============================================================
       
-      if (res.user.role === 'owner') {
-        // Main Admin / Super Admin → Main Admin Dashboard
-        console.log('🔹 Redirecting to Main Admin Dashboard (/main-admin)');
-        navigate('/main-admin');
-      } else if (res.user.role === 'admin') {
-        // Regular Business Admin → Admin Dashboard
-        console.log('🔹 Redirecting to Admin Dashboard (/admin)');
+      if (!isLogin) {
+        // SIGNUP: Always redirect to admin dashboard
+        console.log('🔹 Signup successful → Redirecting to Admin Dashboard (/admin)');
         navigate('/admin');
-      } else if (res.user.role === 'cashier') {
-        // Cashier → POS Dashboard
-        console.log('🔹 Redirecting to Cashier Dashboard (/cashier)');
-        navigate('/cashier');
       } else {
-        // Fallback (should not happen with proper role assignment)
-        console.warn('⚠️ Unknown role, redirecting to default dashboard');
-        navigate('/dashboard');
+        // LOGIN: Role-based redirect
+        if (res.user.role === 'owner') {
+          // Main Admin / Super Admin → Main Admin Dashboard
+          console.log('🔹 Login as owner → Redirecting to Main Admin Dashboard (/main-admin)');
+          navigate('/main-admin');
+        } else if (res.user.role === 'admin') {
+          // Regular Business Admin → Admin Dashboard
+          console.log('🔹 Login as admin → Redirecting to Admin Dashboard (/admin)');
+          navigate('/admin');
+        } else if (res.user.role === 'cashier') {
+          // Cashier → POS Dashboard
+          console.log('🔹 Login as cashier → Redirecting to Cashier Dashboard (/cashier)');
+          navigate('/cashier');
+        } else {
+          // Fallback
+          console.warn('⚠️ Unknown role, redirecting to default dashboard');
+          navigate('/dashboard');
+        }
         }
 
     } catch (err) {
