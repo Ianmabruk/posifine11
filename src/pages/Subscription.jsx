@@ -1,7 +1,8 @@
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { BASE_API_URL } from '../services/api';
 import { useNavigate } from 'react-router-dom';
 import { Check, Crown, Zap, ArrowLeft } from 'lucide-react';
+import { motion, AnimatePresence } from 'framer-motion';
 
 export default function Subscription() {
   const [selected, setSelected] = useState('ultra');
@@ -115,18 +116,39 @@ export default function Subscription() {
             Back to Home
           </button>
         </div>
-        <div className="text-center mb-12 md:mb-16">
-          <h1 className="text-3xl md:text-5xl font-bold mb-3 md:mb-4 bg-gradient-to-r from-blue-600 to-purple-600 bg-clip-text text-transparent">
+        <motion.div 
+          initial={{ opacity: 0, y: -20 }}
+          animate={{ opacity: 1, y: 0 }}
+          transition={{ duration: 0.6 }}
+          className="text-center mb-12 md:mb-16"
+        >
+          <motion.h1 
+            initial={{ opacity: 0, scale: 0.9 }}
+            animate={{ opacity: 1, scale: 1 }}
+            transition={{ duration: 0.5, delay: 0.2 }}
+            className="text-3xl md:text-5xl font-bold mb-3 md:mb-4 bg-gradient-to-r from-blue-600 to-purple-600 bg-clip-text text-transparent"
+          >
             Choose Your Plan
-          </h1>
-          <p className="text-gray-600 text-base md:text-lg">Pick the perfect plan and unlock your POS potential</p>
-        </div>
+          </motion.h1>
+          <motion.p 
+            initial={{ opacity: 0 }}
+            animate={{ opacity: 1 }}
+            transition={{ duration: 0.5, delay: 0.4 }}
+            className="text-gray-600 text-base md:text-lg"
+          >
+            Pick the perfect plan and unlock your POS potential
+          </motion.p>
+        </motion.div>
 
-        <div className="grid grid-cols-1 md:grid-cols-2 gap-4 md:gap-8 mb-8 md:mb-12 max-w-5xl mx-auto">{plans.map((plan) => {
+        <div className="grid grid-cols-1 md:grid-cols-2 gap-4 md:gap-8 mb-8 md:mb-12 max-w-5xl mx-auto">{plans.map((plan, index) => {
             const Icon = plan.icon;
             return (
-              <div
+              <motion.div
                 key={plan.id}
+                initial={{ opacity: 0, y: 30 }}
+                animate={{ opacity: 1, y: 0 }}
+                transition={{ duration: 0.5, delay: index * 0.15 }}
+                whileHover={{ y: -8, transition: { duration: 0.2 } }}
                 onClick={() => setSelected(plan.id)}
                 className={`card cursor-pointer transition-all transform ${
                   selected === plan.id 
@@ -162,27 +184,36 @@ export default function Subscription() {
                     </li>
                   ))}
                 </ul>
-              </div>
+              </motion.div>
             );
           })}
         </div>
 
-        <div className="flex flex-col md:flex-row gap-4 items-center justify-center mt-8">
-          <button 
+        <motion.div 
+          initial={{ opacity: 0, y: 20 }}
+          animate={{ opacity: 1, y: 0 }}
+          transition={{ duration: 0.6, delay: 0.4 }}
+          className="flex flex-col md:flex-row gap-4 items-center justify-center mt-8"
+        >
+          <motion.button 
             type="button"
             onClick={handleGetStarted}
-            className="cursor-pointer px-8 md:px-12 py-3 md:py-4 text-base md:text-lg font-bold bg-gradient-to-r from-blue-600 to-purple-600 text-white rounded-lg shadow-lg hover:shadow-xl transform hover:scale-105 transition-all active:scale-95"
+            whileHover={{ scale: 1.05, boxShadow: "0 20px 40px rgba(0,0,0,0.2)" }}
+            whileTap={{ scale: 0.95 }}
+            className="cursor-pointer px-8 md:px-12 py-3 md:py-4 text-base md:text-lg font-bold bg-gradient-to-r from-blue-600 to-purple-600 text-white rounded-lg shadow-lg"
           >
             Get Started
-          </button>
-          <button 
+          </motion.button>
+          <motion.button 
             type="button"
             onClick={() => setShowDemoForm(true)}
+            whileHover={{ scale: 1.02 }}
+            whileTap={{ scale: 0.98 }}
             className="cursor-pointer px-8 md:px-12 py-3 md:py-4 text-base md:text-lg font-bold border-2 border-gray-300 bg-white text-gray-700 rounded-lg hover:border-gray-400 transition-all"
           >
             Request Free Demo
-          </button>
-        </div>
+          </motion.button>
+        </motion.div>
         <p className="text-xs md:text-sm text-gray-500 mt-4 text-center">Secure payment • Cancel anytime</p>
 
         {/* Demo Request Modal */}

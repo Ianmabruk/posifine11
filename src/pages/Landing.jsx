@@ -1,9 +1,69 @@
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useRef } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useAuth } from '../context/AuthContext';
-import { motion, useAnimation, useInView } from 'framer-motion';
-import { useRef } from 'react';
+import { motion, useAnimation, useInView, AnimatePresence } from 'framer-motion';
 import { ArrowRight, Check, Zap, Shield, TrendingUp, Users, Package, BarChart3, Layers, DollarSign, Crown, Star, X, Play, Zap as Lightning, Rocket } from 'lucide-react';
+
+// Dashboard Preview Carousel Component
+const DashboardCarousel = () => {
+  const [currentImage, setCurrentImage] = useState(0);
+  
+  // Dashboard preview images - Using Google Drive direct links
+  const images = [
+    'https://drive.google.com/uc?export=view&id=1fH8YX3QyaOGE9sLeK',
+    'https://drive.google.com/uc?export=view&id=1Bjs7JT5JowlUUQTB3'
+  ];
+
+  useEffect(() => {
+    const interval = setInterval(() => {
+      setCurrentImage((prev) => (prev + 1) % images.length);
+    }, 4000); // Change every 4 seconds
+
+    return () => clearInterval(interval);
+  }, []);
+
+  return (
+    <div className="relative z-10 max-w-6xl mx-auto px-6 pb-20">
+      <div className="bg-white rounded-2xl shadow-2xl p-2 overflow-hidden">
+        <div className="relative rounded-xl overflow-hidden" style={{ aspectRatio: '16/9' }}>
+          <AnimatePresence mode="wait">
+            <motion.img
+              key={currentImage}
+              src={images[currentImage]}
+              alt={`Dashboard Preview ${currentImage + 1}`}
+              initial={{ opacity: 0, scale: 1.1 }}
+              animate={{ opacity: 1, scale: 1 }}
+              exit={{ opacity: 0, scale: 0.95 }}
+              transition={{ duration: 0.8, ease: 'easeInOut' }}
+              className="w-full h-full object-cover"
+              onError={(e) => {
+                // Fallback if image fails to load
+                e.target.style.display = 'none';
+                e.target.parentElement.innerHTML = '<div class="w-full h-full bg-gradient-to-br from-blue-50 to-purple-50 flex items-center justify-center"><div class="text-center"><svg class="w-24 h-24 text-blue-600 mx-auto mb-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 19v-6a2 2 0 00-2-2H5a2 2 0 00-2 2v6a2 2 0 002 2h2a2 2 0 002-2zm0 0V9a2 2 0 012-2h2a2 2 0 012 2v10m-6 0a2 2 0 002 2h2a2 2 0 002-2m0 0V5a2 2 0 012-2h2a2 2 0 012 2v14a2 2 0 01-2 2h-2a2 2 0 01-2-2z"></path></svg><p class="text-gray-600 font-medium">Dashboard Preview</p></div></div>';
+              }}
+            />
+          </AnimatePresence>
+          
+          {/* Image indicators */}
+          <div className="absolute bottom-4 left-1/2 transform -translate-x-1/2 flex gap-2">
+            {images.map((_, idx) => (
+              <button
+                key={idx}
+                onClick={() => setCurrentImage(idx)}
+                className={`w-2 h-2 rounded-full transition-all ${
+                  idx === currentImage 
+                    ? 'bg-white w-8' 
+                    : 'bg-white/50 hover:bg-white/75'
+                }`}
+                aria-label={`Go to slide ${idx + 1}`}
+              />
+            ))}
+          </div>
+        </div>
+      </div>
+    </div>
+  );
+};
 
 // CSS Animations
 const animationStyle = `
@@ -374,22 +434,6 @@ export default function Landing() {
         '✓ Advanced Analytics',
         '✓ Priority Support'
       ]
-    },
-    {
-      name: 'Pro',
-      price: 3400,
-      icon: Crown,
-      popular: false,
-      features: [
-        '✓ All Ultra Features',
-        '✓ Recipe/BOM Builder',
-        '✓ COGS Calculation',
-        '✓ Composite Products',
-        '✓ Advanced Reporting',
-        '✓ Multi-location Support',
-        '✓ API Access',
-        '✓ Dedicated Support'
-      ]
     }
   ];
 
@@ -491,17 +535,8 @@ export default function Landing() {
           </motion.p>
         </div>
 
-        {/* Hero Image/Dashboard Preview */}
-        <div className="relative z-10 max-w-6xl mx-auto px-6 pb-20">
-          <div className="bg-white rounded-2xl shadow-2xl p-2 transform hover:scale-105 transition-all duration-500">
-            <div className="bg-gradient-to-br from-gray-50 to-gray-100 rounded-xl p-8 aspect-video flex items-center justify-center">
-              <div className="text-center">
-                <BarChart3 className="w-24 h-24 text-blue-600 mx-auto mb-4" />
-                <p className="text-gray-600 font-medium">Dashboard Preview</p>
-              </div>
-            </div>
-          </div>
-        </div>
+        {/* Hero Image/Dashboard Preview - Animated Carousel */}
+        <DashboardCarousel />
       </div>
 
       {/* Features Section */}

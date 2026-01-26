@@ -368,17 +368,6 @@ export const PLAN_FEATURES = {
       'user_management'
     ]
   },
-  pro: {
-    name: 'Pro',
-    price: 3400,
-    features: [
-      'basic_pos',
-      'inventory_management',
-      'sales_tracking',
-      'admin_dashboard',
-      'user_management'
-    ]
-  },
   custom: {
     name: 'Custom',
     price: 3500,
