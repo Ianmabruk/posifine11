@@ -7,6 +7,7 @@ import { ArrowRight, Check, Zap, Shield, TrendingUp, Users, Package, BarChart3, 
 // Dashboard Preview Carousel Component
 const DashboardCarousel = () => {
   const [currentImage, setCurrentImage] = useState(0);
+  const [imageErrors, setImageErrors] = useState({});
   
   // Dashboard preview images - Using Google Drive direct links
   const images = [
@@ -27,21 +28,36 @@ const DashboardCarousel = () => {
       <div className="bg-white rounded-2xl shadow-2xl p-2 overflow-hidden">
         <div className="relative rounded-xl overflow-hidden" style={{ aspectRatio: '16/9' }}>
           <AnimatePresence mode="wait">
-            <motion.img
-              key={currentImage}
-              src={images[currentImage]}
-              alt={`Dashboard Preview ${currentImage + 1}`}
-              initial={{ opacity: 0, scale: 1.1 }}
-              animate={{ opacity: 1, scale: 1 }}
-              exit={{ opacity: 0, scale: 0.95 }}
-              transition={{ duration: 0.8, ease: 'easeInOut' }}
-              className="w-full h-full object-cover"
-              onError={(e) => {
-                // Fallback if image fails to load
-                e.target.style.display = 'none';
-                e.target.parentElement.innerHTML = '<div class="w-full h-full bg-gradient-to-br from-blue-50 to-purple-50 flex items-center justify-center"><div class="text-center"><svg class="w-24 h-24 text-blue-600 mx-auto mb-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 19v-6a2 2 0 00-2-2H5a2 2 0 00-2 2v6a2 2 0 002 2h2a2 2 0 002-2zm0 0V9a2 2 0 012-2h2a2 2 0 012 2v10m-6 0a2 2 0 002 2h2a2 2 0 002-2m0 0V5a2 2 0 012-2h2a2 2 0 012 2v14a2 2 0 01-2 2h-2a2 2 0 01-2-2z"></path></svg><p class="text-gray-600 font-medium">Dashboard Preview</p></div></div>';
-              }}
-            />
+            {!imageErrors[currentImage] ? (
+              <motion.img
+                key={currentImage}
+                src={images[currentImage]}
+                alt={`Dashboard Preview ${currentImage + 1}`}
+                initial={{ opacity: 0, scale: 1.1 }}
+                animate={{ opacity: 1, scale: 1 }}
+                exit={{ opacity: 0, scale: 0.95 }}
+                transition={{ duration: 0.8, ease: 'easeInOut' }}
+                className="w-full h-full object-cover"
+                onError={() => {
+                  setImageErrors(prev => ({ ...prev, [currentImage]: true }));
+                }}
+              />
+            ) : (
+              <motion.div
+                key={`fallback-${currentImage}`}
+                initial={{ opacity: 0 }}
+                animate={{ opacity: 1 }}
+                exit={{ opacity: 0 }}
+                className="w-full h-full bg-gradient-to-br from-blue-50 to-purple-50 flex items-center justify-center"
+              >
+                <div className="text-center">
+                  <svg className="w-24 h-24 text-blue-600 mx-auto mb-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M9 19v-6a2 2 0 00-2-2H5a2 2 0 00-2 2v6a2 2 0 002 2h2a2 2 0 002-2zm0 0V9a2 2 0 012-2h2a2 2 0 012 2v10m-6 0a2 2 0 002 2h2a2 2 0 002-2m0 0V5a2 2 0 012-2h2a2 2 0 012 2v14a2 2 0 01-2 2h-2a2 2 0 01-2-2z"></path>
+                  </svg>
+                  <p className="text-gray-600 font-medium">Dashboard Preview</p>
+                </div>
+              </motion.div>
+            )}
           </AnimatePresence>
           
           {/* Image indicators */}
