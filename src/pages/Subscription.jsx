@@ -107,7 +107,8 @@ export default function Subscription() {
   return (
     <div className="min-h-screen bg-gradient-to-br from-indigo-50 via-purple-50 to-pink-50 py-6 md:py-12 px-4 md:px-6">
       <div className="max-w-7xl mx-auto">
-        <div className="flex items-center gap-4 mb-8">
+        {/* Header with Logo */}
+        <div className="flex items-center justify-between mb-8">
           <button 
             onClick={() => navigate('/')}
             className="flex items-center gap-2 text-gray-600 hover:text-gray-800 transition"
@@ -115,6 +116,25 @@ export default function Subscription() {
             <ArrowLeft size={20} />
             Back to Home
           </button>
+          
+          <motion.div 
+            className="flex items-center gap-2"
+            initial={{ opacity: 0, scale: 0.8 }}
+            animate={{ opacity: 1, scale: 1 }}
+            transition={{ duration: 0.5 }}
+          >
+            <img
+              src="/posifine-logo.png"
+              alt="PosiFine Logo"
+              className="w-8 h-8 object-contain"
+              onError={(e) => {
+                e.target.style.display = 'none';
+              }}
+            />
+            <span className="text-xl font-bold bg-gradient-to-r from-blue-600 to-purple-600 bg-clip-text text-transparent">
+              PosiFine
+            </span>
+          </motion.div>
         </div>
         <motion.div 
           initial={{ opacity: 0, y: -20 }}
@@ -275,6 +295,39 @@ export default function Subscription() {
           </div>
         )}
       </div>
+
+      {/* Footer */}
+      <footer className="mt-16 border-t border-gray-200 pt-8">
+        <div className="max-w-7xl mx-auto px-6 text-center">
+          <div className="flex flex-col md:flex-row items-center justify-between gap-4">
+            <div className="flex items-center gap-2">
+              <motion.img
+                src="/posifine-logo.png"
+                alt="PosiFine Logo"
+                className="w-6 h-6 object-contain"
+                initial={{ opacity: 0 }}
+                animate={{ opacity: 1 }}
+                transition={{ duration: 0.5 }}
+                onError={(e) => {
+                  e.target.style.display = 'none';
+                }}
+              />
+              <span className="text-sm font-semibold bg-gradient-to-r from-blue-600 to-purple-600 bg-clip-text text-transparent">
+                PosiFine
+              </span>
+            </div>
+            <p className="text-gray-500 text-sm">
+              © 2026 Mabrixel Technologies. All rights reserved.
+            </p>
+            <button 
+              onClick={() => navigate('/auth/login')}
+              className="text-sm text-blue-600 hover:text-blue-700 transition-colors"
+            >
+              Already have an account? Login
+            </button>
+          </div>
+        </div>
+      </footer>
     </div>
   );
 }

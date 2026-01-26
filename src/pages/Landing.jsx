@@ -290,7 +290,7 @@ export default function Landing() {
   const [demoStep, setDemoStep] = useState(0);
 
   // Redirect logged-in users to their dashboard
-  // ONLY if they are actually authenticated (user exists)
+  // ONLY if they are actually authenticated (user exists) AND they didn't explicitly visit landing page
   useEffect(() => {
     // Wait for auth to initialize before making decisions
     if (!isInitialized) {
@@ -304,8 +304,17 @@ export default function Landing() {
       return;
     }
     
-    // ONLY redirect if user is actually logged in
-    if (user && user.email) {
+    // Check if user explicitly wants to stay on landing page (e.g., from Netlify production URL)
+    // Don't redirect if sessionStorage has a flag indicating intentional landing page visit
+    const intentionalVisit = sessionStorage.getItem('viewing_landing') === 'true';
+    
+    // Set flag on first load - if URL is exactly "/" or "/get-started", user wants to see landing
+    if (window.location.pathname === '/' || window.location.pathname === '/get-started') {
+      sessionStorage.setItem('viewing_landing', 'true');
+    }
+    
+    // ONLY redirect if user is logged in AND didn't intentionally visit landing page
+    if (user && user.email && !intentionalVisit) {
       console.log('Landing: User logged in, redirecting to dashboard', user.role);
       if (user.role === 'owner') {
         navigate('/main-admin', { replace: true });
@@ -317,7 +326,7 @@ export default function Landing() {
         navigate('/dashboard', { replace: true });
       }
     } else {
-      console.log('Landing: No user, staying on landing page');
+      console.log('Landing: No user or intentional visit, staying on landing page');
     }
     // If no user, stay on landing page (don't redirect)
   }, [user, loading, isInitialized, navigate]);
@@ -447,10 +456,23 @@ export default function Landing() {
         <nav className="relative z-10 px-6 py-4">
           <div className="max-w-7xl mx-auto flex items-center justify-between">
             <div className="flex items-center gap-2">
-              <div className="w-10 h-10 bg-white rounded-xl flex items-center justify-center">
+              <motion.img
+                src="/posifine-logo.png"
+                alt="PosiFine Logo"
+                className="w-10 h-10 object-contain"
+                initial={{ opacity: 0, scale: 0.8 }}
+                animate={{ opacity: 1, scale: 1 }}
+                transition={{ duration: 0.5 }}
+                onError={(e) => {
+                  // Fallback to text logo if image fails to load
+                  e.target.style.display = 'none';
+                  e.target.nextElementSibling.style.display = 'flex';
+                }}
+              />
+              <div className="w-10 h-10 bg-white rounded-xl items-center justify-center hidden">
                 <span className="text-xl font-bold bg-gradient-to-r from-blue-600 to-purple-600 bg-clip-text text-transparent">P</span>
               </div>
-              <span className="text-2xl font-bold text-white">POSify</span>
+              <span className="text-2xl font-bold text-white">PosiFine</span>
             </div>
             <div className="flex items-center gap-4">
               <button onClick={() => navigate('/auth/login')} className="text-white hover:text-blue-100 font-medium">
@@ -813,6 +835,39 @@ export default function Landing() {
           </div>
         </div>
       )}
+
+      {/* Footer */}
+      <footer className="bg-gray-900 text-white py-8">
+        <div className="max-w-7xl mx-auto px-6">
+          <div className="flex flex-col md:flex-row items-center justify-between gap-4">
+            <div className="flex items-center gap-2">
+              <motion.img
+                src="/posifine-logo.png"
+                alt="PosiFine Logo"
+                className="w-8 h-8 object-contain"
+                initial={{ opacity: 0 }}
+                animate={{ opacity: 1 }}
+                transition={{ duration: 0.5 }}
+                onError={(e) => {
+                  e.target.style.display = 'none';
+                }}
+              />
+              <span className="text-lg font-semibold">PosiFine</span>
+            </div>
+            <p className="text-gray-400 text-sm">
+              © 2026 Mabrixel Technologies. All rights reserved.
+            </p>
+            <div className="flex items-center gap-4 text-sm text-gray-400">
+              <button onClick={() => navigate('/choose-subscription')} className="hover:text-white transition-colors">
+                Pricing
+              </button>
+              <button onClick={() => navigate('/auth/login')} className="hover:text-white transition-colors">
+                Login
+              </button>
+            </div>
+          </div>
+        </div>
+      </footer>
     </div>
   );
 }
