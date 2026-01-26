@@ -302,8 +302,17 @@ export default function Landing() {
     // Add animation styles to document
     const style = document.createElement('style');
     style.textContent = animationStyle;
+    style.setAttribute('data-landing-styles', 'true');
     document.head.appendChild(style);
-    return () => document.head.removeChild(style);
+    return () => {
+      try {
+        if (style.parentNode) {
+          style.parentNode.removeChild(style);
+        }
+      } catch (e) {
+        // Style already removed, ignore error
+      }
+    };
   }, []);
 
   // Don't show loading spinner for non-authenticated users
