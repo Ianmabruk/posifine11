@@ -289,47 +289,14 @@ export default function Landing() {
   const [showDemo, setShowDemo] = useState(false);
   const [demoStep, setDemoStep] = useState(0);
 
-  // Redirect logged-in users to their dashboard
-  // ONLY if they are actually authenticated (user exists) AND they didn't explicitly visit landing page
+  // Don't auto-redirect logged-in users from landing page
+  // Landing page is public and users may want to visit it even when logged in
+  // Users can access their dashboards via Login button or direct URL navigation
   useEffect(() => {
-    // Wait for auth to initialize before making decisions
-    if (!isInitialized) {
-      console.log('Landing: Auth not initialized yet');
-      return;
-    }
-    
-    // If still loading, don't redirect yet
-    if (loading) {
-      console.log('Landing: Still loading auth');
-      return;
-    }
-    
-    // Check if user explicitly wants to stay on landing page (e.g., from Netlify production URL)
-    // Don't redirect if sessionStorage has a flag indicating intentional landing page visit
-    const intentionalVisit = sessionStorage.getItem('viewing_landing') === 'true';
-    
-    // Set flag on first load - if URL is exactly "/" or "/get-started", user wants to see landing
-    if (window.location.pathname === '/' || window.location.pathname === '/get-started') {
-      sessionStorage.setItem('viewing_landing', 'true');
-    }
-    
-    // ONLY redirect if user is logged in AND didn't intentionally visit landing page
-    if (user && user.email && !intentionalVisit) {
-      console.log('Landing: User logged in, redirecting to dashboard', user.role);
-      if (user.role === 'owner') {
-        navigate('/main-admin', { replace: true });
-      } else if (user.role === 'admin') {
-        navigate('/admin', { replace: true });
-      } else if (user.role === 'cashier') {
-        navigate('/cashier', { replace: true });
-      } else {
-        navigate('/dashboard', { replace: true });
-      }
-    } else {
-      console.log('Landing: No user or intentional visit, staying on landing page');
-    }
-    // If no user, stay on landing page (don't redirect)
-  }, [user, loading, isInitialized, navigate]);
+    // Landing page is now always accessible to everyone
+    // No auto-redirect logic needed
+    console.log('Landing: Page loaded', user ? `User: ${user.email}` : 'No user');
+  }, [user, loading, isInitialized]);
 
   useEffect(() => {
     // Add animation styles to document
