@@ -599,3 +599,19 @@ export const cashierNotes = {
     method: 'DELETE'
   })
 };
+
+// Default export - Generic API methods for custom endpoints
+const api = {
+  get: (endpoint) => request(endpoint, { method: 'GET' }),
+  post: (endpoint, data) => request(endpoint, {
+    method: 'POST',
+    body: JSON.stringify(data)
+  }),
+  put: (endpoint, data) => request(endpoint, {
+    method: 'PUT',
+    body: JSON.stringify(data)
+  }),
+  delete: (endpoint) => request(endpoint, { method: 'DELETE' })
+};
+
+export default api;
