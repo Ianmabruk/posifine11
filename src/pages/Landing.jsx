@@ -30,14 +30,8 @@ export default function Landing() {
     return () => window.removeEventListener('mousemove', handleMouseMove);
   }, []);
 
-  // Redirect if logged in
-  useEffect(() => {
-    if (user) {
-      if (user.role === 'admin') navigate('/admin');
-      else if (user.role === 'cashier') navigate('/cashier');
-      else navigate('/dashboard');
-    }
-  }, [user, navigate]);
+  // Don't auto-redirect logged-in users - let them see the landing page
+  // They can use the navigation menu if they want to go to their dashboard
 
   const features = [
     {

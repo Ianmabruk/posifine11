@@ -154,11 +154,11 @@ export default function Auth() {
       // CRITICAL: Role-based redirect after signup/login
       // ============================================================
       // SIGNUP: Always goes to appropriate dashboard based on plan
-      // LOGIN: Role-based routing
-      //   - 'owner' → /main-admin (accessed via direct URL)
-      //   - Pro Plan → /pro-dashboard (business-specific routing)
-      //   - 'admin' → /admin (business dashboard)
-      //   - 'cashier' → /cashier (POS dashboard)
+      // LOGIN: Intelligent routing based on subscription + business type
+      //   - 'owner' → /main-admin (super admin dashboard)
+      //   - Pro Plan + businessType → /pro-dashboard (business-specific routing)
+      //   - Basic/Ultra admin → /admin (standard admin dashboard)
+      //   - Basic/Ultra cashier → /cashier (standard POS dashboard)
       // ============================================================
       
       if (!isLogin) {
@@ -166,34 +166,47 @@ export default function Auth() {
         if (res.user.plan === 'pro') {
           console.log('🔹 Pro Plan Signup → Redirecting to Pro Dashboard (/pro-dashboard)');
           navigate('/pro-dashboard');
-        } else {
+        } else if (res.user.role === 'admin') {
           console.log('🔹 Signup successful → Redirecting to Admin Dashboard (/admin)');
           navigate('/admin');
+        } else {
+          console.log('🔹 Signup as cashier → Redirecting to Cashier Dashboard (/cashier)');
+          navigate('/cashier');
         }
       } else {
-        // LOGIN: Role-based redirect
+        // LOGIN: Intelligent routing based on user attributes
         if (res.user.role === 'owner') {
           // Main Admin / Super Admin → Main Admin Dashboard
           console.log('🔹 Login as owner → Redirecting to Main Admin Dashboard (/main-admin)');
           navigate('/main-admin');
-        } else if (res.user.plan === 'pro') {
-          // Pro Plan users → Business-specific dashboard
-          console.log('🔹 Login as Pro user → Redirecting to Pro Dashboard (/pro-dashboard)');
+        } else if (res.user.plan === 'pro' && res.user.businessType) {
+          // Pro Plan users with business type → Business-specific dashboard
+          console.log(`🔹 Login as Pro user (${res.user.businessType}) → Redirecting to Pro Dashboard (/pro-dashboard)`);
           navigate('/pro-dashboard');
+        } else if (res.user.plan === 'pro') {
+          // Pro Plan users without business type → Admin dashboard
+          console.log('🔹 Login as Pro user (no business type) → Redirecting to Admin Dashboard (/admin)');
+          navigate('/admin');
         } else if (res.user.role === 'admin') {
-          // Regular Business Admin → Admin Dashboard
+          // Regular Business Admin (Basic/Ultra) → Standard Admin Dashboard
           console.log('🔹 Login as admin → Redirecting to Admin Dashboard (/admin)');
           navigate('/admin');
         } else if (res.user.role === 'cashier') {
-          // Cashier → POS Dashboard
-          console.log('🔹 Login as cashier → Redirecting to Cashier Dashboard (/cashier)');
-          navigate('/cashier');
+          // Cashier (Basic/Ultra or Pro without business type) → Standard POS Dashboard
+          // Check if they have a business type (Pro plan cashier with specific role)
+          if (res.user.businessType) {
+            console.log(`🔹 Login as Pro cashier (${res.user.businessType}) → Redirecting to Pro Dashboard (/pro-dashboard)`);
+            navigate('/pro-dashboard');
+          } else {
+            console.log('🔹 Login as cashier → Redirecting to Cashier Dashboard (/cashier)');
+            navigate('/cashier');
+          }
         } else {
           // Fallback
           console.warn('⚠️ Unknown role, redirecting to default dashboard');
           navigate('/dashboard');
         }
-        }
+      }
 
     } catch (err) {
       console.error('Authentication error:', err);

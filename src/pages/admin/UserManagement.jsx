@@ -3,11 +3,11 @@
 import { useState, useEffect } from 'react';
 import { users as usersApi, sales as salesApi, BASE_API_URL } from '../../services/api';
 import { useAuth } from '../../context/AuthContext';
-import { Plus, Edit2, Trash2, Mail, Shield, Eye, Monitor, X, Clock, ShoppingCart, UserCheck, UserX, Users, Lock, Trash } from 'lucide-react';
+import { Plus, Edit2, Trash2, Mail, Shield, Eye, Monitor, X, Clock, ShoppingCart, UserCheck, UserX, Users, Lock, Trash, Building, Stethoscope, Hotel, Utensils } from 'lucide-react';
 
 
 export default function UserManagement() {
-  const { isCashierUserManagementEnabled, isCashier } = useAuth();
+  const { isCashierUserManagementEnabled, isCashier, user: currentUser } = useAuth();
   const [users, setUsers] = useState([]);
   const [loading, setLoading] = useState(true);
   const [showAddModal, setShowAddModal] = useState(false);
@@ -20,6 +20,8 @@ export default function UserManagement() {
     name: '',
     email: '',
     password: '',
+    businessType: '',
+    businessRole: 'cashier',
     permissions: {
       viewSales: true,
       viewInventory: true,
@@ -31,6 +33,17 @@ export default function UserManagement() {
   const [showPINModal, setShowPINModal] = useState(false);
   const [selectedUserForPIN, setSelectedUserForPIN] = useState(null);
   const [newPIN, setNewPIN] = useState('');
+
+  // Business types available for Pro plan
+  const businessTypes = [
+    { id: 'clinic', name: 'Clinic', icon: Stethoscope, roles: ['doctor', 'reception', 'pharmacy', 'nurse'] },
+    { id: 'hotel', name: 'Hotel', icon: Hotel, roles: ['reception', 'housekeeping', 'manager'] },
+    { id: 'bar', name: 'Bar/Restaurant', icon: Utensils, roles: ['bartender', 'waiter', 'manager'] },
+    { id: 'supermarket', name: 'Supermarket', icon: Building, roles: ['cashier', 'manager', 'stock_clerk'] }
+  ];
+
+  // Check if current user is on Pro plan
+  const isProPlan = currentUser?.plan === 'pro';
 
   useEffect(() => {
     loadUsers();
@@ -90,7 +103,12 @@ export default function UserManagement() {
         name: newUser.name.trim(),
         email: newUser.email.trim().toLowerCase(),
         password: newUser.password.trim(),
-        pin: cashierPIN
+        pin: cashierPIN,
+        // Add business type and role for Pro plan users
+        ...(isProPlan && newUser.businessType && {
+          businessType: newUser.businessType,
+          businessRole: newUser.businessRole || 'cashier'
+        })
       };
       
       console.log('Sending user data:', userData);
@@ -111,6 +129,8 @@ export default function UserManagement() {
         name: '',
         email: '',
         password: '',
+        businessType: '',
+        businessRole: 'cashier',
         permissions: { viewSales: true, viewInventory: true, viewExpenses: false, manageProducts: false }
       });
       setShowAddModal(false);
@@ -651,6 +671,68 @@ export default function UserManagement() {
               <p className="text-xs text-gray-500">
                 💡 The cashier will use this email and password to log in to the system
               </p>
+              
+              {/* Business Type Selection for Pro Plan */}
+              {isProPlan && (
+                <div className="border-t pt-4">
+                  <h4 className="font-semibold mb-3 text-sm flex items-center gap-2">
+                    <Building className="w-4 h-4" />
+                    Business Settings (Pro Plan)
+                  </h4>
+                  <div className="space-y-3">
+                    <div>
+                      <label className="block text-sm font-medium text-gray-700 mb-1">
+                        Business Type
+                      </label>
+                      <select
+                        className="input"
+                        value={newUser.businessType || ''}
+                        onChange={(e) => {
+                          setNewUser({ ...newUser, businessType: e.target.value, businessRole: 'cashier' });
+                        }}
+                        disabled={loading}
+                      >
+                        <option value="">Default (Standard Cashier)</option>
+                        {businessTypes.map(bt => (
+                          <option key={bt.id} value={bt.id}>
+                            {bt.name}
+                          </option>
+                        ))}
+                      </select>
+                      <p className="text-xs text-gray-500 mt-1">
+                        Select business type for specialized dashboard
+                      </p>
+                    </div>
+                    
+                    {newUser.businessType && (
+                      <div>
+                        <label className="block text-sm font-medium text-gray-700 mb-1">
+                          Role in Business
+                        </label>
+                        <select
+                          className="input"
+                          value={newUser.businessRole || 'cashier'}
+                          onChange={(e) => {
+                            setNewUser({ ...newUser, businessRole: e.target.value });
+                          }}
+                          disabled={loading}
+                        >
+                          {businessTypes
+                            .find(bt => bt.id === newUser.businessType)
+                            ?.roles.map(role => (
+                              <option key={role} value={role}>
+                                {role.charAt(0).toUpperCase() + role.slice(1).replace('_', ' ')}
+                              </option>
+                            ))}
+                        </select>
+                        <p className="text-xs text-gray-500 mt-1">
+                          This determines which dashboard they'll see
+                        </p>
+                      </div>
+                    )}
+                  </div>
+                </div>
+              )}
               
               <div className="border-t pt-4">
                 <h4 className="font-semibold mb-3 text-sm">Permissions</h4>
