@@ -1075,7 +1075,7 @@ export default function CashierPOS() {
                 disabled={cart.length === 0 || checkoutLoading} 
                 className="btn-primary w-full py-4 text-lg bg-gradient-to-r from-green-600 to-teal-600 hover:from-green-700 hover:to-teal-700 shadow-lg disabled:opacity-50 disabled:cursor-not-allowed transition-all duration-200"
               >
-                {checkoutLoading ? '⏳ Processing Sale...' : 'Complete Sale'}
+                {checkoutLoading ? '⏳ Processing...' : 'Checkout'}
               </button>
             </div>
           </div>

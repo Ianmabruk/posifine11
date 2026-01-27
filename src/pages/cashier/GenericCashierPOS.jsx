@@ -341,7 +341,7 @@ export default function GenericCashierPOS() {
                   disabled={loading || selectedItems.length === 0}
                   className="w-full bg-green-600 text-white py-3 rounded-lg font-bold hover:bg-green-700 disabled:bg-gray-400 transition-colors"
                 >
-                  {loading ? 'Processing...' : '✓ Complete Sale'}
+                  {loading ? 'Processing...' : '✓ Checkout'}
                 </button>
               </div>
             </div>

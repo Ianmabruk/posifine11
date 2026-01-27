@@ -83,8 +83,6 @@ export default function UserManagement() {
     }
     
     try {
-      setLoading(true);
-      
       // Generate PIN for cashier login
       const cashierPIN = generatePIN();
       
@@ -97,20 +95,18 @@ export default function UserManagement() {
       
       console.log('Sending user data:', userData);
       
-      // Create the user with proper cashier role and PIN
-      const result = await usersApi.create(userData);
+      // OPTIMISTIC UPDATE: Add user to UI immediately with temporary ID
+      const tempId = `temp-${Date.now()}`;
+      const optimisticUser = { 
+        id: tempId, 
+        ...userData, 
+        role: 'cashier',
+        is_active: true,
+        created_at: new Date().toISOString()
+      };
+      setUsers(prev => [...prev, optimisticUser]);
       
-      console.log('User creation result:', result);
-      
-      // Refresh the users list
-      await loadUsers();
-      
-      // Show success message with login credentials including PIN
-      const loginInstructions = `✅ Cashier added successfully!\n\n📧 Email: ${userData.email}\n🔑 Password: ${userData.password}\n🔢 PIN: ${cashierPIN}\n\n💡 LOGIN OPTIONS:\n1. Email + Password: Use email and password above\n2. PIN Login: Use email + ${cashierPIN}\n\nPlease share these credentials securely with the new cashier.`;
-      
-      alert(loginInstructions);
-      
-      // Reset form and close modal
+      // Reset form and close modal IMMEDIATELY
       setNewUser({
         name: '',
         email: '',
@@ -118,6 +114,29 @@ export default function UserManagement() {
         permissions: { viewSales: true, viewInventory: true, viewExpenses: false, manageProducts: false }
       });
       setShowAddModal(false);
+      
+      try {
+        // Create the user with proper cashier role and PIN
+        const result = await usersApi.create(userData);
+        
+        console.log('User creation result:', result);
+        
+        // Replace temporary user with real one
+        setUsers(prev => prev.map(u => u.id === tempId ? result : u));
+        
+        // Show success message with login credentials including PIN
+        const loginInstructions = `✅ Cashier added successfully!\n\n📧 Email: ${userData.email}\n🔑 Password: ${userData.password}\n🔢 PIN: ${cashierPIN}\n\n💡 LOGIN OPTIONS:\n1. Email + Password: Use email and password above\n2. PIN Login: Use email + ${cashierPIN}\n\nPlease share these credentials securely with the new cashier.`;
+        
+        alert(loginInstructions);
+        
+        // Refresh in background to ensure sync
+        loadUsers().catch(err => console.warn('Background refresh failed:', err));
+        
+      } catch (apiError) {
+        // Rollback optimistic update on failure
+        setUsers(prev => prev.filter(u => u.id !== tempId));
+        throw apiError;
+      }
       
     } catch (error) {
       console.error('Error creating cashier:', error);
@@ -134,8 +153,6 @@ export default function UserManagement() {
       }
       
       alert(errorMessage);
-    } finally {
-      setLoading(false);
     }
   };
 

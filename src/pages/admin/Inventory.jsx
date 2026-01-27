@@ -214,21 +214,39 @@ export default function Inventory() {
         visibleToCashier: !newProduct.expenseOnly && newProduct.visibleToCashier !== false
       };
       
-      const result = await products.create(productData);
+      // OPTIMISTIC UPDATE: Add product to UI immediately with temporary ID
+      const tempId = `temp-${Date.now()}`;
+      const optimisticProduct = { ...productData, id: tempId, created_at: new Date().toISOString() };
+      setProductList(prev => [...prev, optimisticProduct]);
       
       // Reset form and close modal IMMEDIATELY
       setNewProduct({ name: '', price: '', cost: '', category: 'finished', unit: 'pcs', expenseOnly: false, image: '', visibleToCashier: true });
       setImagePreview('');
       setShowAddModal(false);
       
-      showNotification(`✅ Product "${result.name}" added successfully! ${result.visibleToCashier ? 'Cashiers can now see this product.' : 'This product is hidden from cashiers.'}`, 'success');
+      showNotification('⚡ Adding product...', 'info');
       
-      // Refresh data in background (don't block modal close)
-      loadData().catch(err => console.warn('Background refresh failed:', err));
+      try {
+        // Make API call in background
+        const result = await products.create(productData);
+        
+        // Replace temporary product with real one
+        setProductList(prev => prev.map(p => p.id === tempId ? result : p));
+        
+        showNotification(`✅ Product "${result.name}" added successfully! ${result.visibleToCashier ? 'Cashiers can now see this product.' : 'This product is hidden from cashiers.'}`, 'success');
+        
+        // Refresh data in background to ensure sync
+        loadData().catch(err => console.warn('Background refresh failed:', err));
+        
+      } catch (apiError) {
+        // Rollback optimistic update on failure
+        setProductList(prev => prev.filter(p => p.id !== tempId));
+        throw apiError;
+      }
       
     } catch (error) {
       console.error('Failed to create product:', error);
-      alert(`Failed to create product: ${error.message || 'Unknown error'}`);
+      showNotification(`❌ Failed to add product: ${error.message || 'Unknown error'}`, 'error');
     }
   };
 
