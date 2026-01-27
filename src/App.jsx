@@ -20,6 +20,10 @@ import KioskCashierPOS from './pages/cashier/KioskCashierPOS';
 import PetrolCashierPOS from './pages/cashier/PetrolCashierPOS';
 import ShoesCashierPOS from './pages/cashier/ShoesCashierPOS';
 import MainAdmin from './pages/MainAdmin';
+import AdminClinicDashboard from './pages/admin/AdminClinicDashboard';
+import AdminBarDashboard from './pages/admin/AdminBarDashboard';
+import ClinicDoctorDashboard from './pages/dashboards/clinic/ClinicDoctorDashboard';
+import { ProtectedRoute as RouteGuard, ProPlanGuard, RoleGuard, BusinessTypeGuard, AdminGuard } from './components/RouteGuards';
 import ReminderModal from './components/ReminderModal';
 import ScreenLock from './components/ScreenLock';
 import SubscriptionReminderBar from './components/SubscriptionReminderBar';
@@ -159,8 +163,45 @@ function App() {
               {/* Pro Plan Business Type Selection */}
               <Route path="/select-business-type" element={<ProtectedRoute adminOnly><BusinessTypeSelector /></ProtectedRoute>} />
               
-              {/* Pro Plan Business-Specific Dashboard */}
+              {/* Pro Plan Business-Specific Dashboard (DEPRECATED - use /admin/{businessType}) */}
               <Route path="/pro-dashboard" element={<ProtectedRoute adminOnly><ProPlanRouter /></ProtectedRoute>} />
+              
+              {/* Pro Plan Admin Dashboards */}
+              <Route path="/admin/clinic" element={
+                <RouteGuard>
+                  <ProPlanGuard>
+                    <BusinessTypeGuard requiredType="clinic">
+                      <AdminGuard>
+                        <AdminClinicDashboard />
+                      </AdminGuard>
+                    </BusinessTypeGuard>
+                  </ProPlanGuard>
+                </RouteGuard>
+              } />
+              <Route path="/admin/bar" element={
+                <RouteGuard>
+                  <ProPlanGuard>
+                    <BusinessTypeGuard requiredType="bar">
+                      <AdminGuard>
+                        <AdminBarDashboard />
+                      </AdminGuard>
+                    </BusinessTypeGuard>
+                  </ProPlanGuard>
+                </RouteGuard>
+              } />
+              
+              {/* Pro Plan Role Dashboards */}
+              <Route path="/dashboard/clinic/doctor" element={
+                <RouteGuard>
+                  <ProPlanGuard>
+                    <BusinessTypeGuard requiredType="clinic">
+                      <RoleGuard allowedRoles={['doctor']}>
+                        <ClinicDoctorDashboard />
+                      </RoleGuard>
+                    </BusinessTypeGuard>
+                  </ProPlanGuard>
+                </RouteGuard>
+              } />
               
               {/* Regular User Routes */}
               <Route path="/dashboard" element={<ProtectedRoute><DashboardRouter /></ProtectedRoute>} />

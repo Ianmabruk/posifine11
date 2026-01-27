@@ -47,14 +47,20 @@ export function getDashboardRoute(user) {
   if ((subscription === 'pro' || subscription === 'custom') && businessType) {
     // Pro Admin with Business Type → Business-specific admin dashboard
     if (role === 'admin') {
-      console.log(`[getDashboardRoute] → /pro-dashboard (Pro Admin - ${businessType})`);
-      return '/pro-dashboard';
+      console.log(`[getDashboardRoute] → /admin/${businessType} (Pro Admin - ${businessType})`);
+      return `/admin/${businessType}`;
+    }
+    
+    // Pro User with Business Role → Role-specific dashboard
+    if (businessRole && businessRole !== 'admin') {
+      console.log(`[getDashboardRoute] → /dashboard/${businessType}/${businessRole} (Pro ${businessRole})`);
+      return `/dashboard/${businessType}/${businessRole}`;
     }
     
     // Pro Cashier/User with Business Type → Business-specific cashier interface
     if (role === 'cashier') {
-      console.log(`[getDashboardRoute] → /pro-dashboard (Pro Cashier - ${businessType})`);
-      return '/pro-dashboard';
+      console.log(`[getDashboardRoute] → /dashboard/${businessType}/cashier (Pro Cashier - ${businessType})`);
+      return `/dashboard/${businessType}/cashier`;
     }
   }
 
