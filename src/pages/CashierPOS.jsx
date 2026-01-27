@@ -82,6 +82,32 @@ export default function CashierPOS() {
     // Check clock status from backend
     checkClockStatus();
 
+    // Real-time event listeners for stock updates from admin
+    const handleStockUpdated = (event) => {
+      console.log('📦 Stock update event received:', event.detail);
+      // Refresh products list when stock is updated in admin
+      loadData();
+    };
+
+    const handleProductsSync = (event) => {
+      console.log('🔄 Products sync event received:', event.detail);
+      if (event.detail && event.detail.products) {
+        const filtered = event.detail.products.filter(p => p.visibleToCashier !== false && !p.expenseOnly);
+        setProductList(filtered);
+      }
+    };
+
+    const handleProductUpdated = () => {
+      console.log('📝 Product update event received');
+      loadData();
+    };
+
+    // Add event listeners
+    window.addEventListener('stock_updated', handleStockUpdated);
+    window.addEventListener('productsSync', handleProductsSync);
+    window.addEventListener('productUpdated', handleProductUpdated);
+    window.addEventListener('productCreated', handleProductUpdated);
+
     // Connect to WebSocket for real-time stock updates
     const token = localStorage.getItem('token');
     if (token) {
@@ -146,6 +172,12 @@ export default function CashierPOS() {
     }, 30000);
 
     return () => {
+      // Cleanup event listeners
+      window.removeEventListener('stock_updated', handleStockUpdated);
+      window.removeEventListener('productsSync', handleProductsSync);
+      window.removeEventListener('productUpdated', handleProductUpdated);
+      window.removeEventListener('productCreated', handleProductUpdated);
+      
       clearInterval(refreshInterval);
       try { unsub(); } catch (e) {}
       websocketService.disconnect();
