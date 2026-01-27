@@ -16,6 +16,9 @@ import HotelDashboard from './hotel/HotelDashboard';
 // Import default admin dashboard for supermarket or fallback
 import AdminDashboard from './admin/AdminDashboard';
 
+// Import new business-specific dashboards
+import SupermarketDashboard from './business/SupermarketDashboard';
+
 /**
  * ProPlanRouter - Routes Pro Plan users to business-specific dashboards
  * 
@@ -35,7 +38,7 @@ import AdminDashboard from './admin/AdminDashboard';
  *   - role='reception' or 'housekeeping' → HotelDashboard (bookings, check-in/out)
  *   
  *   Supermarket:
- *   - Any role → AdminDashboard (standard admin interface)
+ *   - Any role → SupermarketDashboard (retail POS with barcode scanning)
  */
 export default function ProPlanRouter() {
   const { user } = useAuth();
@@ -59,6 +62,17 @@ export default function ProPlanRouter() {
       }
       return;
     }
+
+    // If Pro user doesn't have business type, redirect to business selector
+    const businessType = user.businessType || user.business_type || 
+                         localStorage.getItem('businessType') || 
+                         localStorage.getItem('selectedBusinessType');
+    
+    if (!businessType && user.role === 'admin') {
+      // Only admins can select business type
+      navigate('/select-business-type');
+      return;
+    }
   }, [user, navigate]);
 
   if (!user) return null;
@@ -71,6 +85,24 @@ export default function ProPlanRouter() {
   const businessRole = user.businessRole || user.business_role || user.role; // businessRole takes precedence
 
   console.log('[PRO PLAN ROUTER] Business Type:', businessType, 'Role:', businessRole, 'User:', user);
+
+  // If no business type, show selection prompt (shouldn't reach here if redirect works)
+  if (!businessType) {
+    return (
+      <div className="flex items-center justify-center min-h-screen bg-gray-100">
+        <div className="text-center">
+          <h2 className="text-2xl font-bold text-gray-900 mb-4">Business Type Not Set</h2>
+          <p className="text-gray-600 mb-4">Please select your business type to continue.</p>
+          <button
+            onClick={() => navigate('/select-business-type')}
+            className="px-6 py-3 bg-blue-600 text-white rounded-lg hover:bg-blue-700"
+          >
+            Select Business Type
+          </button>
+        </div>
+      </div>
+    );
+  }
 
   // Route based on business type and role
   if (businessType === 'clinic') {
@@ -87,8 +119,8 @@ export default function ProPlanRouter() {
     }
   }
 
-  if (businessType === 'bar') {
-    // Bar/club - all roles use same dashboard (bartender, waiter, manager)
+  if (businessType === 'bar' || businessType === 'restaurant') {
+    // Bar/club/restaurant - all roles use same dashboard (bartender, waiter, manager)
     return <BarDashboard />;
   }
 
@@ -97,12 +129,21 @@ export default function ProPlanRouter() {
     return <HotelDashboard />;
   }
 
-  if (businessType === 'supermarket') {
-    // Supermarket uses standard admin dashboard
+  if (businessType === 'supermarket' || businessType === 'retail') {
+    // Supermarket/retail uses specialized dashboard
+    return <SupermarketDashboard />;
+  }
+
+  // For hospital, pharmacy, and other business types - use standard admin dashboard for now
+  // These can be replaced with specialized dashboards as they're built
+  if (businessType === 'hospital' || businessType === 'pharmacy' || 
+      businessType === 'petrol' || businessType === 'school' ||
+      businessType === 'gym' || businessType === 'salon') {
+    console.log(`[PRO PLAN ROUTER] Using standard admin dashboard for ${businessType}`);
     return <AdminDashboard />;
   }
 
   // Fallback to standard admin dashboard if no business type set
-  console.warn('[PRO PLAN ROUTER] No business type found, using default admin dashboard');
+  console.warn('[PRO PLAN ROUTER] Unknown business type, using default admin dashboard');
   return <AdminDashboard />;
 }
