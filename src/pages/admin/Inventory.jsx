@@ -134,11 +134,11 @@ export default function Inventory() {
   // FIXED: Only sync global products on initial load, not on every change
   // This prevents the global context refresh from overwriting manual updates
   useEffect(() => {
-    if (globalProducts && globalProducts.length > 0 && productList.length === 0) {
+    if (globalProducts && globalProducts.length > 0 && !hasLoadedInitially) {
       console.log('📦 Initial sync from global context:', globalProducts.length, 'products');
       setProductList(globalProducts);
     }
-  }, []); // Run only once on mount - don't watch globalProducts to avoid resets
+  }, [globalProducts, hasLoadedInitially]); // Watch globalProducts but only apply on initial load
 
   const handleImageUpload = (e, isNewProduct = true) => {
     const file = e.target.files[0];
@@ -253,11 +253,27 @@ export default function Inventory() {
   const handleAddStock = async (e) => {
     e.preventDefault();
     try {
-      // OPTIMISTIC UPDATE: Update batch list immediately
+      const quantityToAdd = parseInt(newStock.quantity);
+      
+      if (!quantityToAdd || quantityToAdd <= 0) {
+        showNotification('⚠️ Please enter a valid quantity', 'warning');
+        return;
+      }
+      
+      // OPTIMISTIC UPDATE: Update product quantity immediately
+      const currentProduct = productList.find(p => p.id === selectedProduct.id);
+      if (currentProduct) {
+        const newQuantity = (currentProduct.quantity || 0) + quantityToAdd;
+        setProductList(prev => 
+          prev.map(p => p.id === selectedProduct.id ? { ...p, quantity: newQuantity } : p)
+        );
+      }
+      
+      // Create batch record
       const newBatch = {
         id: `batch-${Date.now()}`,
         productId: selectedProduct.id,
-        quantity: parseInt(newStock.quantity),
+        quantity: quantityToAdd,
         expiryDate: newStock.expiryDate,
         batchNumber: newStock.batchNumber || `BATCH-${Date.now()}`,
         cost: parseFloat(newStock.cost || selectedProduct.cost || 0)
@@ -269,28 +285,38 @@ export default function Inventory() {
 
       try {
         // Make API call in background
-        await batches.create({
+        const result = await batches.create({
           productId: selectedProduct.id,
-          quantity: parseInt(newStock.quantity),
+          quantity: quantityToAdd,
           expiryDate: newStock.expiryDate,
           batchNumber: newStock.batchNumber || `BATCH-${Date.now()}`,
           cost: parseFloat(newStock.cost || selectedProduct.cost || 0)
         });
         
-        // Close form and reset immediately (don't block on loadData)
+        console.log('✅ Stock added successfully:', result);
+        
+        // Close form and reset immediately
         setNewStock({ quantity: '', expiryDate: '', batchNumber: '', cost: '' });
         setShowAddStock(false);
-        setSelectedProduct(null);
         
-        showNotification(`✅ Stock added successfully for ${selectedProduct.name}!`, 'success');
+        showNotification(`✅ Stock added! ${selectedProduct.name} quantity increased by ${quantityToAdd}`, 'success');
         
         // Refresh data in background to sync with backend
-        loadData().catch(err => console.warn('Background refresh failed:', err));
+        setTimeout(() => {
+          loadData().catch(err => console.warn('Background refresh failed:', err));
+        }, 500);
         
       } catch (apiError) {
         // Rollback optimistic update on failure
+        if (currentProduct) {
+          setProductList(prev => 
+            prev.map(p => p.id === selectedProduct.id ? currentProduct : p)
+          );
+        }
         setBatchList(prev => prev.filter(b => b.id !== newBatch.id));
         throw apiError;
+      } finally {
+        setSelectedProduct(null);
       }
     } catch (error) {
       console.error('Failed to add stock:', error);

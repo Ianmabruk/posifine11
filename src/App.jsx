@@ -4,6 +4,7 @@ import { ProductsProvider } from './context/ProductsContext';
 import { ScreenLockProvider, useScreenLock } from './context/ScreenLockContext';
 import AdminDashboard from './pages/admin/AdminDashboard';
 import BusinessAwareAdminRouter from './pages/BusinessAwareAdminRouter';
+import ProPlanRouter from './pages/ProPlanRouter';
 import PaymentInput from './pages/PaymentInput';
 import BasicDashboard from './pages/BasicDashboard';
 import Landing from './pages/Landing';
@@ -153,6 +154,9 @@ function App() {
               {/* Owner Main Admin Routes */}
               <Route path="/main.admin/*" element={<MainAdmin />} />
               <Route path="/main-admin" element={<ProtectedRoute ownerOnly><MainAdmin /></ProtectedRoute>} />
+              
+              {/* Pro Plan Business-Specific Dashboard */}
+              <Route path="/pro-dashboard" element={<ProtectedRoute adminOnly><ProPlanRouter /></ProtectedRoute>} />
               
               {/* Regular User Routes */}
               <Route path="/dashboard" element={<ProtectedRoute><DashboardRouter /></ProtectedRoute>} />

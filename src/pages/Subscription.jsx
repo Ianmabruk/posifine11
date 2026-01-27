@@ -1,18 +1,20 @@
 import { useState, useEffect } from 'react';
 import { BASE_API_URL } from '../services/api';
 import { useNavigate } from 'react-router-dom';
-import { Check, Crown, Zap, ArrowLeft } from 'lucide-react';
+import { Check, Crown, Zap, ArrowLeft, Building, Stethoscope, GlassWater, Hotel as HotelIcon, ShoppingCart } from 'lucide-react';
 import { motion, AnimatePresence } from 'framer-motion';
 
 export default function Subscription() {
   const [selected, setSelected] = useState('ultra');
   const [showDemoForm, setShowDemoForm] = useState(false);
+  const [showBusinessTypeSelector, setShowBusinessTypeSelector] = useState(false);
+  const [selectedBusinessType, setSelectedBusinessType] = useState(null);
   const [demoData, setDemoData] = useState({ name: '', email: '', company: '' });
   const navigate = useNavigate();
   
   console.log('✅ Subscription component mounted, navigate available:', typeof navigate);
 
-  // Updated pricing: Basic=1000, Ultra=2500
+  // Updated pricing: Basic=1000, Ultra=2500, Pro=3000
   const plans = [
     {
       id: 'basic',
@@ -48,13 +50,62 @@ export default function Subscription() {
         '✓ Advanced Analytics',
         '✓ Priority Support'
       ]
+    },
+    {
+      id: 'pro',
+      name: 'Pro',
+      price: 3000,
+      icon: Building,
+      color: 'from-purple-600 to-pink-600',
+      popular: false,
+      badge: 'NEW',
+      features: [
+        '✓ Everything in Ultra Plan',
+        '✓ Business-Specific Dashboards',
+        '✓ Clinic/Hospital Management',
+        '✓ Bar/Restaurant Tables',
+        '✓ Hotel Room Booking',
+        '✓ Supermarket Features',
+        '✓ Role-Based Dashboards',
+        '✓ Priority 24/7 Support'
+      ]
+    }
+  ];
+
+  const businessTypes = [
+    {
+      id: 'clinic',
+      name: 'Clinic / Hospital',
+      icon: Stethoscope,
+      description: 'Patient management, appointments, prescriptions',
+      roles: ['Doctor', 'Reception', 'Pharmacy', 'Admin']
+    },
+    {
+      id: 'bar',
+      name: 'Bar / Club',
+      icon: GlassWater,
+      description: 'Table orders, drink menu, hold bills',
+      roles: ['Bartender', 'Waiter', 'Manager']
+    },
+    {
+      id: 'hotel',
+      name: 'Hotel',
+      icon: HotelIcon,
+      description: 'Room bookings, check-in/out, guest billing',
+      roles: ['Reception', 'Housekeeping', 'Manager']
+    },
+    {
+      id: 'supermarket',
+      name: 'Supermarket',
+      icon: ShoppingCart,
+      description: 'Advanced inventory, bulk sales, departments',
+      roles: ['Cashier', 'Stock Manager', 'Department Head']
     }
   ];
 
   const handleGetStarted = (e) => {
     e?.preventDefault?.();
     console.log('[BUTTON] Get Started clicked, selected plan:', selected);
-    console.log('[BUTTON] Available plans:', plans.map(p => p.id));
     
     const plan = plans.find(p => p.id === selected);
     console.log('[BUTTON] Found plan:', plan);
@@ -62,6 +113,12 @@ export default function Subscription() {
     if (!plan) {
       console.error('[BUTTON] Plan not found!');
       alert('Please select a plan first');
+      return;
+    }
+    
+    // If Pro plan selected, show business type selector
+    if (selected === 'pro') {
+      setShowBusinessTypeSelector(true);
       return;
     }
     
@@ -82,6 +139,28 @@ export default function Subscription() {
       navigate('/auth/signup');
     } catch (error) {
       console.error('[BUTTON] Error:', error);
+      alert('Error: ' + error.message);
+    }
+  };
+
+  const handleBusinessTypeSelect = (businessType) => {
+    try {
+      const plan = plans.find(p => p.id === 'pro');
+      const planData = {
+        id: plan.id,
+        name: plan.name,
+        price: plan.price,
+        business_type: businessType.id
+      };
+      
+      localStorage.setItem('selectedPlan', JSON.stringify(planData));
+      localStorage.setItem('planId', 'pro');
+      localStorage.setItem('businessType', businessType.id);
+      
+      console.log('[PRO] Business type selected:', businessType.id);
+      navigate('/auth/signup');
+    } catch (error) {
+      console.error('[PRO] Error:', error);
       alert('Error: ' + error.message);
     }
   };
@@ -328,6 +407,80 @@ export default function Subscription() {
           </div>
         </div>
       </footer>
+
+      {/* Business Type Selector Modal (Pro Plan) */}
+      <AnimatePresence>
+        {showBusinessTypeSelector && (
+          <motion.div
+            initial={{ opacity: 0 }}
+            animate={{ opacity: 1 }}
+            exit={{ opacity: 0 }}
+            className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4"
+          >
+            <motion.div
+              initial={{ scale: 0.9, y: 20 }}
+              animate={{ scale: 1, y: 0 }}
+              exit={{ scale: 0.9, y: 20 }}
+              className="bg-white rounded-2xl p-8 max-w-4xl w-full max-h-[90vh] overflow-y-auto"
+            >
+              <div className="text-center mb-8">
+                <h2 className="text-3xl font-bold text-gray-900 mb-2">
+                  Choose Your Business Type
+                </h2>
+                <p className="text-gray-600">
+                  Select the industry that matches your business for specialized features
+                </p>
+              </div>
+
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                {businessTypes.map((type) => {
+                  const Icon = type.icon;
+                  return (
+                    <motion.button
+                      key={type.id}
+                      whileHover={{ scale: 1.02 }}
+                      whileTap={{ scale: 0.98 }}
+                      onClick={() => handleBusinessTypeSelect(type)}
+                      className="p-6 border-2 border-gray-200 rounded-xl hover:border-purple-500 hover:shadow-lg transition-all text-left"
+                    >
+                      <div className="flex items-start gap-4">
+                        <div className="p-3 bg-purple-100 rounded-lg">
+                          <Icon className="w-8 h-8 text-purple-600" />
+                        </div>
+                        <div className="flex-1">
+                          <h3 className="text-xl font-bold text-gray-900 mb-2">
+                            {type.name}
+                          </h3>
+                          <p className="text-gray-600 text-sm mb-3">
+                            {type.description}
+                          </p>
+                          <div className="flex flex-wrap gap-2">
+                            {type.roles.map((role) => (
+                              <span
+                                key={role}
+                                className="px-2 py-1 bg-purple-50 text-purple-700 text-xs rounded-full"
+                              >
+                                {role}
+                              </span>
+                            ))}
+                          </div>
+                        </div>
+                      </div>
+                    </motion.button>
+                  );
+                })}
+              </div>
+
+              <button
+                onClick={() => setShowBusinessTypeSelector(false)}
+                className="mt-6 w-full px-6 py-3 border-2 border-gray-300 rounded-xl text-gray-700 font-semibold hover:bg-gray-50 transition-colors"
+              >
+                Back to Plans
+              </button>
+            </motion.div>
+          </motion.div>
+        )}
+      </AnimatePresence>
     </div>
   );
 }

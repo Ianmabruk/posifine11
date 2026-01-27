@@ -153,23 +153,33 @@ export default function Auth() {
       // ============================================================
       // CRITICAL: Role-based redirect after signup/login
       // ============================================================
-      // SIGNUP: Always goes to /admin (admin dashboard)
+      // SIGNUP: Always goes to appropriate dashboard based on plan
       // LOGIN: Role-based routing
       //   - 'owner' → /main-admin (accessed via direct URL)
+      //   - Pro Plan → /pro-dashboard (business-specific routing)
       //   - 'admin' → /admin (business dashboard)
       //   - 'cashier' → /cashier (POS dashboard)
       // ============================================================
       
       if (!isLogin) {
-        // SIGNUP: Always redirect to admin dashboard
-        console.log('🔹 Signup successful → Redirecting to Admin Dashboard (/admin)');
-        navigate('/admin');
+        // SIGNUP: Redirect based on plan
+        if (res.user.plan === 'pro') {
+          console.log('🔹 Pro Plan Signup → Redirecting to Pro Dashboard (/pro-dashboard)');
+          navigate('/pro-dashboard');
+        } else {
+          console.log('🔹 Signup successful → Redirecting to Admin Dashboard (/admin)');
+          navigate('/admin');
+        }
       } else {
         // LOGIN: Role-based redirect
         if (res.user.role === 'owner') {
           // Main Admin / Super Admin → Main Admin Dashboard
           console.log('🔹 Login as owner → Redirecting to Main Admin Dashboard (/main-admin)');
           navigate('/main-admin');
+        } else if (res.user.plan === 'pro') {
+          // Pro Plan users → Business-specific dashboard
+          console.log('🔹 Login as Pro user → Redirecting to Pro Dashboard (/pro-dashboard)');
+          navigate('/pro-dashboard');
         } else if (res.user.role === 'admin') {
           // Regular Business Admin → Admin Dashboard
           console.log('🔹 Login as admin → Redirecting to Admin Dashboard (/admin)');

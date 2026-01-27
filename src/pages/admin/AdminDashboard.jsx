@@ -4,10 +4,11 @@ import { BASE_API_URL } from '../../services/api';
 import { Routes, Route, useNavigate, useLocation } from 'react-router-dom';
 import { useAuth } from '../../context/AuthContext';
 import {
-  LayoutDashboard, ShoppingBag, Package, Layers, TrendingDown,
+  LayoutDashboard, ShoppingBag, Package, Layers, TrendingDown, TrendingUp,
   Users, Settings, LogOut, Menu, X, ExternalLink, Clock, Bell, DollarSign, Tag, CreditCard, Truck
 } from 'lucide-react';
 import Overview from './Overview';
+import Analytics from './Analytics';
 import Inventory from './Inventory';
 import Recipes from './Recipes';
 import Sales from './Sales';
@@ -127,6 +128,7 @@ export default function AdminDashboard() {
 
   const menuItems = [
     { id: 'overview', label: 'Dashboard', icon: LayoutDashboard, path: '/admin' },
+    { id: 'analytics', label: 'Analytics', icon: TrendingUp, path: '/admin/analytics' },
     { id: 'sales', label: 'Sales', icon: ShoppingBag, path: '/admin/sales' },
     { id: 'inventory', label: 'Inventory', icon: Package, path: '/admin/inventory' },
     { id: 'recipes', label: 'Recipes/BOM', icon: Layers, path: '/admin/recipes' },
@@ -241,6 +243,7 @@ export default function AdminDashboard() {
         {/* Page Content */}
         <main className="flex-1 overflow-auto">
           <Routes>
+            <Route path="/analytics" element={<Analytics />} />
             <Route path="/" element={<Overview />} />
             <Route path="/sales" element={<Sales />} />
             <Route path="/inventory" element={<Inventory />} />
