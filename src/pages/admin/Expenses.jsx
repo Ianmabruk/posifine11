@@ -48,9 +48,16 @@ export default function Expenses() {
 
   const handleAddExpense = async (e) => {
     e.preventDefault();
-    await expensesApi.create({ ...newExpense, amount: parseFloat(newExpense.amount) });
+    const expenseData = { ...newExpense, amount: parseFloat(newExpense.amount) };
+    await expensesApi.create(expenseData);
     setNewExpense({ description: '', amount: '', category: 'general' });
     setShowAddModal(false);
+    
+    // Dispatch expense_added event for real-time updates
+    window.dispatchEvent(new CustomEvent('expense_added', {
+      detail: { expense: expenseData }
+    }));
+    
     loadExpenses();
   };
 

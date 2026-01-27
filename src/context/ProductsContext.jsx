@@ -39,6 +39,13 @@ export const ProductsProvider = ({ children }) => {
         detail: { products: visibleProducts, timestamp: Date.now() }
       }));
       
+      // Also emit event that other components can listen to
+      if (typeof window !== 'undefined') {
+        setTimeout(() => {
+          window.dispatchEvent(new Event('productUpdated'));
+        }, 100);
+      }
+      
       // CRITICAL: Return the products so callers can use them immediately
       return visibleProducts;
       

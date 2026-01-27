@@ -20,6 +20,7 @@ export default function MonitorDashboard() {
         const data = await res.json();
         setStats(data);
         setLoading(false);
+        console.log('📊 [Monitor] Stats updated:', data);
       } catch (error) {
         console.error('Failed to fetch stats:', error);
         setLoading(false);
@@ -29,9 +30,28 @@ export default function MonitorDashboard() {
     // Fetch immediately
     fetchStats();
 
-    // Auto-refresh every 2 seconds
-    const interval = setInterval(fetchStats, 2000);
-    return () => clearInterval(interval);
+    // Auto-refresh every 3 seconds
+    const interval = setInterval(fetchStats, 3000);
+    
+    // Listen for sale/expense events to trigger immediate refresh
+    const handleSaleComplete = () => {
+      console.log('🔔 [Monitor] Sale completed, refreshing stats...');
+      fetchStats();
+    };
+    
+    const handleExpenseAdded = () => {
+      console.log('🔔 [Monitor] Expense added, refreshing stats...');
+      fetchStats();
+    };
+    
+    window.addEventListener('sale_completed', handleSaleComplete);
+    window.addEventListener('expense_added', handleExpenseAdded);
+    
+    return () => {
+      clearInterval(interval);
+      window.removeEventListener('sale_completed', handleSaleComplete);
+      window.removeEventListener('expense_added', handleExpenseAdded);
+    };
   }, []);
 
   if (loading) {

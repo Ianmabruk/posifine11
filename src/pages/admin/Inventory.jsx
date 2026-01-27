@@ -317,6 +317,15 @@ export default function Inventory() {
           if (freshProducts && freshProducts.length > 0) {
             setProductList(freshProducts);
             console.log('✅ Product list refreshed with backend data');
+            
+            // Dispatch stock update event for real-time sync to cashier
+            window.dispatchEvent(new CustomEvent('stock_updated', {
+              detail: { 
+                productId: selectedProduct.id,
+                quantity: quantityToAdd,
+                timestamp: Date.now()
+              }
+            }));
           }
         } catch (refreshError) {
           console.warn('Failed to refresh products after stock add:', refreshError);

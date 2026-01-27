@@ -673,9 +673,16 @@ export default function CashierPOS() {
   const handleAddExpense = async (e) => {
     e.preventDefault();
     try {
-      await expenses.create({ ...newExpense, amount: parseFloat(newExpense.amount) });
+      const expenseData = { ...newExpense, amount: parseFloat(newExpense.amount) };
+      await expenses.create(expenseData);
       setNewExpense({ description: '', amount: '', category: '' });
       setShowAddExpense(false);
+      
+      // Dispatch expense_added event for real-time updates
+      window.dispatchEvent(new CustomEvent('expense_added', {
+        detail: { expense: expenseData }
+      }));
+      
       await loadData(); // Reload all data immediately
     } catch (error) {
       console.error('Failed to add expense:', error);
