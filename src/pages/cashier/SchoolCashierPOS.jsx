@@ -1,7 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { useAuth } from '../../context/AuthContext';
 import { useNavigate } from 'react-router-dom';
-import GenericCashierPOS from './GenericCashierPOS';
+import CashierPOS from '../CashierPOS';
 import { BookOpen, LogOut, Users, Banknote } from 'lucide-react';
 
 export default function SchoolCashierPOS() {
@@ -84,7 +84,7 @@ export default function SchoolCashierPOS() {
 
       {/* Generic POS Component */}
       <div className="bg-white">
-        <GenericCashierPOS businessType="school" />
+        <CashierPOS businessType="school" />
       </div>
 
       {/* School Footer */}

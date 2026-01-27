@@ -1,7 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { useAuth } from '../../context/AuthContext';
 import { useNavigate } from 'react-router-dom';
-import GenericCashierPOS from './GenericCashierPOS';
+import CashierPOS from '../CashierPOS';
 import { Fuel, LogOut, Droplet, TrendingUp } from 'lucide-react';
 
 export default function PetrolCashierPOS() {
@@ -90,7 +90,7 @@ export default function PetrolCashierPOS() {
 
       {/* Generic POS Component */}
       <div className="bg-white">
-        <GenericCashierPOS businessType="petrol" pumpNumber={selectedPump} />
+        <CashierPOS businessType="petrol" pumpNumber={selectedPump} />
       </div>
 
       {/* Petrol Footer */}

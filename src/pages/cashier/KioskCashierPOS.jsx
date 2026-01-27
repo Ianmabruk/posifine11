@@ -1,7 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { useAuth } from '../../context/AuthContext';
 import { useNavigate } from 'react-router-dom';
-import GenericCashierPOS from './GenericCashierPOS';
+import CashierPOS from '../CashierPOS';
 import { Store, LogOut, Zap, AlertCircle } from 'lucide-react';
 
 export default function KioskCashierPOS() {
@@ -71,7 +71,7 @@ export default function KioskCashierPOS() {
 
       {/* Generic POS Component */}
       <div className="bg-white">
-        <GenericCashierPOS businessType="kiosk" />
+        <CashierPOS businessType="kiosk" />
       </div>
 
       {/* Kiosk Footer */}

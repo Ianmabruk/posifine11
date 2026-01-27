@@ -1,7 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { useAuth } from '../../context/AuthContext';
 import { useNavigate } from 'react-router-dom';
-import GenericCashierPOS from './GenericCashierPOS';
+import CashierPOS from '../CashierPOS';
 import { Heart, LogOut, Search, Clock } from 'lucide-react';
 
 export default function HospitalCashierPOS() {
@@ -83,7 +83,7 @@ export default function HospitalCashierPOS() {
 
       {/* Generic POS Component */}
       <div className="bg-white">
-        <GenericCashierPOS businessType="hospital" />
+        <CashierPOS businessType="hospital" />
       </div>
 
       {/* Hospital Footer */}
