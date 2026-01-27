@@ -1,6 +1,7 @@
 import { useEffect } from 'react';
 import { useAuth } from '../context/AuthContext';
 import { useNavigate } from 'react-router-dom';
+import { isProUser, hasBusinessType, getBusinessDashboardComponent } from '../utils/dashboardRouting';
 
 // Import clinic dashboards
 import DoctorDashboard from './clinic/DoctorDashboard';
@@ -50,29 +51,30 @@ export default function ProPlanRouter() {
       return;
     }
 
-    // Only Pro users use this router
-    if (user.plan !== 'pro') {
+    // Check if user has Pro subscription (check both subscription and plan fields)
+    if (!isProUser(user)) {
       // Redirect Basic/Ultra users to their standard dashboards
       if (user.role === 'admin') {
+        console.log('[PRO ROUTER] Not a Pro user - redirecting admin to /admin');
         navigate('/admin');
       } else if (user.role === 'cashier') {
+        console.log('[PRO ROUTER] Not a Pro user - redirecting cashier to /cashier');
         navigate('/cashier');
       } else {
+        console.log('[PRO ROUTER] Not a Pro user - redirecting to /dashboard');
         navigate('/dashboard');
       }
       return;
     }
 
-    // If Pro user doesn't have business type, redirect to business selector
-    const businessType = user.businessType || user.business_type || 
-                         localStorage.getItem('businessType') || 
-                         localStorage.getItem('selectedBusinessType');
-    
-    if (!businessType && user.role === 'admin') {
-      // Only admins can select business type
+    // Pro user without business type → redirect to business selector
+    if (!hasBusinessType(user) && user.role === 'admin') {
+      console.log('[PRO ROUTER] Pro admin without business type - redirecting to /select-business-type');
       navigate('/select-business-type');
       return;
     }
+    
+    console.log('[PRO ROUTER] Pro user with business type:', user.businessType || user.business_type, '- rendering dashboard');
   }, [user, navigate]);
 
   if (!user) return null;

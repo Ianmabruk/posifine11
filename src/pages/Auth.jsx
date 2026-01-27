@@ -3,6 +3,7 @@ import { useNavigate, useLocation } from 'react-router-dom';
 import { auth } from '../services/api';
 import { useAuth } from '../context/AuthContext';
 import { Mail, Lock, User } from 'lucide-react';
+import { getDashboardRoute, debugRoutingDecision } from '../utils/dashboardRouting';
 
 export default function Auth() {
   const location = useLocation();
@@ -132,6 +133,8 @@ export default function Auth() {
           name: res.user.name,
           email: res.user.email,
           role: res.user.role,
+          subscription: res.user.subscription || res.user.plan,
+          businessType: res.user.businessType || res.user.business_type,
           plan: res.user.plan || 'free'
         },
         timestamp: new Date().toISOString(),
@@ -151,65 +154,22 @@ export default function Auth() {
       // Show success notification
       const action = isLogin ? 'logged in' : 'signed up';
       console.log(`✅ User ${res.user.name} ${action} successfully`);
-      console.log(`📍 Role: ${res.user.role}, Plan: ${res.user.plan}`);
       
       // ============================================================
-      // CRITICAL: Role-based redirect after signup/login
+      // CRITICAL: INTELLIGENT DASHBOARD ROUTING
       // ============================================================
-      // SIGNUP: Always goes to appropriate dashboard based on plan
-      // LOGIN: Intelligent routing based on subscription + business type
-      //   - 'owner' → /main-admin (super admin dashboard)
-      //   - Pro Plan + businessType → /pro-dashboard (business-specific routing)
-      //   - Basic/Ultra admin → /admin (standard admin dashboard)
-      //   - Basic/Ultra cashier → /cashier (standard POS dashboard)
+      // Uses getDashboardRoute() utility to determine correct path
+      // based on subscription, role, and businessType
       // ============================================================
       
-      if (!isLogin) {
-        // SIGNUP: Redirect based on plan
-        if (res.user.plan === 'pro') {
-          console.log('🔹 Pro Plan Signup → Redirecting to Pro Dashboard (/pro-dashboard)');
-          navigate('/pro-dashboard');
-        } else if (res.user.role === 'admin') {
-          console.log('🔹 Signup successful → Redirecting to Admin Dashboard (/admin)');
-          navigate('/admin');
-        } else {
-          console.log('🔹 Signup as cashier → Redirecting to Cashier Dashboard (/cashier)');
-          navigate('/cashier');
-        }
-      } else {
-        // LOGIN: Intelligent routing based on user attributes
-        if (res.user.role === 'owner') {
-          // Main Admin / Super Admin → Main Admin Dashboard
-          console.log('🔹 Login as owner → Redirecting to Main Admin Dashboard (/main-admin)');
-          navigate('/main-admin');
-        } else if (res.user.plan === 'pro' && res.user.businessType) {
-          // Pro Plan users with business type → Business-specific dashboard
-          console.log(`🔹 Login as Pro user (${res.user.businessType}) → Redirecting to Pro Dashboard (/pro-dashboard)`);
-          navigate('/pro-dashboard');
-        } else if (res.user.plan === 'pro') {
-          // Pro Plan users without business type → Admin dashboard
-          console.log('🔹 Login as Pro user (no business type) → Redirecting to Admin Dashboard (/admin)');
-          navigate('/admin');
-        } else if (res.user.role === 'admin') {
-          // Regular Business Admin (Basic/Ultra) → Standard Admin Dashboard
-          console.log('🔹 Login as admin → Redirecting to Admin Dashboard (/admin)');
-          navigate('/admin');
-        } else if (res.user.role === 'cashier') {
-          // Cashier (Basic/Ultra or Pro without business type) → Standard POS Dashboard
-          // Check if they have a business type (Pro plan cashier with specific role)
-          if (res.user.businessType) {
-            console.log(`🔹 Login as Pro cashier (${res.user.businessType}) → Redirecting to Pro Dashboard (/pro-dashboard)`);
-            navigate('/pro-dashboard');
-          } else {
-            console.log('🔹 Login as cashier → Redirecting to Cashier Dashboard (/cashier)');
-            navigate('/cashier');
-          }
-        } else {
-          // Fallback
-          console.warn('⚠️ Unknown role, redirecting to default dashboard');
-          navigate('/dashboard');
-        }
-      }
+      // Debug routing decision
+      debugRoutingDecision(res.user);
+      
+      // Get the correct dashboard route
+      const dashboardRoute = getDashboardRoute(res.user);
+      
+      console.log(`🚀 Redirecting to: ${dashboardRoute}`);
+      navigate(dashboardRoute, { replace: true });
 
     } catch (err) {
       console.error('Authentication error:', err);
