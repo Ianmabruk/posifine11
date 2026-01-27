@@ -123,6 +123,22 @@ export default function Inventory() {
           showNotification(`⚠️ Low stock alert: ${warnings}`, 'warning');
         }
       });
+      
+      // Listen for STOCK_UPDATED events (when stock is added via batches)
+      websocketService.on('stock_updated', (stockData) => {
+        console.log('📦 Stock updated via WebSocket:', stockData);
+        if (stockData.product_id && stockData.quantity !== undefined) {
+          // Update specific product's quantity
+          setProductList(prev => 
+            prev.map(p => 
+              p.id === stockData.product_id 
+                ? { ...p, quantity: stockData.quantity } 
+                : p
+            )
+          );
+          showNotification(`✅ Stock updated!`, 'success');
+        }
+      });
     }
 
     // Cleanup on unmount
@@ -295,15 +311,23 @@ export default function Inventory() {
         
         console.log('✅ Stock added successfully:', result);
         
-        // Close form and reset immediately
+        // Fetch updated product to ensure we have the correct quantity from backend
+        try {
+          const freshProducts = await refreshProducts();
+          if (freshProducts && freshProducts.length > 0) {
+            setProductList(freshProducts);
+            console.log('✅ Product list refreshed with backend data');
+          }
+        } catch (refreshError) {
+          console.warn('Failed to refresh products after stock add:', refreshError);
+          // Optimistic update is still in place, so UI shows the change
+        }
+        
+        // Close form and reset
         setNewStock({ quantity: '', expiryDate: '', batchNumber: '', cost: '' });
         setShowAddStock(false);
         
-        showNotification(`✅ Stock added! ${selectedProduct.name} quantity increased by ${quantityToAdd}`, 'success');
-        
-        // DON'T refresh data automatically - optimistic update is already correct
-        // Only refresh on explicit user action or WebSocket event
-        // This prevents race conditions where stale data overwrites fresh updates
+        showNotification(`✅ Stock added! ${selectedProduct.name} quantity increased by ${quantityToAdd}`, 'success')
         
       } catch (apiError) {
         // Rollback optimistic update on failure
@@ -712,15 +736,15 @@ export default function Inventory() {
                       <td className="px-4 py-3">
                         <div className="flex items-center gap-2">
                           <span className={`font-medium ${
-                            getProductStock(product.id) === 0 ? 'text-red-600' : 
-                            getProductStock(product.id) < 10 ? 'text-yellow-600' : 'text-gray-900'
+                            (product.quantity || 0) === 0 ? 'text-red-600' : 
+                            (product.quantity || 0) < 10 ? 'text-yellow-600' : 'text-gray-900'
                           }`}>
-                            {getProductStock(product.id)} {product.unit}
+                            {product.quantity || 0} {product.unit}
                           </span>
-                          {getProductStock(product.id) < 10 && getProductStock(product.id) > 0 && (
+                          {(product.quantity || 0) < 10 && (product.quantity || 0) > 0 && (
                             <AlertTriangle className="w-4 h-4 text-yellow-500" />
                           )}
-                          {getProductStock(product.id) === 0 && (
+                          {(product.quantity || 0) === 0 && (
                             <span className="text-xs bg-red-100 text-red-800 px-2 py-1 rounded-full font-medium">
                               Out of Stock
                             </span>
