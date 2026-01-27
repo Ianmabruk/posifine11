@@ -63,11 +63,14 @@ export default function ProPlanRouter() {
 
   if (!user) return null;
 
-  // Get business context
-  const businessType = user.businessType || localStorage.getItem('selectedBusinessType');
-  const businessRole = user.businessRole || user.role; // businessRole takes precedence
+  // Get business context - check multiple sources
+  const businessType = user.businessType || 
+                       user.business_type || 
+                       localStorage.getItem('businessType') || 
+                       localStorage.getItem('selectedBusinessType');
+  const businessRole = user.businessRole || user.business_role || user.role; // businessRole takes precedence
 
-  console.log('[PRO PLAN ROUTER] Business Type:', businessType, 'Role:', businessRole);
+  console.log('[PRO PLAN ROUTER] Business Type:', businessType, 'Role:', businessRole, 'User:', user);
 
   // Route based on business type and role
   if (businessType === 'clinic') {

@@ -95,15 +95,18 @@ export default function Auth() {
         // Handle signup - all signups create admin users
         const selectedPlan = getSelectedPlan();
         const planId = localStorage.getItem('planId') || selectedPlan?.id || 'basic';
-        const businessType = localStorage.getItem('selectedBusinessType');
+        // Get businessType from localStorage (set in Subscription.jsx)
+        const businessType = localStorage.getItem('businessType') || localStorage.getItem('selectedBusinessType') || selectedPlan?.business_type;
         const selectedFeatures = localStorage.getItem('selectedFeatures');
+        
+        console.log('[SIGNUP] Plan:', planId, 'BusinessType:', businessType);
         
         res = await auth.signup({
           email: formData.email,
           password: formData.password,
           name: formData.name,
           plan: planId,
-          businessType: businessType,
+          business_type: businessType,  // Use underscore to match backend
           selectedFeatures: selectedFeatures ? JSON.parse(selectedFeatures) : []
         });
       }
