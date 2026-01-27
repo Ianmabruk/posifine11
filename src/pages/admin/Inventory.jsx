@@ -134,11 +134,11 @@ export default function Inventory() {
   // FIXED: Only sync global products on initial load, not on every change
   // This prevents the global context refresh from overwriting manual updates
   useEffect(() => {
-    if (globalProducts && globalProducts.length > 0 && !hasLoadedInitially) {
+    if (globalProducts && globalProducts.length > 0 && productList.length === 0) {
       console.log('📦 Initial sync from global context:', globalProducts.length, 'products');
       setProductList(globalProducts);
     }
-  }, [globalProducts, hasLoadedInitially]); // Watch globalProducts but only apply on initial load
+  }, [globalProducts]); // Only sync when productList is empty (initial load)
 
   const handleImageUpload = (e, isNewProduct = true) => {
     const file = e.target.files[0];
@@ -301,10 +301,9 @@ export default function Inventory() {
         
         showNotification(`✅ Stock added! ${selectedProduct.name} quantity increased by ${quantityToAdd}`, 'success');
         
-        // Refresh data in background to sync with backend
-        setTimeout(() => {
-          loadData().catch(err => console.warn('Background refresh failed:', err));
-        }, 500);
+        // DON'T refresh data automatically - optimistic update is already correct
+        // Only refresh on explicit user action or WebSocket event
+        // This prevents race conditions where stale data overwrites fresh updates
         
       } catch (apiError) {
         // Rollback optimistic update on failure
