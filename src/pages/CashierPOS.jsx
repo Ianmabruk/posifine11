@@ -296,19 +296,34 @@ export default function CashierPOS() {
 
   // Clock in function
   const handleClockIn = async () => {
+    if (isClockedIn) {
+      alert('ℹ️ You are already clocked in!');
+      return;
+    }
+    
     try {
       setIsProcessingSale(true);
+      console.log('⏰ Attempting to clock in...');
+      
       const result = await timeEntries.create('clock_in');
-      setCurrentTimeEntry(result);
-      setIsClockedIn(true);
-      const clockInTime = new Date(result.clockInTime);
-      setClockedInTime(clockInTime);
-      localStorage.setItem(`clockIn_${user?.id}_${new Date().toDateString()}`, clockInTime.toISOString());
-      console.log('✅ Clocked in successfully');
-      alert('✅ Clocked in successfully at ' + clockInTime.toLocaleTimeString());
+      
+      console.log('✅ Clock in response:', result);
+      
+      if (result && result.id) {
+        setCurrentTimeEntry(result);
+        setIsClockedIn(true);
+        const clockInTime = new Date(result.clockInTime || result.clock_in_time || new Date());
+        setClockedInTime(clockInTime);
+        localStorage.setItem(`clockIn_${user?.id}_${new Date().toDateString()}`, clockInTime.toISOString());
+        console.log('✅ Clocked in successfully at', clockInTime.toLocaleTimeString());
+        alert('✅ Clocked in successfully!\n\nTime: ' + clockInTime.toLocaleTimeString());
+      } else {
+        throw new Error('Invalid response from server');
+      }
     } catch (error) {
-      console.error('Clock in failed:', error);
-      alert('❌ Clock in failed: ' + (error.message || 'Unknown error'));
+      console.error('❌ Clock in failed:', error);
+      const errorMsg = error.response?.data?.error || error.message || 'Failed to connect to server';
+      alert('❌ Clock in failed\n\n' + errorMsg + '\n\nPlease check your connection and try again.');
     } finally {
       setIsProcessingSale(false);
     }
@@ -316,19 +331,39 @@ export default function CashierPOS() {
 
   // Clock out function
   const handleClockOut = async () => {
+    if (!isClockedIn) {
+      alert('ℹ️ You are not clocked in!');
+      return;
+    }
+    
+    const confirm = window.confirm('⏰ Clock Out\n\nAre you sure you want to clock out now?');
+    if (!confirm) return;
+    
     try {
       setIsProcessingSale(true);
+      console.log('⏰ Attempting to clock out...');
+      
       const result = await timeEntries.create('clock_out');
+      
+      console.log('✅ Clock out response:', result);
+      
       setCurrentTimeEntry(result);
       setIsClockedIn(false);
       setClockedInTime(null);
       localStorage.removeItem(`clockIn_${user?.id}_${new Date().toDateString()}`);
-      console.log('✅ Clocked out successfully');
-      const durationStr = result.duration ? `${result.duration} minutes` : 'unknown duration';
-      alert('✅ Clocked out successfully. Duration: ' + durationStr);
+      
+      const durationStr = result.duration 
+        ? `${Math.floor(result.duration / 60)}h ${result.duration % 60}m` 
+        : result.durationMinutes
+        ? `${Math.floor(result.durationMinutes / 60)}h ${result.durationMinutes % 60}m`
+        : 'calculated';
+      
+      console.log('✅ Clocked out successfully. Duration:', durationStr);
+      alert('✅ Clocked out successfully!\n\nDuration: ' + durationStr);
     } catch (error) {
-      console.error('Clock out failed:', error);
-      alert('❌ Clock out failed: ' + (error.message || 'Unknown error'));
+      console.error('❌ Clock out failed:', error);
+      const errorMsg = error.response?.data?.error || error.message || 'Failed to connect to server';
+      alert('❌ Clock out failed\n\n' + errorMsg + '\n\nPlease check your connection and try again.');
     } finally {
       setIsProcessingSale(false);
     }
@@ -359,6 +394,8 @@ export default function CashierPOS() {
 
   const loadData = async () => {
     try {
+      console.log('🔄 Loading cashier data...');
+      
       const [p, s, e, st, b, d] = await Promise.all([
         products.getAll(),
         sales.getAll(),
@@ -367,12 +404,28 @@ export default function CashierPOS() {
         batches.getAll(),
         discounts.getAll().catch(() => [])  // Fallback to empty array if discounts fail
       ]);
-      setProductList(p.filter(prod => prod.visibleToCashier !== false && !prod.expenseOnly));
+      
+      const filteredProducts = p.filter(prod => prod.visibleToCashier !== false && !prod.expenseOnly);
+      
+      setProductList(filteredProducts);
       setData({ sales: s, expenses: e, stats: st });
       setBatchList(b);
       setDiscountList(d || []);
+      
+      console.log('✅ Data loaded:', {
+        products: filteredProducts.length,
+        sales: s.length,
+        expenses: e.length,
+        batches: b.length,
+        discounts: d.length
+      });
     } catch (error) {
-      console.error('Failed to load data:', error);
+      console.error('❌ Failed to load data:', error);
+      const errorMsg = error.response?.data?.error || error.message || 'Failed to connect to server';
+      // Show error only on initial load, not on background refreshes
+      if (!productList.length) {
+        alert('⚠️ Failed to load data\n\n' + errorMsg + '\n\nSome features may not work correctly.');
+      }
     }
   };
 
@@ -454,9 +507,22 @@ export default function CashierPOS() {
     console.log('🛒 [Checkout] Starting optimized checkout flow');
     
     // Prevent double submission
-    if (cart.length === 0 || checkoutLoading) {
-      console.log('⚠️ [Checkout] Blocked: cart empty or already processing');
+    if (cart.length === 0) {
+      alert('❌ Cart is empty! Add products first.');
       return;
+    }
+    
+    if (checkoutLoading) {
+      console.log('⚠️ [Checkout] Already processing, please wait...');
+      return;
+    }
+    
+    // Check if clocked in
+    if (!isClockedIn) {
+      const proceed = confirm('⚠️ You are not clocked in!\n\nDo you want to clock in now before completing the sale?');
+      if (proceed) {
+        await handleClockIn();
+      }
     }
     
     setCheckoutLoading(true);
@@ -600,18 +666,33 @@ export default function CashierPOS() {
             setTimeout(() => alert('Low Stock Alert:\n\n' + warnings), 1000);
           }
           
-          // Background: refresh products from server
-          setTimeout(() => {
-            products.getAll()
-              .then(freshProducts => {
-                const filtered = freshProducts.filter(p => 
-                  p.visibleToCashier !== false && !p.expenseOnly
-                );
-                setProductList(filtered);
-                console.log('🔄 [Checkout] Background refresh complete');
-              })
-              .catch(err => console.warn('Background refresh failed:', err));
-          }, 100);
+          // Trigger global product refresh
+          refreshProducts();
+          
+          // Background: refresh products from server and reload data
+          setTimeout(async () => {
+            try {
+              const [freshProducts, freshSales, freshStats] = await Promise.all([
+                products.getAll(),
+                sales.getAll(),
+                stats.get()
+              ]);
+              
+              const filtered = freshProducts.filter(p => 
+                p.visibleToCashier !== false && !p.expenseOnly
+              );
+              setProductList(filtered);
+              setData(prev => ({
+                ...prev,
+                sales: freshSales,
+                stats: freshStats
+              }));
+              
+              console.log('🔄 [Checkout] Full refresh complete - products & sales updated');
+            } catch (err) {
+              console.warn('Background refresh failed:', err);
+            }
+          }, 200);
         },
         // onError - called on failure
         (errorData) => {

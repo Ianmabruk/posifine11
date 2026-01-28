@@ -9,6 +9,7 @@ import BusinessTypeSelector from './pages/BusinessTypeSelector';
 import PaymentInput from './pages/PaymentInput';
 import BasicDashboard from './pages/BasicDashboard';
 import Landing from './pages/Landing';
+import LandingModern from './components/modern-landing/LandingModern';
 import AuthNew from './pages/AuthNew';
 import Subscription from './pages/Subscription';
 import BuildPOS from './pages/BuildPOS';
@@ -197,8 +198,9 @@ function App() {
         <ScreenLockProvider>
           <BrowserRouter future={{ v7_startTransition: true, v7_relativeSplatPath: true }}>
             <Routes>
-              <Route path="/" element={<Landing />} />
-              <Route path="/get-started" element={<Landing />} />
+              <Route path="/" element={<LandingModern />} />
+              <Route path="/landing-old" element={<Landing />} />
+              <Route path="/get-started" element={<LandingModern />} />
               <Route path="/choose-subscription" element={<Subscription />} />
               <Route path="/auth/login" element={<AuthNew />} />
               <Route path="/auth/signup" element={<AuthNew />} />
