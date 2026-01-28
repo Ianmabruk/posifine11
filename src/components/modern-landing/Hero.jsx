@@ -1,50 +1,100 @@
-import { motion } from "framer-motion";
+import { motion, AnimatePresence } from "framer-motion";
 import { Play, ArrowRight, Check } from "lucide-react";
 import { useNavigate } from "react-router-dom";
+import { useState, useEffect } from "react";
 
 export default function Hero({ onOpenDemo }) {
   const navigate = useNavigate();
+  const [currentBusiness, setCurrentBusiness] = useState(0);
+  const businesses = ["Clinic", "Bar", "Shop", "Hotel", "Restaurant", "Pharmacy"];
+
+  useEffect(() => {
+    const interval = setInterval(() => {
+      setCurrentBusiness((prev) => (prev + 1) % businesses.length);
+    }, 2000);
+    return () => clearInterval(interval);
+  }, []);
 
   return (
-    <section className="relative flex flex-col lg:flex-row items-center justify-between min-h-screen px-6 md:px-12 lg:px-20 bg-gradient-to-br from-[#fef8f0] via-[#f5efe6] to-[#fef8f0] overflow-hidden">
-        {/* Decorative Elements */}
-        <div className="absolute inset-0 opacity-30 pointer-events-none">
-          <div className="absolute top-20 left-10 w-72 h-72 bg-[#cd853f]/20 rounded-full blur-3xl animate-pulse" />
-          <div className="absolute bottom-20 right-10 w-96 h-96 bg-[#8b5a2b]/10 rounded-full blur-3xl" />
+    <section className="relative flex flex-col items-center min-h-screen px-6 md:px-12 lg:px-20 bg-gradient-to-br from-[#fef8f0] via-[#f5efe6] to-[#fef8f0] overflow-hidden">
+      {/* Logo - Top Left */}
+      <motion.div
+        initial={{ opacity: 0, y: -20 }}
+        animate={{ opacity: 1, y: 0 }}
+        className="absolute top-8 left-6 md:left-12 z-50 flex items-center gap-3"
+      >
+        <div className="w-12 h-12 bg-gradient-to-br from-[#6b4c3b] via-[#8b5a2b] to-[#00ff88] rounded-2xl flex items-center justify-center font-bold text-white text-2xl shadow-lg transform hover:scale-110 transition-transform">
+          P
         </div>
+        <span className="text-2xl font-bold text-[#6b4c3b]">PosiFine</span>
+      </motion.div>
 
-        {/* Left: Content */}
+      {/* Decorative Elements */}
+      <div className="absolute inset-0 opacity-30 pointer-events-none">
+        <div className="absolute top-20 left-10 w-72 h-72 bg-[#cd853f]/20 rounded-full blur-3xl animate-pulse" />
+        <div className="absolute bottom-20 right-10 w-96 h-96 bg-[#8b5a2b]/10 rounded-full blur-3xl" />
+      </div>
+
+      {/* Animated Header - Top Center */}
+      <motion.div
+        initial={{ opacity: 0, y: -30 }}
+        animate={{ opacity: 1, y: 0 }}
+        transition={{ delay: 0.3 }}
+        className="absolute top-24 md:top-32 z-10 text-center w-full px-6"
+      >
+        <h2 className="text-2xl md:text-3xl font-bold text-[#6b4c3b] mb-2">
+          Get Smarter with the Smartest POS
+        </h2>
+        <div className="flex items-center justify-center gap-2 text-xl md:text-2xl font-semibold">
+          <span className="text-[#8b5a2b]">Perfect for</span>
+          <AnimatePresence mode="wait">
+            <motion.span
+              key={currentBusiness}
+              initial={{ y: 20, opacity: 0 }}
+              animate={{ y: 0, opacity: 1 }}
+              exit={{ y: -20, opacity: 0 }}
+              transition={{ duration: 0.5 }}
+              className="text-[#00ff88] font-bold min-w-[150px] inline-block"
+            >
+              {businesses[currentBusiness]}
+            </motion.span>
+          </AnimatePresence>
+        </div>
+        <p className="text-[#8b5a2b] mt-2 text-lg">We got your back!</p>
+      </motion.div>
+
+      {/* Main Content */}
+      <motion.div
+        initial={{ opacity: 0, y: 50 }}
+        animate={{ opacity: 1, y: 0 }}
+        transition={{ duration: 0.8, delay: 0.5 }}
+        className="z-10 max-w-4xl text-center mt-48 md:mt-56 mb-12"
+      >
+        {/* Badge */}
         <motion.div
-          initial={{ opacity: 0, x: -50 }}
-          animate={{ opacity: 1, x: 0 }}
-          transition={{ duration: 0.8 }}
-          className="z-10 max-w-2xl text-center lg:text-left mb-12 lg:mb-0"
+          initial={{ opacity: 0, y: 20 }}
+          animate={{ opacity: 1, y: 0 }}
+          transition={{ delay: 0.7 }}
+          className="inline-flex items-center gap-2 px-4 py-2 bg-white/80 backdrop-blur-sm border border-[#cd853f]/30 rounded-full shadow-lg mb-6"
         >
-          {/* Badge */}
-          <motion.div
-            initial={{ opacity: 0, y: 20 }}
-            animate={{ opacity: 1, y: 0 }}
-            transition={{ delay: 0.2 }}
-            className="inline-flex items-center gap-2 px-4 py-2 bg-white/80 backdrop-blur-sm border border-[#cd853f]/30 rounded-full shadow-lg mb-6"
-          >
-            <span className="w-2 h-2 bg-gradient-to-r from-[#8b5a2b] to-[#00ff88] rounded-full animate-pulse" />
-            <span className="text-[#6b4c3b] font-semibold text-sm">
-              🤖 AI-Powered POS • GPT-4 Integration
-            </span>
-          </motion.div>
+          <span className="w-2 h-2 bg-gradient-to-r from-[#8b5a2b] to-[#00ff88] rounded-full animate-pulse" />
+          <span className="text-[#6b4c3b] font-semibold text-sm">
+            AI-Powered POS • GPT-4 Integration
+          </span>
+        </motion.div>
 
-          <motion.h1
-            initial={{ opacity: 0, y: 30 }}
-            animate={{ opacity: 1, y: 0 }}
-            transition={{ delay: 0.3 }}
-            className="text-5xl md:text-6xl lg:text-7xl font-bold mb-6 leading-tight"
-          >
-            <span className="bg-gradient-to-r from-[#6b4c3b] via-[#8b5a2b] to-[#cd853f] bg-clip-text text-transparent">
-              Next-Gen POS
-            </span>
-            <br />
-            <span className="text-[#6b4c3b]">for Your Business</span>
-          </motion.h1>
+        <motion.h1
+          initial={{ opacity: 0, y: 30 }}
+          animate={{ opacity: 1, y: 0 }}
+          transition={{ delay: 0.8 }}
+          className="text-4xl md:text-5xl lg:text-6xl font-bold mb-6 leading-tight"
+        >
+          <span className="bg-gradient-to-r from-[#6b4c3b] via-[#8b5a2b] to-[#cd853f] bg-clip-text text-transparent">
+            Next-Gen POS
+          </span>
+          <br />
+          <span className="text-[#6b4c3b]">for Your Business</span>
+        </motion.h1>
 
           <motion.p
             initial={{ opacity: 0, y: 30 }}
@@ -67,6 +117,7 @@ export default function Hero({ onOpenDemo }) {
             <motion.button
               whileHover={{ scale: 1.05, boxShadow: "0 20px 40px rgba(107, 76, 59, 0.3)" }}
               whileTap={{ scale: 0.95 }}
+              onClick={() => navigate('/choose-subscription')}
               className="group px-8 py-4 bg-gradient-to-r from-[#6b4c3b] via-[#8b5a2b] to-[#cd853f] text-[#fef8f0] rounded-2xl font-semibold shadow-xl hover:shadow-2xl transition-all flex items-center justify-center gap-2"
             >
               Get Started Free

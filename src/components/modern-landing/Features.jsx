@@ -66,7 +66,7 @@ export default function Features() {
             viewport={{ once: true }}
             className="inline-block px-4 py-2 bg-white border border-[#cd853f]/30 rounded-full text-sm font-semibold text-[#6b4c3b] mb-4"
           >
-            ✨ Powerful Features
+            Powerful Features
           </motion.span>
           
           <h2 className="text-4xl md:text-5xl font-bold text-[#6b4c3b] mb-4">

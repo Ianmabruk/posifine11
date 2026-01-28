@@ -8,7 +8,7 @@ export default function Pricing() {
   const plans = [
     {
       name: "Basic",
-      price: "$29",
+      price: "KES 1,000",
       description: "Perfect for small shops",
       features: [
         "Single User",
@@ -23,7 +23,7 @@ export default function Pricing() {
     },
     {
       name: "Ultra",
-      price: "$99",
+      price: "KES 2,500",
       description: "For growing businesses",
       features: [
         "Up to 10 Users",
@@ -39,7 +39,7 @@ export default function Pricing() {
     },
     {
       name: "Pro",
-      price: "$199",
+      price: "KES 3,200",
       description: "Ultimate business solution",
       features: [
         "Unlimited Users",
@@ -74,7 +74,7 @@ export default function Pricing() {
             viewport={{ once: true }}
             className="inline-block px-4 py-2 bg-white border border-[#cd853f]/30 rounded-full text-sm font-semibold text-[#6b4c3b] mb-4"
           >
-            💎 Simple Pricing
+            Simple Pricing
           </motion.span>
           
           <h2 className="text-4xl md:text-5xl font-bold text-[#6b4c3b] mb-4">
@@ -210,7 +210,7 @@ export default function Pricing() {
           </p>
           <div className="flex flex-wrap justify-center items-center gap-8 opacity-60">
             <div className="text-[#6b4c3b] font-semibold">Trusted by 10K+ businesses</div>
-            <div className="text-[#6b4c3b] font-semibold">⭐⭐⭐⭐⭐ 4.9/5 rating</div>
+            <div className="text-[#6b4c3b] font-semibold">4.9/5 rating</div>
             <div className="text-[#6b4c3b] font-semibold">99.9% uptime guaranteed</div>
           </div>
         </motion.div>

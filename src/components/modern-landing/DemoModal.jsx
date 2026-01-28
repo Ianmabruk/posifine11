@@ -84,18 +84,17 @@ export default function DemoModal({ isOpen, onClose }) {
                 {/* Features List */}
                 <div className="mt-6 grid md:grid-cols-3 gap-4">
                   {[
-                    { label: "AI Insights", icon: "🤖" },
-                    { label: "Real-Time Sync", icon: "⚡" },
-                    { label: "Mobile Ready", icon: "📱" }
+                    { label: "AI Insights" },
+                    { label: "Real-Time Sync" },
+                    { label: "Mobile Ready" }
                   ].map((feature, index) => (
                     <motion.div
                       key={index}
                       initial={{ opacity: 0, y: 20 }}
                       animate={{ opacity: 1, y: 0 }}
                       transition={{ delay: index * 0.1 }}
-                      className="flex items-center gap-3 p-3 bg-white rounded-xl shadow-sm"
+                      className="flex items-center justify-center gap-3 p-3 bg-white rounded-xl shadow-sm"
                     >
-                      <span className="text-2xl">{feature.icon}</span>
                       <span className="font-semibold text-[#6b4c3b]">{feature.label}</span>
                     </motion.div>
                   ))}
