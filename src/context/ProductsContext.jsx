@@ -95,6 +95,17 @@ export const ProductsProvider = ({ children }) => {
     window.addEventListener('dataCleared', handleDataCleared);
     window.addEventListener('productsCleared', handleDataCleared);
     
+    return () => {
+      window.removeEventListener('dataCleared', handleDataCleared);
+      window.removeEventListener('productsCleared', handleDataCleared);
+    };
+  }, []); // No dependencies
+
+  const refreshProducts = async () => {
+    setLoading(true);
+    const freshProducts = await fetchProducts();
+    return freshProducts;
+  };
   
   // Allow components to signal they're editing
   const setEditingState = (editing) => {
@@ -110,18 +121,7 @@ export const ProductsProvider = ({ children }) => {
         error, 
         lastUpdated,
         refreshProducts,
-        setEditingState // Export so components can pause auto-refresh when editing= await fetchProducts();
-    return freshProducts;
-  };
-
-  return (
-    <ProductsContext.Provider 
-      value={{ 
-        products, 
-        loading, 
-        error, 
-        lastUpdated,
-        refreshProducts 
+        setEditingState // Export so components can pause auto-refresh when editing
       }}
     >
       {children}
