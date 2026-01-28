@@ -147,14 +147,13 @@ export default function Inventory() {
     };
   }, [hasLoadedInitially]);
 
-  // FIXED: Only sync global products on initial load, not on every change
-  // This prevents the global context refresh from overwriting manual updates
+  // Sync with global products whenever they change
   useEffect(() => {
-    if (globalProducts && globalProducts.length > 0 && productList.length === 0) {
-      console.log('📦 Initial sync from global context:', globalProducts.length, 'products');
+    if (globalProducts && globalProducts.length > 0) {
+      console.log('📦 Syncing from global context:', globalProducts.length, 'products');
       setProductList(globalProducts);
     }
-  }, [globalProducts]); // Only sync when productList is empty (initial load)
+  }, [globalProducts]);
 
   const handleImageUpload = (e, isNewProduct = true) => {
     const file = e.target.files[0];
@@ -328,26 +327,17 @@ export default function Inventory() {
         
         console.log('✅ Stock added successfully:', result);
         
-        // Fetch updated product to ensure we have the correct quantity from backend
-        try {
-          const freshProducts = await refreshProducts();
-          if (freshProducts && freshProducts.length > 0) {
-            setProductList(freshProducts);
-            console.log('✅ Product list refreshed with backend data');
-            
-            // Dispatch stock update event for real-time sync to cashier
-            window.dispatchEvent(new CustomEvent('stock_updated', {
-              detail: { 
-                productId: selectedProduct.id,
-                quantity: quantityToAdd,
-                timestamp: Date.now()
-              }
-            }));
+        // Refresh products from backend - global context will auto-sync to local state
+        await refreshProducts();
+        
+        // Dispatch stock update event for real-time sync to cashier
+        window.dispatchEvent(new CustomEvent('stock_updated', {
+          detail: { 
+            productId: selectedProduct.id,
+            quantity: quantityToAdd,
+            timestamp: Date.now()
           }
-        } catch (refreshError) {
-          console.warn('Failed to refresh products after stock add:', refreshError);
-          // Optimistic update is still in place, so UI shows the change
-        }
+        }));
         
         // Close form and reset
         setNewStock({ quantity: '', expiryDate: '', batchNumber: '', cost: '' });
