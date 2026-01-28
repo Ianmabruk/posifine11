@@ -41,7 +41,8 @@ class WebSocketService {
         return;
       }
 
-      const wsUrl = `${getWebSocketUrl()}/ws/products?token=${encodeURIComponent(token)}`;
+      // Connect to /ws endpoint (NOT /ws/products)
+      const wsUrl = `${getWebSocketUrl()}/ws`;
 
       try {
         this.ws = new WebSocket(wsUrl);
@@ -49,6 +50,11 @@ class WebSocketService {
         this.ws.onopen = () => {
           console.log('✅ WebSocket connected for real-time updates');
           this.reconnectAttempts = 0;
+          
+          // Send authentication message (backend expects this format)
+          this.ws.send(JSON.stringify({ token: token }));
+          console.log('🔐 Authentication sent');
+          
           resolve();
         };
 
@@ -56,6 +62,12 @@ class WebSocketService {
           try {
             const message = JSON.parse(event.data);
             const messageType = message.type ? message.type.toLowerCase() : 'unknown';
+
+            // Handle authentication confirmation
+            if (messageType === 'connected') {
+              console.log('✅ WebSocket authenticated:', message.account_id);
+              return;
+            }
 
             // Normalize event names and handle all message types
             if (messageType === 'stock_updated') {
