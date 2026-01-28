@@ -9,7 +9,7 @@ import BusinessTypeSelector from './pages/BusinessTypeSelector';
 import PaymentInput from './pages/PaymentInput';
 import BasicDashboard from './pages/BasicDashboard';
 import Landing from './pages/Landing';
-import Auth from './pages/Auth';
+import AuthNew from './pages/AuthNew';
 import Subscription from './pages/Subscription';
 import BuildPOS from './pages/BuildPOS';
 import CashierPOS from './pages/CashierPOS';
@@ -200,8 +200,8 @@ function App() {
               <Route path="/" element={<Landing />} />
               <Route path="/get-started" element={<Landing />} />
               <Route path="/choose-subscription" element={<Subscription />} />
-              <Route path="/auth/login" element={<Auth />} />
-              <Route path="/auth/signup" element={<Auth />} />
+              <Route path="/auth/login" element={<AuthNew />} />
+              <Route path="/auth/signup" element={<AuthNew />} />
               <Route path="/plans" element={<Navigate to="/choose-subscription" />} />
               <Route path="/build-pos" element={<BuildPOS />} />
               
