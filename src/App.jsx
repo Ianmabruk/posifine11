@@ -132,6 +132,37 @@ function DashboardRouter() {
   
   if (!user || !user.active) return <Navigate to="/choose-subscription" />;
   
+  // 🎯 PRO PLAN ROUTING - Business-specific dashboards
+  const isPro = user.subscription === 'pro' || user.plan === 'pro' || user.subscription === 'custom' || user.plan === 3000;
+  const businessType = user.businessType || user.business_type;
+  const businessRole = user.businessRole || user.business_role || user.role;
+  
+  if (isPro && businessType) {
+    // Pro users with business type → route to business-specific dashboard
+    console.log('[Dashboard Router] Pro user detected:', { businessType, role: businessRole });
+    
+    // Admins go to admin dashboard for their business type
+    if (user.role === 'admin') {
+      return <Navigate to={`/admin/${businessType}`} />;
+    }
+    
+    // Non-admin Pro users go to their role-specific dashboard
+    if (businessType === 'clinic') {
+      if (businessRole === 'doctor') return <Navigate to="/dashboard/clinic/doctor" />;
+      if (businessRole === 'reception') return <Navigate to="/dashboard/clinic/reception" />;
+      if (businessRole === 'pharmacy') return <Navigate to="/dashboard/clinic/pharmacy" />;
+    }
+    
+    // For other business types or fallback, use ProPlanRouter
+    return <Navigate to="/pro-dashboard" />;
+  }
+  
+  // Pro users WITHOUT business type → redirect to selector
+  if (isPro && !businessType && user.role === 'admin') {
+    return <Navigate to="/select-business-type" />;
+  }
+  
+  // 📦 BASIC / ULTRA PLAN ROUTING - Standard dashboards
   // Route based on ROLE, not package
   if (user.role === 'admin') {
     return <Navigate to="/admin" />;

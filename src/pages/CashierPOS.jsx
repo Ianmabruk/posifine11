@@ -554,6 +554,17 @@ export default function CashierPOS() {
             sales: [newSale, ...prev.sales]
           }));
           
+          // 🔥 CRITICAL: Dispatch sale_completed event for Monitor Dashboard
+          console.log('📢 [Checkout] Dispatching sale_completed event for Monitor');
+          window.dispatchEvent(new CustomEvent('sale_completed', {
+            detail: {
+              sale: newSale,
+              saleId: successData.saleId,
+              total: finalTotal,
+              timestamp: new Date().toISOString()
+            }
+          }));
+          
           // Show success message
           const deductionsSummary = successData.stockDeductions?.products?.map?.(d => 
             `${d.name || d.productName}: -${d.quantity || d.deducted}${d.unit || ''}`

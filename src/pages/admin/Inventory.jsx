@@ -386,8 +386,16 @@ export default function Inventory() {
       showNotification('⚡ Updating product...', 'info');
       
       try {
-        // Make API call without waiting for full response
+        // Make API call and wait for response
         const result = await products.update(editProduct.id, updateData);
+        
+        // Update product list with the actual result from backend
+        if (result && result.id) {
+          setProductList(prevList => 
+            prevList.map(p => p.id === editProduct.id ? result : p)
+          );
+          console.log('✅ Product updated with backend response:', result);
+        }
         
         setShowEditModal(false);
         
