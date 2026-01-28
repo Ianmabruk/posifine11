@@ -132,17 +132,17 @@ export default function AuthNew() {
   };
 
   return (
-    <div className="min-h-screen bg-gradient-to-br from-slate-50 to-slate-100 flex items-center justify-center p-4">
-      <div className="bg-white rounded-2xl shadow-xl max-w-md w-full p-8">
+    <div className="min-h-screen bg-gradient-to-br from-[#fef8f0] via-[#f5efe6] to-[#fef8f0] flex items-center justify-center p-4">
+      <div className="bg-white rounded-3xl shadow-2xl max-w-md w-full p-8 border border-[#cd853f]/20">
         {/* Logo */}
         <div className="text-center mb-8">
-          <div className="w-16 h-16 bg-gradient-to-br from-blue-500 to-indigo-600 rounded-xl mx-auto mb-4 flex items-center justify-center">
-            <span className="text-2xl font-bold text-white">P</span>
+          <div className="w-16 h-16 bg-gradient-to-br from-[#6b4c3b] via-[#8b5a2b] to-[#00ff88] rounded-2xl mx-auto mb-4 flex items-center justify-center shadow-lg">
+            <span className="text-3xl font-bold text-white">P</span>
           </div>
-          <h1 className="text-2xl font-bold text-gray-900 mb-1">
+          <h1 className="text-3xl font-bold text-[#6b4c3b] mb-2">
             {isLogin ? 'Welcome Back' : 'Get Started'}
           </h1>
-          <p className="text-gray-500 text-sm">
+          <p className="text-[#8b5a2b] text-sm">
             {isLogin ? 'Sign in to your account' : 'Create your account today'}
           </p>
         </div>
@@ -150,26 +150,26 @@ export default function AuthNew() {
         <form onSubmit={handleSubmit} className="space-y-5">
           {needsPasswordSetup ? (
             <>
-              <div className="bg-blue-50 border border-blue-200 p-4 rounded-lg">
-                <p className="text-sm text-blue-800 font-medium">Please set a new password</p>
+              <div className="bg-[#f5efe6] border border-[#cd853f]/30 p-4 rounded-lg">
+                <p className="text-sm text-[#6b4c3b] font-medium">Please set a new password</p>
               </div>
               <div className="relative">
-                <Lock className="absolute left-3 top-1/2 -translate-y-1/2 w-5 h-5 text-gray-400" />
+                <Lock className="absolute left-3 top-1/2 -translate-y-1/2 w-5 h-5 text-[#8b5a2b]" />
                 <input
                   type="password"
                   placeholder="New Password"
-                  className="w-full pl-10 pr-4 py-3 rounded-lg border border-gray-300 focus:border-blue-500 focus:ring-2 focus:ring-blue-100 outline-none transition-all"
+                  className="w-full pl-10 pr-4 py-3 rounded-lg border border-[#cd853f]/30 focus:border-[#cd853f] focus:ring-2 focus:ring-[#cd853f]/20 outline-none transition-all"
                   value={formData.newPassword}
                   onChange={(e) => setFormData({ ...formData, newPassword: e.target.value })}
                   required
                 />
               </div>
               <div className="relative">
-                <Lock className="absolute left-3 top-1/2 -translate-y-1/2 w-5 h-5 text-gray-400" />
+                <Lock className="absolute left-3 top-1/2 -translate-y-1/2 w-5 h-5 text-[#8b5a2b]" />
                 <input
                   type="password"
                   placeholder="Confirm Password"
-                  className="w-full pl-10 pr-4 py-3 rounded-lg border border-gray-300 focus:border-blue-500 focus:ring-2 focus:ring-blue-100 outline-none transition-all"
+                  className="w-full pl-10 pr-4 py-3 rounded-lg border border-[#cd853f]/30 focus:border-[#cd853f] focus:ring-2 focus:ring-[#cd853f]/20 outline-none transition-all"
                   value={formData.confirmPassword}
                   onChange={(e) => setFormData({ ...formData, confirmPassword: e.target.value })}
                   required
@@ -180,11 +180,11 @@ export default function AuthNew() {
             <>
               {!isLogin && (
                 <div className="relative">
-                  <User className="absolute left-3 top-1/2 -translate-y-1/2 w-5 h-5 text-gray-400" />
+                  <User className="absolute left-3 top-1/2 -translate-y-1/2 w-5 h-5 text-[#8b5a2b]" />
                   <input
                     type="text"
                     placeholder="Full Name"
-                    className="w-full pl-10 pr-4 py-3 rounded-lg border border-gray-300 focus:border-blue-500 focus:ring-2 focus:ring-blue-100 outline-none transition-all"
+                    className="w-full pl-10 pr-4 py-3 rounded-lg border border-[#cd853f]/30 focus:border-[#cd853f] focus:ring-2 focus:ring-[#cd853f]/20 outline-none transition-all"
                     value={formData.name}
                     onChange={(e) => setFormData({ ...formData, name: e.target.value })}
                     required
@@ -193,11 +193,11 @@ export default function AuthNew() {
               )}
 
               <div className="relative">
-                <Mail className="absolute left-3 top-1/2 -translate-y-1/2 w-5 h-5 text-gray-400" />
+                <Mail className="absolute left-3 top-1/2 -translate-y-1/2 w-5 h-5 text-[#8b5a2b]" />
                 <input
                   type="email"
                   placeholder="Email"
-                  className="w-full pl-10 pr-4 py-3 rounded-lg border border-gray-300 focus:border-blue-500 focus:ring-2 focus:ring-blue-100 outline-none transition-all"
+                  className="w-full pl-10 pr-4 py-3 rounded-lg border border-[#cd853f]/30 focus:border-[#cd853f] focus:ring-2 focus:ring-[#cd853f]/20 outline-none transition-all"
                   value={formData.email}
                   onChange={(e) => setFormData({ ...formData, email: e.target.value })}
                   required
@@ -206,14 +206,14 @@ export default function AuthNew() {
 
               {isLogin && (
                 <div className="space-y-3">
-                  <div className="flex gap-2 bg-gray-100 p-1 rounded-lg">
+                  <div className="flex gap-2 bg-[#f5efe6] p-1 rounded-lg">
                     <button
                       type="button"
                       onClick={() => setLoginMethod('password')}
                       className={`flex-1 py-2 px-4 rounded-md text-sm font-medium transition-all ${
                         loginMethod === 'password' 
-                          ? 'bg-white text-gray-900 shadow-sm' 
-                          : 'text-gray-600 hover:text-gray-900'
+                          ? 'bg-gradient-to-r from-[#6b4c3b] to-[#8b5a2b] text-white shadow-sm' 
+                          : 'text-[#8b5a2b] hover:text-[#6b4c3b]'
                       }`}
                     >
                       Password
@@ -223,8 +223,8 @@ export default function AuthNew() {
                       onClick={() => setLoginMethod('pin')}
                       className={`flex-1 py-2 px-4 rounded-md text-sm font-medium transition-all ${
                         loginMethod === 'pin' 
-                          ? 'bg-white text-gray-900 shadow-sm' 
-                          : 'text-gray-600 hover:text-gray-900'
+                          ? 'bg-gradient-to-r from-[#6b4c3b] to-[#8b5a2b] text-white shadow-sm' 
+                          : 'text-[#8b5a2b] hover:text-[#6b4c3b]'
                       }`}
                     >
                       PIN
@@ -235,11 +235,11 @@ export default function AuthNew() {
 
               {isLogin && loginMethod === 'password' && (
                 <div className="relative">
-                  <Lock className="absolute left-3 top-1/2 -translate-y-1/2 w-5 h-5 text-gray-400" />
+                  <Lock className="absolute left-3 top-1/2 -translate-y-1/2 w-5 h-5 text-[#8b5a2b]" />
                   <input
                     type="password"
                     placeholder="Password"
-                    className="w-full pl-10 pr-4 py-3 rounded-lg border border-gray-300 focus:border-blue-500 focus:ring-2 focus:ring-blue-100 outline-none transition-all"
+                    className="w-full pl-10 pr-4 py-3 rounded-lg border border-[#cd853f]/30 focus:border-[#cd853f] focus:ring-2 focus:ring-[#cd853f]/20 outline-none transition-all"
                     value={formData.password}
                     onChange={(e) => setFormData({ ...formData, password: e.target.value })}
                     required
@@ -249,12 +249,12 @@ export default function AuthNew() {
 
               {isLogin && loginMethod === 'pin' && (
                 <div className="relative">
-                  <Lock className="absolute left-3 top-1/2 -translate-y-1/2 w-5 h-5 text-gray-400" />
+                  <Lock className="absolute left-3 top-1/2 -translate-y-1/2 w-5 h-5 text-[#8b5a2b]" />
                   <input
                     type="text"
                     inputMode="numeric"
                     placeholder="4-digit PIN"
-                    className="w-full pl-10 pr-4 py-3 rounded-lg border border-gray-300 focus:border-blue-500 focus:ring-2 focus:ring-blue-100 outline-none transition-all text-center text-2xl tracking-widest"
+                    className="w-full pl-10 pr-4 py-3 rounded-lg border border-[#cd853f]/30 focus:border-[#cd853f] focus:ring-2 focus:ring-[#cd853f]/20 outline-none transition-all text-center text-2xl tracking-widest"
                     value={formData.pin}
                     onChange={(e) => setFormData({ ...formData, pin: e.target.value.replace(/\D/g, '').slice(0, 4) })}
                     maxLength={4}
@@ -265,11 +265,11 @@ export default function AuthNew() {
 
               {!isLogin && (
                 <div className="relative">
-                  <Lock className="absolute left-3 top-1/2 -translate-y-1/2 w-5 h-5 text-gray-400" />
+                  <Lock className="absolute left-3 top-1/2 -translate-y-1/2 w-5 h-5 text-[#8b5a2b]" />
                   <input
                     type="password"
                     placeholder="Password (min 6 characters)"
-                    className="w-full pl-10 pr-4 py-3 rounded-lg border border-gray-300 focus:border-blue-500 focus:ring-2 focus:ring-blue-100 outline-none transition-all"
+                    className="w-full pl-10 pr-4 py-3 rounded-lg border border-[#cd853f]/30 focus:border-[#cd853f] focus:ring-2 focus:ring-[#cd853f]/20 outline-none transition-all"
                     value={formData.password}
                     onChange={(e) => setFormData({ ...formData, password: e.target.value })}
                     required
@@ -291,7 +291,7 @@ export default function AuthNew() {
           <button
             type="submit"
             disabled={loading}
-            className="w-full bg-gradient-to-r from-blue-500 to-indigo-600 text-white py-3 rounded-lg font-semibold hover:from-blue-600 hover:to-indigo-700 transition-all disabled:opacity-50 disabled:cursor-not-allowed shadow-lg active:scale-[0.98]"
+            className="w-full bg-gradient-to-r from-[#6b4c3b] via-[#8b5a2b] to-[#cd853f] text-white py-3 rounded-2xl font-semibold hover:shadow-xl transition-all disabled:opacity-50 disabled:cursor-not-allowed shadow-lg active:scale-[0.98]"
           >
             {loading ? (
               <span className="flex items-center justify-center gap-2">
@@ -304,14 +304,14 @@ export default function AuthNew() {
 
         {isLogin && !needsPasswordSetup && (
           <div className="mt-4 text-center">
-            <button className="text-sm text-blue-600 hover:text-blue-700 font-medium transition-colors">
+            <button className="text-sm text-[#8b5a2b] hover:text-[#6b4c3b] font-medium transition-colors">
               Forgot password?
             </button>
           </div>
         )}
 
         <div className="mt-6 text-center">
-          <p className="text-sm text-gray-600">
+          <p className="text-sm text-[#8b5a2b]">
             {isLogin ? "Don't have an account?" : "Already have an account?"}
             {' '}
             <button
@@ -321,7 +321,7 @@ export default function AuthNew() {
                 setError('');
                 setNeedsPasswordSetup(false);
               }}
-              className="text-blue-600 hover:text-blue-700 font-semibold transition-colors"
+              className="text-[#6b4c3b] hover:text-[#cd853f] font-semibold transition-colors"
             >
               {isLogin ? 'Sign up' : 'Sign in'}
             </button>

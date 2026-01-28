@@ -184,33 +184,28 @@ export default function Subscription() {
   };
 
   return (
-    <div className="min-h-screen bg-gradient-to-br from-indigo-50 via-purple-50 to-pink-50 py-6 md:py-12 px-4 md:px-6">
+    <div className="min-h-screen bg-gradient-to-br from-[#fef8f0] via-[#f5efe6] to-[#fef8f0] py-6 md:py-12 px-4 md:px-6">
       <div className="max-w-7xl mx-auto">
         {/* Header with Logo */}
         <div className="flex items-center justify-between mb-8">
           <button 
             onClick={() => navigate('/')}
-            className="flex items-center gap-2 text-gray-600 hover:text-gray-800 transition"
+            className="flex items-center gap-2 text-[#8b5a2b] hover:text-[#6b4c3b] transition-colors"
           >
             <ArrowLeft size={20} />
-            Back to Home
+            <span className="font-medium">Back to Home</span>
           </button>
           
           <motion.div 
-            className="flex items-center gap-2"
+            className="flex items-center gap-3"
             initial={{ opacity: 0, scale: 0.8 }}
             animate={{ opacity: 1, scale: 1 }}
             transition={{ duration: 0.5 }}
           >
-            <img
-              src="/posifine-logo.png"
-              alt="PosiFine Logo"
-              className="w-8 h-8 object-contain"
-              onError={(e) => {
-                e.target.style.display = 'none';
-              }}
-            />
-            <span className="text-xl font-bold bg-gradient-to-r from-blue-600 to-purple-600 bg-clip-text text-transparent">
+            <div className="w-10 h-10 bg-gradient-to-br from-[#6b4c3b] via-[#8b5a2b] to-[#00ff88] rounded-2xl flex items-center justify-center font-bold text-white text-xl shadow-lg">
+              P
+            </div>
+            <span className="text-2xl font-bold text-[#6b4c3b]">
               PosiFine
             </span>
           </motion.div>
@@ -225,7 +220,7 @@ export default function Subscription() {
             initial={{ opacity: 0, scale: 0.9 }}
             animate={{ opacity: 1, scale: 1 }}
             transition={{ duration: 0.5, delay: 0.2 }}
-            className="text-3xl md:text-5xl font-bold mb-3 md:mb-4 bg-gradient-to-r from-blue-600 to-purple-600 bg-clip-text text-transparent"
+            className="text-3xl md:text-5xl font-bold mb-3 md:mb-4 bg-gradient-to-r from-[#6b4c3b] via-[#8b5a2b] to-[#cd853f] bg-clip-text text-transparent"
           >
             Choose Your Plan
           </motion.h1>
@@ -233,7 +228,7 @@ export default function Subscription() {
             initial={{ opacity: 0 }}
             animate={{ opacity: 1 }}
             transition={{ duration: 0.5, delay: 0.4 }}
-            className="text-gray-600 text-base md:text-lg"
+            className="text-[#8b5a2b] text-base md:text-lg"
           >
             Pick the perfect plan and unlock your POS potential
           </motion.p>
@@ -251,35 +246,35 @@ export default function Subscription() {
                 onClick={() => setSelected(plan.id)}
                 className={`card cursor-pointer transition-all transform ${
                   selected === plan.id 
-                    ? 'ring-4 ring-blue-600 shadow-2xl scale-105 bg-gradient-to-br from-blue-50 to-purple-50' 
-                    : 'hover:shadow-lg hover:scale-102'
+                    ? 'ring-4 ring-[#cd853f] shadow-2xl scale-105 bg-gradient-to-br from-[#6b4c3b] via-[#8b5a2b] to-[#cd853f] text-white' 
+                    : 'bg-white hover:shadow-xl hover:scale-102 border border-[#cd853f]/30 hover:border-[#cd853f]'
                 } relative`}
               >
                 {plan.popular && (
                   <div className="absolute -top-3 left-1/2 -translate-x-1/2">
-                    <span className="bg-gradient-to-r from-blue-600 to-purple-600 text-white px-3 py-1 rounded-full text-xs font-bold shadow-lg">
+                    <span className="bg-gradient-to-r from-[#6b4c3b] to-[#00ff88] text-white px-3 py-1 rounded-full text-xs font-bold shadow-lg">
                       Most Popular
                     </span>
                   </div>
                 )}
                 
                 <div className="flex items-center gap-2 mb-3">
-                  <div className={`w-10 h-10 rounded-xl bg-gradient-to-br ${plan.color} flex items-center justify-center`}>
+                  <div className={`w-10 h-10 rounded-xl bg-gradient-to-br ${selected === plan.id ? 'from-white/20 to-white/10' : plan.color} flex items-center justify-center`}>
                     <Icon className="w-5 h-5 text-white" />
                   </div>
-                  <h3 className="text-lg md:text-xl font-bold">{plan.name}</h3>
+                  <h3 className={`text-lg md:text-xl font-bold ${selected === plan.id ? 'text-white' : 'text-[#6b4c3b]'}`}>{plan.name}</h3>
                 </div>
                 
                 <div className="mb-4">
-                  <span className="text-2xl md:text-3xl font-bold">KSH {plan.price}</span>
-                  <span className="text-gray-600 text-xs md:text-sm">/month</span>
+                  <span className="text-2xl md:text-3xl font-bold">KES {plan.price.toLocaleString()}</span>
+                  <span className={`text-xs md:text-sm ${selected === plan.id ? 'text-white/80' : 'text-[#8b5a2b]'}`}>/month</span>
                 </div>
                 
                 <ul className="space-y-2">
                   {plan.features.map((feature, i) => (
                     <li key={i} className="flex items-start gap-2 text-xs md:text-sm">
-                      <Check className="w-4 h-4 text-green-600 flex-shrink-0 mt-0.5" />
-                      <span>{feature}</span>
+                      <Check className={`w-4 h-4 flex-shrink-0 mt-0.5 ${selected === plan.id ? 'text-[#00ff88]' : 'text-green-600'}`} />
+                      <span className={selected === plan.id ? 'text-white' : 'text-gray-700'}>{feature}</span>
                     </li>
                   ))}
                 </ul>
@@ -297,9 +292,9 @@ export default function Subscription() {
           <motion.button 
             type="button"
             onClick={handleGetStarted}
-            whileHover={{ scale: 1.05, boxShadow: "0 20px 40px rgba(0,0,0,0.2)" }}
+            whileHover={{ scale: 1.05, boxShadow: "0 20px 40px rgba(107, 76, 59, 0.3)" }}
             whileTap={{ scale: 0.95 }}
-            className="cursor-pointer px-8 md:px-12 py-3 md:py-4 text-base md:text-lg font-bold bg-gradient-to-r from-blue-600 to-purple-600 text-white rounded-lg shadow-lg"
+            className="cursor-pointer px-8 md:px-12 py-3 md:py-4 text-base md:text-lg font-bold bg-gradient-to-r from-[#6b4c3b] via-[#8b5a2b] to-[#cd853f] text-white rounded-2xl shadow-xl hover:shadow-2xl transition-all"
           >
             Get Started
           </motion.button>
