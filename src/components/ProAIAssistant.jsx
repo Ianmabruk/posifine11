@@ -25,6 +25,10 @@ export default function ProAIAssistant({ role, businessType }) {
       setError(null);
 
       const token = localStorage.getItem('token');
+      if (!token) {
+        throw new Error('Please login to use AI assistant');
+      }
+
       const response = await axios.post(
         `${API_BASE}/api/ai/pro/ask`,
         {
@@ -42,7 +46,12 @@ export default function ProAIAssistant({ role, businessType }) {
         }
       );
 
-      const aiAnswer = response.data.data.answer;
+      const aiAnswer = response.data?.data?.answer || response.data?.answer;
+      
+      if (!aiAnswer) {
+        throw new Error('No response received from AI assistant');
+      }
+      
       setAnswer(aiAnswer);
 
       // Add to history
@@ -59,10 +68,22 @@ export default function ProAIAssistant({ role, businessType }) {
       setQuestion('');
     } catch (err) {
       console.error('AI assistant error:', err);
-      setError(
-        err.response?.data?.message || 
-        'Failed to get AI response. Make sure you have a Pro plan.'
-      );
+      
+      let errorMessage = 'Failed to get AI response';
+      
+      if (err.response?.status === 401) {
+        errorMessage = 'Please login to use AI assistant';
+      } else if (err.response?.status === 403) {
+        errorMessage = err.response?.data?.message || 'AI assistant requires Pro plan';
+      } else if (err.response?.status === 500) {
+        errorMessage = 'AI service temporarily unavailable. Using fallback mode.';
+      } else if (err.message) {
+        errorMessage = err.message;
+      } else if (err.response?.data?.message) {
+        errorMessage = err.response.data.message;
+      }
+      
+      setError(errorMessage);
     } finally {
       setLoading(false);
     }

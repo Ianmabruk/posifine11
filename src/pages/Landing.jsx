@@ -35,6 +35,14 @@ export default function Landing() {
 
   const features = [
     {
+      icon: Sparkles,
+      title: '🤖 AI-Powered Forecasting',
+      description: 'GPT-4 powered sales predictions and intelligent business insights that learn from your data',
+      color: 'from-[#8b5a2b] via-[#00ff88] to-[#ff6b35]',
+      badge: 'NEW',
+      highlighted: true
+    },
+    {
       icon: Activity,
       title: 'Real-Time Sync',
       description: 'Instant inventory updates across all devices with WebSocket technology',
@@ -49,25 +57,26 @@ export default function Landing() {
     {
       icon: TrendingUp,
       title: 'Smart Analytics',
-      description: 'AI-powered insights to boost revenue and optimize inventory',
+      description: 'AI-driven insights to boost revenue and optimize inventory automatically',
       color: 'from-[#8b5a2b] via-[#00ff88] to-[#ff6b35]'
     },
     {
       icon: Package,
-      title: 'Inventory Management',
-      description: 'Automated stock tracking with low-stock alerts and reordering',
+      title: 'Intelligent Inventory',
+      description: 'AI-powered stock predictions with automated reordering and anomaly detection',
       color: 'from-[#d2691e] to-[#00ff88]'
     },
     {
       icon: Users,
-      title: 'Multi-User Access',
-      description: 'Team collaboration with customizable permissions per role',
-      color: 'from-[#cd853f] to-[#8b5a2b]'
+      title: 'Staff Performance AI',
+      description: 'Automated performance analysis and personalized coaching recommendations',
+      color: 'from-[#cd853f] to-[#8b5a2b]',
+      badge: 'PRO'
     },
     {
       icon: BarChart3,
-      title: 'Advanced Reports',
-      description: 'Comprehensive sales reports with trend analysis and forecasting',
+      title: 'Predictive Reports',
+      description: 'Machine learning forecasts with trend analysis and growth projections',
       color: 'from-[#ff6b35] to-[#cd853f]'
     }
   ];
@@ -225,7 +234,7 @@ export default function Landing() {
                   className="inline-block px-4 py-2 bg-gradient-to-r from-[#8b5a2b]/20 to-[#00ff88]/20 border border-[#8b5a2b]/40 rounded-full text-sm font-medium mb-6"
                 >
                   <span className="bg-gradient-to-r from-[#cd853f] to-[#00ff88] bg-clip-text text-transparent">
-                    ⚡ Next-Generation POS Technology
+                    🤖 AI-Powered POS • GPT-4 Integration
                   </span>
                 </motion.span>
 
@@ -238,8 +247,8 @@ export default function Landing() {
                 </h1>
 
                 <p className="text-xl text-[#e8c39e] mb-8 leading-relaxed">
-                  Experience the future of point-of-sale with real-time sync,
-                  intelligent analytics, and enterprise-grade security.
+                  Experience the future of point-of-sale powered by <span className="font-semibold bg-gradient-to-r from-[#00ff88] to-[#ff6b35] bg-clip-text text-transparent">GPT-4 AI</span>.
+                  Get real-time forecasting, intelligent insights, and enterprise-grade security.
                   Built for modern businesses that demand excellence.
                 </p>
 
@@ -472,7 +481,7 @@ export default function Landing() {
                 {/* Feature Highlights */}
                 <div className="grid grid-cols-3 gap-4 mt-6">
                   {[
-                    { icon: Zap, label: "Real-time Sync" },
+                    { icon: Sparkles, label: "AI Forecasting" },
                     { icon: TrendingUp, label: "Live Analytics" },
                     { icon: Shield, label: "Secure Payments" }
                   ].map((feature, i) => (
@@ -569,12 +578,23 @@ export default function Landing() {
                 viewport={{ once: true }}
                 transition={{ delay: index * 0.1 }}
                 whileHover={{ y: -10 }}
-                className="group relative bg-[#3d2817]/80 backdrop-blur-xl rounded-3xl p-8 shadow-lg border border-[#8b5a2b]/40 hover:shadow-2xl hover:shadow-[#8b5a2b]/50 transition-all duration-300"
+                className={`group relative bg-[#3d2817]/80 backdrop-blur-xl rounded-3xl p-8 shadow-lg border transition-all duration-300 ${
+                  feature.highlighted 
+                    ? 'border-[#00ff88]/60 shadow-2xl shadow-[#00ff88]/30' 
+                    : 'border-[#8b5a2b]/40 hover:shadow-2xl hover:shadow-[#8b5a2b]/50'
+                }`}
               >
+                {/* Badge for NEW or PRO features */}
+                {feature.badge && (
+                  <div className="absolute -top-3 -right-3 px-3 py-1 bg-gradient-to-r from-[#ff6b35] to-[#ff8c42] text-white text-xs font-bold rounded-full shadow-lg animate-pulse">
+                    {feature.badge}
+                  </div>
+                )}
+
                 {/* Gradient Glow on Hover */}
                 <div className={`absolute inset-0 bg-gradient-to-br ${feature.color} opacity-0 group-hover:opacity-20 rounded-3xl transition-opacity duration-300`} />
                 
-                <div className={`w-14 h-14 bg-gradient-to-br ${feature.color} rounded-2xl flex items-center justify-center mb-6 shadow-lg shadow-[#8b5a2b]/40`}>
+                <div className={`w-14 h-14 bg-gradient-to-br ${feature.color} rounded-2xl flex items-center justify-center mb-6 shadow-lg shadow-[#8b5a2b]/40 ${feature.highlighted ? 'animate-pulse' : ''}`}>
                   <feature.icon className="w-7 h-7 text-white" />
                 </div>
 
@@ -594,6 +614,198 @@ export default function Landing() {
               </motion.div>
             ))}
           </div>
+        </div>
+      </section>
+
+      {/* AI Features Showcase Section */}
+      <section className="relative z-10 py-32 px-6 bg-gradient-to-br from-[#1a0f08]/80 via-[#2c1810]/60 to-[#3d2817]/80">
+        <div className="max-w-7xl mx-auto">
+          <motion.div
+            initial={{ opacity: 0, y: 20 }}
+            whileInView={{ opacity: 1, y: 0 }}
+            viewport={{ once: true }}
+            className="text-center mb-16"
+          >
+            <motion.div
+              animate={{
+                scale: [1, 1.05, 1],
+                rotate: [0, 5, -5, 0]
+              }}
+              transition={{ duration: 3, repeat: Infinity }}
+              className="inline-block mb-6"
+            >
+              <div className="px-6 py-3 bg-gradient-to-r from-[#8b5a2b]/30 via-[#00ff88]/30 to-[#ff6b35]/30 border-2 border-[#00ff88]/60 rounded-full backdrop-blur-xl">
+                <span className="text-2xl font-bold bg-gradient-to-r from-[#00ff88] to-[#ff6b35] bg-clip-text text-transparent">
+                  🤖 Powered by GPT-4 AI
+                </span>
+              </div>
+            </motion.div>
+
+            <h2 className="text-5xl lg:text-6xl font-bold mb-6">
+              <span className="text-[#f5deb3]">Intelligent Business</span>
+              <br />
+              <span className="bg-gradient-to-r from-[#00ff88] via-[#8b5a2b] to-[#ff6b35] bg-clip-text text-transparent">
+                Powered by AI
+              </span>
+            </h2>
+            <p className="text-xl text-[#e8c39e] max-w-3xl mx-auto">
+              Your POS system that thinks, learns, and grows with your business. 
+              Powered by OpenAI GPT-4 for cutting-edge predictions and insights.
+            </p>
+          </motion.div>
+
+          {/* AI Features Grid */}
+          <div className="grid lg:grid-cols-2 gap-12 mb-16">
+            {/* AI Forecasting */}
+            <motion.div
+              initial={{ opacity: 0, x: -30 }}
+              whileInView={{ opacity: 1, x: 0 }}
+              viewport={{ once: true }}
+              className="group relative bg-gradient-to-br from-[#3d2817]/90 to-[#2c1810]/90 backdrop-blur-xl rounded-3xl p-8 border-2 border-[#00ff88]/40 hover:border-[#00ff88]/80 transition-all duration-300 overflow-hidden"
+            >
+              <div className="absolute top-0 right-0 w-64 h-64 bg-gradient-to-br from-[#00ff88]/20 to-transparent rounded-full blur-3xl group-hover:scale-150 transition-transform duration-500" />
+              
+              <div className="relative z-10">
+                <div className="w-16 h-16 bg-gradient-to-br from-[#00ff88] to-[#8b5a2b] rounded-2xl flex items-center justify-center mb-6 shadow-xl shadow-[#00ff88]/40">
+                  <TrendingUp className="w-8 h-8 text-white" />
+                </div>
+
+                <h3 className="text-3xl font-bold text-white mb-4">
+                  📈 Sales Forecasting
+                </h3>
+                <p className="text-[#e8c39e] text-lg mb-6">
+                  Advanced machine learning analyzes your historical data to predict future sales trends with up to 95% accuracy. 
+                  Plan inventory, staffing, and promotions with confidence.
+                </p>
+
+                <div className="space-y-3">
+                  {['4-week revenue predictions', 'Profit margin forecasts', 'Seasonal trend analysis', 'Growth projections'].map((item, i) => (
+                    <div key={i} className="flex items-center gap-3">
+                      <div className="w-2 h-2 bg-[#00ff88] rounded-full" />
+                      <span className="text-[#d2a679]">{item}</span>
+                    </div>
+                  ))}
+                </div>
+              </div>
+            </motion.div>
+
+            {/* AI Assistant */}
+            <motion.div
+              initial={{ opacity: 0, x: 30 }}
+              whileInView={{ opacity: 1, x: 0 }}
+              viewport={{ once: true }}
+              className="group relative bg-gradient-to-br from-[#3d2817]/90 to-[#2c1810]/90 backdrop-blur-xl rounded-3xl p-8 border-2 border-[#ff6b35]/40 hover:border-[#ff6b35]/80 transition-all duration-300 overflow-hidden"
+            >
+              <div className="absolute top-0 right-0 w-64 h-64 bg-gradient-to-br from-[#ff6b35]/20 to-transparent rounded-full blur-3xl group-hover:scale-150 transition-transform duration-500" />
+              
+              <div className="relative z-10">
+                <div className="w-16 h-16 bg-gradient-to-br from-[#ff6b35] to-[#cd853f] rounded-2xl flex items-center justify-center mb-6 shadow-xl shadow-[#ff6b35]/40">
+                  <Sparkles className="w-8 h-8 text-white" />
+                </div>
+
+                <h3 className="text-3xl font-bold text-white mb-4 flex items-center gap-2">
+                  💬 AI Business Assistant
+                  <span className="px-2 py-1 text-xs bg-[#ff6b35] text-white rounded-full">PRO</span>
+                </h3>
+                <p className="text-[#e8c39e] text-lg mb-6">
+                  Ask anything about your business. Get expert advice tailored to your industry—bars, clinics, hotels, supermarkets, and more.
+                </p>
+
+                <div className="space-y-3">
+                  {['Business strategy recommendations', 'Industry-specific tips', 'Customer behavior insights', 'Real-time Q&A support'].map((item, i) => (
+                    <div key={i} className="flex items-center gap-3">
+                      <div className="w-2 h-2 bg-[#ff6b35] rounded-full" />
+                      <span className="text-[#d2a679]">{item}</span>
+                    </div>
+                  ))}
+                </div>
+              </div>
+            </motion.div>
+
+            {/* Staff Performance */}
+            <motion.div
+              initial={{ opacity: 0, x: -30 }}
+              whileInView={{ opacity: 1, x: 0 }}
+              viewport={{ once: true }}
+              className="group relative bg-gradient-to-br from-[#3d2817]/90 to-[#2c1810]/90 backdrop-blur-xl rounded-3xl p-8 border-2 border-[#8b5a2b]/40 hover:border-[#8b5a2b]/80 transition-all duration-300 overflow-hidden"
+            >
+              <div className="absolute top-0 right-0 w-64 h-64 bg-gradient-to-br from-[#8b5a2b]/20 to-transparent rounded-full blur-3xl group-hover:scale-150 transition-transform duration-500" />
+              
+              <div className="relative z-10">
+                <div className="w-16 h-16 bg-gradient-to-br from-[#8b5a2b] to-[#cd853f] rounded-2xl flex items-center justify-center mb-6 shadow-xl shadow-[#8b5a2b]/40">
+                  <Users className="w-8 h-8 text-white" />
+                </div>
+
+                <h3 className="text-3xl font-bold text-white mb-4">
+                  👥 Staff Performance AI
+                </h3>
+                <p className="text-[#e8c39e] text-lg mb-6">
+                  Automatically analyze employee performance, identify top performers, and provide personalized coaching recommendations.
+                </p>
+
+                <div className="space-y-3">
+                  {['Automated scoring (0-100)', 'Performance trends', 'Coaching suggestions', 'Team comparisons'].map((item, i) => (
+                    <div key={i} className="flex items-center gap-3">
+                      <div className="w-2 h-2 bg-[#8b5a2b] rounded-full" />
+                      <span className="text-[#d2a679]">{item}</span>
+                    </div>
+                  ))}
+                </div>
+              </div>
+            </motion.div>
+
+            {/* Anomaly Detection */}
+            <motion.div
+              initial={{ opacity: 0, x: 30 }}
+              whileInView={{ opacity: 1, x: 0 }}
+              viewport={{ once: true }}
+              className="group relative bg-gradient-to-br from-[#3d2817]/90 to-[#2c1810]/90 backdrop-blur-xl rounded-3xl p-8 border-2 border-[#cd853f]/40 hover:border-[#cd853f]/80 transition-all duration-300 overflow-hidden"
+            >
+              <div className="absolute top-0 right-0 w-64 h-64 bg-gradient-to-br from-[#cd853f]/20 to-transparent rounded-full blur-3xl group-hover:scale-150 transition-transform duration-500" />
+              
+              <div className="relative z-10">
+                <div className="w-16 h-16 bg-gradient-to-br from-[#cd853f] to-[#d2691e] rounded-2xl flex items-center justify-center mb-6 shadow-xl shadow-[#cd853f]/40">
+                  <Shield className="w-8 h-8 text-white" />
+                </div>
+
+                <h3 className="text-3xl font-bold text-white mb-4">
+                  🛡️ Smart Anomaly Detection
+                </h3>
+                <p className="text-[#e8c39e] text-lg mb-6">
+                  AI monitors your sales, inventory, and expenses 24/7 to detect unusual patterns, potential fraud, or operational issues.
+                </p>
+
+                <div className="space-y-3">
+                  {['Fraud detection', 'Inventory discrepancies', 'Unusual expense patterns', 'Instant alerts'].map((item, i) => (
+                    <div key={i} className="flex items-center gap-3">
+                      <div className="w-2 h-2 bg-[#cd853f] rounded-full" />
+                      <span className="text-[#d2a679]">{item}</span>
+                    </div>
+                  ))}
+                </div>
+              </div>
+            </motion.div>
+          </div>
+
+          {/* AI CTA */}
+          <motion.div
+            initial={{ opacity: 0, y: 20 }}
+            whileInView={{ opacity: 1, y: 0 }}
+            viewport={{ once: true }}
+            className="text-center"
+          >
+            <div className="inline-block bg-gradient-to-r from-[#3d2817]/80 to-[#2c1810]/80 backdrop-blur-xl rounded-2xl p-8 border border-[#8b5a2b]/40">
+              <p className="text-lg text-[#e8c39e] mb-4">
+                🚀 All AI features included in Pro plan • No additional cost
+              </p>
+              <button
+                onClick={() => navigate('/choose-subscription')}
+                className="px-8 py-4 bg-gradient-to-r from-[#8b5a2b] via-[#00ff88] to-[#ff6b35] text-white rounded-full font-bold text-lg shadow-xl shadow-[#00ff88]/40 hover:shadow-2xl hover:scale-105 transition-all"
+              >
+                Try AI Features Free for 14 Days
+              </button>
+            </div>
+          </motion.div>
         </div>
       </section>
 

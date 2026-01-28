@@ -32,6 +32,10 @@ export default function AICharts({ periods = 4 }) {
       setError(null);
 
       const token = localStorage.getItem('token');
+      if (!token) {
+        throw new Error('Please login to view AI forecasts');
+      }
+
       const response = await axios.get(
         `${API_BASE}/api/ai/forecast?periods=${periods}`,
         {
@@ -41,19 +45,41 @@ export default function AICharts({ periods = 4 }) {
         }
       );
 
-      const forecastData = response.data.data;
+      // Handle both success response formats
+      const forecastData = response.data?.data || response.data;
+      
+      // Check if we have valid forecast data
+      if (!forecastData || !forecastData.labels || !forecastData.revenue) {
+        throw new Error('Invalid forecast data received');
+      }
       
       // Transform data for Recharts
       const chartData = forecastData.labels.map((label, i) => ({
         name: label,
-        revenue: forecastData.revenue[i],
-        profit: forecastData.profit[i]
+        revenue: forecastData.revenue[i] || 0,
+        profit: forecastData.profit[i] || 0
       }));
 
       setData(chartData);
     } catch (err) {
       console.error('Forecast fetch error:', err);
-      setError(err.response?.data?.message || 'Failed to load forecast');
+      
+      // Provide helpful error messages
+      let errorMessage = 'Failed to load forecast';
+      
+      if (err.response?.status === 401) {
+        errorMessage = 'Please login to view AI forecasts';
+      } else if (err.response?.status === 403) {
+        errorMessage = err.response?.data?.message || 'AI features require Pro plan';
+      } else if (err.response?.status === 500) {
+        errorMessage = 'AI service temporarily unavailable. Using fallback mode.';
+      } else if (err.message) {
+        errorMessage = err.message;
+      } else if (err.response?.data?.message) {
+        errorMessage = err.response.data.message;
+      }
+      
+      setError(errorMessage);
     } finally {
       setLoading(false);
     }
@@ -61,20 +87,37 @@ export default function AICharts({ periods = 4 }) {
 
   if (loading) {
     return (
-      <div className="ai-charts-loading">
-        <div className="spinner"></div>
-        <p>Generating AI forecast...</p>
+      <div className="flex flex-col items-center justify-center py-12">
+        <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-purple-600 mb-4"></div>
+        <p className="text-gray-600 font-medium">🤖 Generating AI forecast...</p>
+        <p className="text-sm text-gray-500 mt-1">Analyzing sales patterns...</p>
       </div>
     );
   }
 
   if (error) {
     return (
-      <div className="ai-charts-error">
-        <p className="error-message">⚠️ {error}</p>
-        <button onClick={fetchForecast} className="retry-btn">
-          Retry
-        </button>
+      <div className="bg-gradient-to-r from-orange-50 to-red-50 rounded-lg p-6 border border-orange-200">
+        <div className="flex items-start space-x-3">
+          <div className="flex-shrink-0">
+            <svg className="w-6 h-6 text-orange-600" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z" />
+            </svg>
+          </div>
+          <div className="flex-1">
+            <h3 className="text-sm font-semibold text-orange-900 mb-1">AI Forecast Unavailable</h3>
+            <p className="text-sm text-orange-700 mb-3">{error}</p>
+            <button 
+              onClick={fetchForecast} 
+              className="px-4 py-2 bg-orange-600 text-white rounded-lg hover:bg-orange-700 transition text-sm font-medium"
+            >
+              🔄 Retry
+            </button>
+          </div>
+        </div>
+        <div className="mt-4 text-xs text-orange-600 bg-orange-100 rounded p-2">
+          <strong>Note:</strong> AI forecasting requires OpenAI API key. The system will use basic predictions if the API is unavailable.
+        </div>
       </div>
     );
   }
