@@ -162,7 +162,7 @@ export default function Landing() {
       </div>
 
       {/* Navigation */}
-      <nav className="relative z-50 px-6 py-6">
+      <nav className="sticky top-0 z-50 px-6 py-6 bg-gradient-to-r from-[#2c1810]/95 via-[#3d2817]/95 to-[#2c1810]/95 backdrop-blur-xl border-b border-[#8b5a2b]/20">
         <div className="max-w-7xl mx-auto flex items-center justify-between">
           <motion.div
             initial={{ opacity: 0, x: -20 }}
@@ -180,8 +180,14 @@ export default function Landing() {
           <motion.div
             initial={{ opacity: 0, x: 20 }}
             animate={{ opacity: 1, x: 0 }}
-            className="flex items-center gap-4"
+            className="flex items-center gap-6"
           >
+            <a href="#features" className="text-[#e8c39e] hover:text-white font-medium transition-colors hidden md:block">
+              Features
+            </a>
+            <a href="#pricing" className="text-[#e8c39e] hover:text-white font-medium transition-colors hidden md:block">
+              Pricing
+            </a>
             <button
               onClick={() => navigate('/auth/login')}
               className="px-6 py-2.5 text-[#f5deb3] hover:text-white font-medium transition-colors"
@@ -231,7 +237,7 @@ export default function Landing() {
                   </span>
                 </h1>
 
-                <p className="text-xl text-[#d2a679] mb-8 leading-relaxed">
+                <p className="text-xl text-[#e8c39e] mb-8 leading-relaxed">
                   Experience the future of point-of-sale with real-time sync,
                   intelligent analytics, and enterprise-grade security.
                   Built for modern businesses that demand excellence.
@@ -260,7 +266,7 @@ export default function Landing() {
                 </div>
 
                 {/* Trust Indicators */}
-                <div className="flex items-center gap-8 text-sm text-[#d2a679]">
+                <div className="flex items-center gap-8 text-sm text-[#e8c39e]">
                   <div className="flex items-center gap-2">
                     <Check className="w-5 h-5 text-[#00ff88]" />
                     <span>No credit card</span>
@@ -522,7 +528,7 @@ export default function Landing() {
                 <div className="text-4xl font-bold bg-gradient-to-r from-[#cd853f] via-[#00ff88] to-[#ff6b35] bg-clip-text text-transparent mb-2">
                   {stat.value}
                 </div>
-                <div className="text-[#d2a679] font-medium">{stat.label}</div>
+                <div className="text-[#e8c39e] font-medium">{stat.label}</div>
               </motion.div>
             ))}
           </div>
@@ -530,7 +536,7 @@ export default function Landing() {
       </section>
 
       {/* Features Grid */}
-      <section ref={featuresRef} className="relative z-10 py-32 px-6">
+      <section id="features" ref={featuresRef} className="relative z-10 py-32 px-6">
         <div className="max-w-7xl mx-auto">
           <motion.div
             initial={{ opacity: 0, y: 20 }}
@@ -549,7 +555,7 @@ export default function Landing() {
                 Performance
               </span>
             </h2>
-            <p className="text-xl text-[#d2a679] max-w-2xl mx-auto">
+            <p className="text-xl text-[#e8c39e] max-w-2xl mx-auto">
               Everything you need to run your business efficiently, all in one beautiful platform
             </p>
           </motion.div>
@@ -572,10 +578,10 @@ export default function Landing() {
                   <feature.icon className="w-7 h-7 text-white" />
                 </div>
 
-                <h3 className="text-2xl font-bold text-[#f5deb3] mb-3">
+                <h3 className="text-2xl font-bold text-[#f5f0e8] mb-3">
                   {feature.title}
                 </h3>
-                <p className="text-[#d2a679] leading-relaxed">
+                <p className="text-[#e8c39e] leading-relaxed">
                   {feature.description}
                 </p>
 
@@ -662,11 +668,11 @@ export default function Landing() {
               </span>
             </div>
 
-            <p className="text-[#d2a679] text-sm">
+            <p className="text-[#e8c39e] text-sm">
               © 2026 Mabrixel Technologies. All rights reserved.
             </p>
 
-            <div className="flex items-center gap-6 text-sm text-[#d2a679]">
+            <div className="flex items-center gap-6 text-sm text-[#e8c39e]">
               <button onClick={() => navigate('/choose-subscription')} className="hover:text-[#f5deb3] transition-colors">
                 Pricing
               </button>

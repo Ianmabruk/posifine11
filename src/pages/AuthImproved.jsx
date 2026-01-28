@@ -2,10 +2,11 @@ import { useState } from 'react';
 import { useNavigate, useLocation } from 'react-router-dom';
 import { auth } from '../services/api';
 import { useAuth } from '../context/AuthContext';
-import { Mail, Lock, User } from 'lucide-react';
+import { Mail, Lock, User, Sparkles } from 'lucide-react';
+import { motion } from 'framer-motion';
 import { getDashboardRoute, debugRoutingDecision } from '../utils/dashboardRouting';
 
-export default function Auth() {
+export default function AuthImproved() {
   const location = useLocation();
   const [isLogin, setIsLogin] = useState(location.pathname === '/auth/login');
   const [loginMethod, setLoginMethod] = useState('password');
@@ -93,117 +94,89 @@ export default function Auth() {
           res = await auth.login({ email: formData.email, password: formData.password });
         }
       } else {
-        // Handle signup - all signups create admin users
         const selectedPlan = getSelectedPlan();
         const planId = localStorage.getItem('planId') || selectedPlan?.id || 'basic';
-        // Get businessType from localStorage (set in Subscription.jsx)
         const businessType = localStorage.getItem('businessType') || localStorage.getItem('selectedBusinessType') || selectedPlan?.business_type;
-        const selectedFeatures = localStorage.getItem('selectedFeatures');
-        
-        console.log('[SIGNUP] Plan:', planId, 'BusinessType:', businessType);
-        
-        res = await auth.signup({
+
+        const signupPayload = {
           email: formData.email,
           password: formData.password,
           name: formData.name,
           plan: planId,
-          business_type: businessType,  // Use underscore to match backend
-          selectedFeatures: selectedFeatures ? JSON.parse(selectedFeatures) : []
-        });
+          business_type: businessType || undefined
+        };
+
+        res = await auth.signup(signupPayload);
       }
-      
-      if (res.needsPasswordSetup) {
+
+      if (!res?.token || !res?.user) {
+        throw new Error('Invalid response from server');
+      }
+
+      if (res.user.needsPasswordSetup) {
         setNeedsPasswordSetup(true);
-        setFormData({ ...formData, email: res.email });
-        setError('');
         setLoading(false);
         return;
       }
 
-      if (!res || !res.user || !res.token) {
-        throw new Error('Authentication failed. Please try again.');
-      }
-
-      // Track authentication activity
-      const authActivity = {
-        id: Date.now(),
-        type: isLogin ? 'login' : 'signup',
-        user: {
-          id: res.user.id,
-          name: res.user.name,
-          email: res.user.email,
-          role: res.user.role,
-          subscription: res.user.subscription || res.user.plan,
-          businessType: res.user.businessType || res.user.business_type,
-          plan: res.user.plan || 'free'
-        },
-        timestamp: new Date().toISOString(),
-        ip: 'Unknown',
-        userAgent: navigator.userAgent
-      };
-      
-      // Store activity in localStorage for main admin to see
-      const activities = JSON.parse(localStorage.getItem('authActivities') || '[]');
-      activities.unshift(authActivity);
-      activities.splice(50); // Keep only last 50 activities
-      localStorage.setItem('authActivities', JSON.stringify(activities));
-
-      // Login user (saves token and user data)
       await login(res);
-      
-      // Show success notification
-      const action = isLogin ? 'logged in' : 'signed up';
-      console.log(`✅ User ${res.user.name} ${action} successfully`);
-      
-      // ============================================================
-      // CRITICAL: INTELLIGENT DASHBOARD ROUTING
-      // ============================================================
-      // Uses getDashboardRoute() utility to determine correct path
-      // based on subscription, role, and businessType
-      // ============================================================
-      
-      // Debug routing decision
-      debugRoutingDecision(res.user);
-      
-      // Get the correct dashboard route
+
       const dashboardRoute = getDashboardRoute(res.user);
-      
-      console.log(`🚀 Redirecting to: ${dashboardRoute}`);
-      navigate(dashboardRoute, { replace: true });
+      navigate(dashboardRoute);
 
     } catch (err) {
-      console.error('Authentication error:', err);
-      
-      let errorMessage = err.message || 'Authentication failed. Please try again.';
-      if (err.status === 401) {
-        localStorage.removeItem('token');
-        localStorage.removeItem('user');
-        errorMessage = 'Invalid credentials. Please try again.';
-      }
-      
-      setError(errorMessage);
+      console.error('Auth error:', err);
+      setError(err.message || 'Authentication failed');
     } finally {
       setLoading(false);
     }
   };
 
   return (
-    <div className="min-h-screen bg-gradient-to-br from-indigo-50 via-purple-50 to-pink-50 flex items-center justify-center p-4">
-      <div className="bg-white rounded-2xl shadow-2xl max-w-md w-full p-8">
-        <div className="text-center mb-8">
-          <div className="w-16 h-16 bg-gradient-to-br from-blue-600 to-purple-600 rounded-2xl mx-auto mb-4 flex items-center justify-center">
-            <span className="text-2xl font-bold text-white">POS</span>
+    <div className="min-h-screen bg-gradient-to-br from-[#2c1810] via-[#3d2817] to-[#1a0f08] flex items-center justify-center py-12 px-4 sm:px-6 lg:px-8 relative overflow-hidden">
+      {/* African Pattern Background */}
+      <div className="fixed inset-0 opacity-10 pointer-events-none">
+        <svg className="w-full h-full">
+          <defs>
+            <pattern id="authPattern" x="0" y="0" width="120" height="120" patternUnits="userSpaceOnUse">
+              <circle cx="20" cy="20" r="3" fill="rgba(139, 90, 43, 0.4)" />
+              <circle cx="100" cy="20" r="3" fill="rgba(205, 133, 63, 0.4)" />
+              <circle cx="20" cy="100" r="3" fill="rgba(205, 133, 63, 0.4)" />
+              <circle cx="100" cy="100" r="3" fill="rgba(139, 90, 43, 0.4)" />
+            </pattern>
+          </defs>
+          <rect width="100%" height="100%" fill="url(#authPattern)" />
+        </svg>
+      </div>
+
+      {/* Warm gradient orbs */}
+      <motion.div
+        animate={{ x: [0, 50, 0], y: [0, -50, 0] }}
+        transition={{ duration: 20, repeat: Infinity, ease: "easeInOut" }}
+        className="absolute top-1/4 left-1/4 w-96 h-96 bg-gradient-to-br from-[#8b5a2b]/20 via-[#00ff88]/10 to-transparent rounded-full blur-3xl pointer-events-none"
+      />
+      
+      <motion.div
+        initial={{ opacity: 0, y: 20 }}
+        animate={{ opacity: 1, y: 0 }}
+        transition={{ duration: 0.5 }}
+        className="relative max-w-md w-full bg-[#3d2817]/80 backdrop-blur-xl rounded-2xl shadow-2xl border border-[#8b5a2b]/40 p-8 space-y-8"
+      >
+        {/* Logo Header */}
+        <div className="flex flex-col items-center">
+          <div className="w-16 h-16 bg-gradient-to-br from-[#8b5a2b] via-[#00ff88] to-[#cd853f] rounded-2xl flex items-center justify-center shadow-lg shadow-[#8b5a2b]/40 mb-4">
+            <Sparkles className="w-8 h-8 text-white" />
           </div>
-          <h1 className="text-3xl font-bold mb-2 bg-gradient-to-r from-blue-600 to-purple-600 bg-clip-text text-transparent">
-            {isLogin ? 'Welcome Back' : 'Get Started'}
-          </h1>
-          <p className="text-gray-600">{isLogin ? 'Login to your account' : 'Create your account'}</p>
+          <h2 className="text-3xl font-bold bg-gradient-to-r from-[#f5deb3] via-[#00ff88] to-[#ff6b35] bg-clip-text text-transparent">
+            {needsPasswordSetup ? 'Setup Password' : (isLogin ? 'Welcome Back' : 'Create Account')}
+          </h2>
+          <p className="text-[#e8c39e] mt-2">{isLogin ? 'Login to your account' : 'Start your journey today'}</p>
         </div>
 
         <form onSubmit={handleSubmit} className="space-y-6">
           {needsPasswordSetup ? (
             <>
-              <p className="text-sm text-gray-600 text-center mb-4">Please set your password to continue.</p>
+              <p className="text-sm text-[#e8c39e] text-center mb-4">Please set your password to continue.</p>
               <div className="relative">
                 <Lock className="absolute left-3 top-1/2 -translate-y-1/2 w-5 h-5 text-[#8b5a2b]" />
                 <input
@@ -247,7 +220,7 @@ export default function Auth() {
                 <Mail className="absolute left-3 top-1/2 -translate-y-1/2 w-5 h-5 text-[#8b5a2b]" />
                 <input
                   type="email"
-                  placeholder="Email"
+                  placeholder="Email Address"
                   className="w-full pl-10 pr-4 py-3 rounded-lg bg-[#2c1810]/60 border border-[#8b5a2b]/40 focus:border-[#00ff88]/60 focus:ring-2 focus:ring-[#00ff88]/20 text-[#f5deb3] placeholder-[#8b5a2b] transition-all"
                   value={formData.email}
                   onChange={(e) => setFormData({ ...formData, email: e.target.value })}
@@ -262,7 +235,7 @@ export default function Auth() {
                     <button
                       type="button"
                       onClick={() => setLoginMethod('password')}
-                      className={`flex-1 py-2 px-3 rounded-lg text-sm font-medium transition-all ${
+                      className={`flex-1 py-2.5 px-4 rounded-lg text-sm font-medium transition-all ${
                         loginMethod === 'password' 
                           ? 'bg-gradient-to-r from-[#8b5a2b] to-[#00ff88] text-white shadow-lg' 
                           : 'bg-[#2c1810]/60 text-[#e8c39e] border border-[#8b5a2b]/40 hover:border-[#8b5a2b]/60'
@@ -273,7 +246,7 @@ export default function Auth() {
                     <button
                       type="button"
                       onClick={() => setLoginMethod('pin')}
-                      className={`flex-1 py-2 px-3 rounded-lg text-sm font-medium transition-all ${
+                      className={`flex-1 py-2.5 px-4 rounded-lg text-sm font-medium transition-all ${
                         loginMethod === 'pin' 
                           ? 'bg-gradient-to-r from-[#8b5a2b] to-[#00ff88] text-white shadow-lg' 
                           : 'bg-[#2c1810]/60 text-[#e8c39e] border border-[#8b5a2b]/40 hover:border-[#8b5a2b]/60'
@@ -304,6 +277,7 @@ export default function Auth() {
                   <Lock className="absolute left-3 top-1/2 -translate-y-1/2 w-5 h-5 text-[#8b5a2b]" />
                   <input
                     type="text"
+                    inputMode="numeric"
                     placeholder="4-digit PIN"
                     className="w-full pl-10 pr-4 py-3 rounded-lg bg-[#2c1810]/60 border border-[#8b5a2b]/40 focus:border-[#00ff88]/60 focus:ring-2 focus:ring-[#00ff88]/20 text-[#f5deb3] placeholder-[#8b5a2b] transition-all text-center text-2xl tracking-widest"
                     value={formData.pin}
@@ -386,9 +360,20 @@ export default function Auth() {
             {isLogin ? "Don't have an account? Sign up" : "Already have an account? Login"}
           </button>
         </div>
-      </div>
+
+        {/* Back to Home */}
+        <div className="text-center pt-4 border-t border-[#8b5a2b]/20">
+          <button
+            onClick={() => navigate('/')}
+            className="text-sm text-[#e8c39e] hover:text-[#f5deb3] transition-colors flex items-center justify-center gap-2 mx-auto"
+          >
+            <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M10 19l-7-7m0 0l7-7m-7 7h18" />
+            </svg>
+            Back to Home
+          </button>
+        </div>
+      </motion.div>
     </div>
   );
 }
-
-
