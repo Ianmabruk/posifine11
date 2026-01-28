@@ -22,6 +22,8 @@ import ShoesCashierPOS from './pages/cashier/ShoesCashierPOS';
 import MainAdmin from './pages/MainAdmin';
 import AdminClinicDashboard from './pages/admin/AdminClinicDashboard';
 import AdminBarDashboard from './pages/admin/AdminBarDashboard';
+import AdminHotelDashboard from './pages/admin/AdminHotelDashboard';
+import AdminSupermarketDashboard from './pages/admin/AdminSupermarketDashboard';
 import ClinicDoctorDashboard from './pages/dashboards/clinic/ClinicDoctorDashboard';
 import { ProtectedRoute as RouteGuard, ProPlanGuard, RoleGuard, BusinessTypeGuard, AdminGuard } from './components/RouteGuards';
 import ReminderModal from './components/ReminderModal';
@@ -215,6 +217,28 @@ function App() {
                     <BusinessTypeGuard requiredType="bar">
                       <AdminGuard>
                         <AdminBarDashboard />
+                      </AdminGuard>
+                    </BusinessTypeGuard>
+                  </ProPlanGuard>
+                </RouteGuard>
+              } />
+              <Route path="/admin/hotel" element={
+                <RouteGuard>
+                  <ProPlanGuard>
+                    <BusinessTypeGuard requiredType="hotel">
+                      <AdminGuard>
+                        <AdminHotelDashboard />
+                      </AdminGuard>
+                    </BusinessTypeGuard>
+                  </ProPlanGuard>
+                </RouteGuard>
+              } />
+              <Route path="/admin/supermarket" element={
+                <RouteGuard>
+                  <ProPlanGuard>
+                    <BusinessTypeGuard requiredType="supermarket">
+                      <AdminGuard>
+                        <AdminSupermarketDashboard />
                       </AdminGuard>
                     </BusinessTypeGuard>
                   </ProPlanGuard>

@@ -1,26 +1,33 @@
 import { useState, useEffect } from 'react';
 import { useAuth } from '../../context/AuthContext';
-import { Users, Plus, Mail, Shield, Activity, MessageSquare } from 'lucide-react';
+import { Users, Plus, ShoppingCart, Package, DollarSign, MessageSquare, TrendingUp } from 'lucide-react';
 import api from '../../services/api';
 
-export default function AdminClinicDashboard() {
+export default function AdminSupermarketDashboard() {
   const { user } = useAuth();
   const [staff, setStaff] = useState([]);
   const [messages, setMessages] = useState([]);
   const [showAddStaff, setShowAddStaff] = useState(false);
   const [loading, setLoading] = useState(true);
+  const [stats, setStats] = useState({
+    todaySales: 0,
+    todayOrders: 0,
+    lowStockItems: 0,
+    departments: 0
+  });
 
-  // Available clinic roles
-  const clinicRoles = [
-    { value: 'registrar', label: 'Registrar/Reception', icon: Users },
-    { value: 'doctor', label: 'Doctor', icon: Activity },
-    { value: 'pharmacist', label: 'Pharmacist', icon: Shield },
-    { value: 'cashier', label: 'Cashier', icon: Mail }
+  // Available supermarket roles
+  const supermarketRoles = [
+    { value: 'department_head', label: 'Department Head', icon: Package },
+    { value: 'cashier', label: 'Cashier', icon: DollarSign },
+    { value: 'stock_clerk', label: 'Stock Clerk', icon: ShoppingCart },
+    { value: 'supervisor', label: 'Supervisor', icon: TrendingUp }
   ];
 
   useEffect(() => {
     loadStaff();
     loadMessages();
+    loadStats();
   }, []);
 
   const loadStaff = async () => {
@@ -43,6 +50,20 @@ export default function AdminClinicDashboard() {
     }
   };
 
+  const loadStats = async () => {
+    try {
+      const response = await api.get('/api/v2/monitor/stats');
+      setStats({
+        todaySales: response.data.totalSales || 0,
+        todayOrders: response.data.transactionCount || 0,
+        lowStockItems: 0, // TODO: Integrate with inventory
+        departments: 8 // Mock value
+      });
+    } catch (error) {
+      console.error('Failed to load stats:', error);
+    }
+  };
+
   const handleAddStaff = async (formData) => {
     try {
       // Convert camelCase to snake_case for backend
@@ -62,21 +83,21 @@ export default function AdminClinicDashboard() {
   };
 
   return (
-    <div className="min-h-screen bg-gradient-to-br from-blue-50 via-white to-cyan-50">
+    <div className="min-h-screen bg-gradient-to-br from-emerald-50 via-white to-green-50">
       {/* Header */}
-      <div className="bg-gradient-to-r from-blue-600 via-cyan-600 to-teal-600 shadow-lg">
+      <div className="bg-gradient-to-r from-emerald-600 via-green-600 to-teal-600 shadow-lg">
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
           <div className="flex items-center justify-between">
             <div>
               <h1 className="text-4xl font-bold text-white flex items-center">
-                <span className="text-5xl mr-3">🏥</span>
-                Clinic Admin Dashboard
+                <span className="text-5xl mr-3">🛒</span>
+                Supermarket Admin Dashboard
               </h1>
-              <p className="text-cyan-100 mt-2 text-lg">Manage your clinic staff and operations</p>
+              <p className="text-emerald-100 mt-2 text-lg">Manage your supermarket staff and operations</p>
             </div>
             <button
               onClick={() => setShowAddStaff(true)}
-              className="flex items-center px-6 py-3 bg-white text-blue-600 rounded-xl hover:bg-blue-50 shadow-lg transform transition hover:scale-105 font-semibold"
+              className="flex items-center px-6 py-3 bg-white text-emerald-600 rounded-xl hover:bg-emerald-50 shadow-lg transform transition hover:scale-105 font-semibold"
             >
               <Plus className="w-5 h-5 mr-2" />
               Add Staff
@@ -86,22 +107,65 @@ export default function AdminClinicDashboard() {
       </div>
 
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
-        {/* Stats Cards */}
+        {/* Business Stats Cards */}
         <div className="grid grid-cols-1 md:grid-cols-4 gap-6 mb-8">
-          {clinicRoles.map((role, idx) => {
+          <div className="bg-gradient-to-br from-emerald-500 to-emerald-600 rounded-xl shadow-lg p-6 text-white transform transition hover:scale-105">
+            <div className="flex items-center justify-between">
+              <div>
+                <p className="text-sm text-emerald-100 font-medium">Today's Sales</p>
+                <p className="text-3xl font-bold mt-2">${stats.todaySales.toFixed(2)}</p>
+              </div>
+              <DollarSign className="w-12 h-12 opacity-80" />
+            </div>
+          </div>
+
+          <div className="bg-gradient-to-br from-green-500 to-green-600 rounded-xl shadow-lg p-6 text-white transform transition hover:scale-105">
+            <div className="flex items-center justify-between">
+              <div>
+                <p className="text-sm text-green-100 font-medium">Orders</p>
+                <p className="text-3xl font-bold mt-2">{stats.todayOrders}</p>
+              </div>
+              <ShoppingCart className="w-12 h-12 opacity-80" />
+            </div>
+          </div>
+
+          <div className="bg-gradient-to-br from-teal-500 to-teal-600 rounded-xl shadow-lg p-6 text-white transform transition hover:scale-105">
+            <div className="flex items-center justify-between">
+              <div>
+                <p className="text-sm text-teal-100 font-medium">Low Stock</p>
+                <p className="text-3xl font-bold mt-2">{stats.lowStockItems}</p>
+              </div>
+              <Package className="w-12 h-12 opacity-80" />
+            </div>
+          </div>
+
+          <div className="bg-gradient-to-br from-cyan-500 to-cyan-600 rounded-xl shadow-lg p-6 text-white transform transition hover:scale-105">
+            <div className="flex items-center justify-between">
+              <div>
+                <p className="text-sm text-cyan-100 font-medium">Departments</p>
+                <p className="text-3xl font-bold mt-2">{stats.departments}</p>
+              </div>
+              <TrendingUp className="w-12 h-12 opacity-80" />
+            </div>
+          </div>
+        </div>
+
+        {/* Staff Stats Cards */}
+        <div className="grid grid-cols-1 md:grid-cols-4 gap-6 mb-8">
+          {supermarketRoles.map((role, idx) => {
             const Icon = role.icon;
             const count = staff.filter(s => s.business_role === role.value).length;
             const gradients = [
-              'from-blue-500 to-blue-600',
-              'from-cyan-500 to-cyan-600',
+              'from-emerald-500 to-emerald-600',
+              'from-green-500 to-green-600',
               'from-teal-500 to-teal-600',
-              'from-green-500 to-green-600'
+              'from-cyan-500 to-cyan-600'
             ];
             return (
               <div key={role.value} className={`bg-gradient-to-br ${gradients[idx]} rounded-xl shadow-lg p-6 text-white transform transition hover:scale-105`}>
                 <div className="flex items-center justify-between">
                   <div>
-                    <p className="text-sm text-blue-100 font-medium">{role.label}</p>
+                    <p className="text-sm text-emerald-100 font-medium">{role.label}</p>
                     <p className="text-3xl font-bold mt-2">{count}</p>
                   </div>
                   <Icon className="w-12 h-12 opacity-80" />
@@ -113,13 +177,13 @@ export default function AdminClinicDashboard() {
 
         {/* Recent Messages */}
         {messages.length > 0 && (
-          <div className="bg-white rounded-xl shadow-lg mb-8 p-6 border border-blue-100">
+          <div className="bg-white rounded-xl shadow-lg mb-8 p-6 border border-emerald-100">
             <div className="flex items-center justify-between mb-6">
               <h2 className="text-2xl font-bold text-gray-900 flex items-center">
-                <MessageSquare className="w-7 h-7 mr-3 text-blue-600" />
+                <MessageSquare className="w-7 h-7 mr-3 text-emerald-600" />
                 Recent Messages
               </h2>
-              <a href="/messages" className="text-blue-600 hover:text-blue-700 font-semibold">View all →</a>
+              <a href="/messages" className="text-emerald-600 hover:text-emerald-700 font-semibold">View all →</a>
             </div>
             <div className="space-y-3">
               {messages.map((msg) => (
@@ -130,7 +194,7 @@ export default function AdminClinicDashboard() {
                       <span className="text-xs text-gray-500">{new Date(msg.timestamp).toLocaleString()}</span>
                     </div>
                     <p className="text-sm text-gray-600 mt-1">{msg.content}</p>
-                    <span className="text-xs text-blue-600 mt-1 inline-block">From: {msg.fromRole}</span>
+                    <span className="text-xs text-emerald-600 mt-1 inline-block">From: {msg.fromRole}</span>
                   </div>
                 </div>
               ))}
@@ -139,9 +203,9 @@ export default function AdminClinicDashboard() {
         )}
 
         {/* Staff List */}
-        <div className="bg-white rounded-xl shadow-lg border border-blue-100">
-          <div className="p-6 border-b border-gray-200 bg-gradient-to-r from-blue-50 to-cyan-50">
-            <h2 className="text-2xl font-bold text-gray-900">Clinic Staff</h2>
+        <div className="bg-white rounded-xl shadow-lg border border-emerald-100">
+          <div className="p-6 border-b border-gray-200 bg-gradient-to-r from-emerald-50 to-green-50">
+            <h2 className="text-2xl font-bold text-gray-900">Supermarket Staff</h2>
           </div>
           <div className="p-6">
             {loading ? (
@@ -152,7 +216,7 @@ export default function AdminClinicDashboard() {
                 <p className="text-gray-600 mb-4">No staff members yet</p>
                 <button
                   onClick={() => setShowAddStaff(true)}
-                  className="text-blue-600 hover:text-blue-700 font-medium"
+                  className="text-emerald-600 hover:text-emerald-700 font-medium"
                 >
                   Add your first staff member
                 </button>
@@ -177,7 +241,7 @@ export default function AdminClinicDashboard() {
                         </td>
                         <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-600">{member.email}</td>
                         <td className="px-6 py-4 whitespace-nowrap">
-                          <span className="px-2 py-1 text-xs font-semibold rounded-full bg-blue-100 text-blue-800">
+                          <span className="px-2 py-1 text-xs font-semibold rounded-full bg-emerald-100 text-emerald-800">
                             {member.business_role || member.role}
                           </span>
                         </td>
@@ -189,7 +253,7 @@ export default function AdminClinicDashboard() {
                           </span>
                         </td>
                         <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-600">
-                          <button className="text-blue-600 hover:text-blue-700 mr-3">Edit</button>
+                          <button className="text-emerald-600 hover:text-emerald-700 mr-3">Edit</button>
                           <button className="text-red-600 hover:text-red-700">Remove</button>
                         </td>
                       </tr>
@@ -205,7 +269,7 @@ export default function AdminClinicDashboard() {
       {/* Add Staff Modal */}
       {showAddStaff && (
         <AddStaffModal
-          roles={clinicRoles}
+          roles={supermarketRoles}
           onClose={() => setShowAddStaff(false)}
           onSubmit={handleAddStaff}
         />
@@ -235,7 +299,7 @@ function AddStaffModal({ roles, onClose, onSubmit }) {
   return (
     <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 backdrop-blur-sm">
       <div className="bg-white rounded-2xl shadow-2xl max-w-md w-full mx-4 transform transition-all">
-        <div className="p-6 border-b border-gray-200 bg-gradient-to-r from-blue-600 to-cyan-600">
+        <div className="p-6 border-b border-gray-200 bg-gradient-to-r from-emerald-600 to-green-600">
           <h3 className="text-2xl font-bold text-white">Add New Staff Member</h3>
         </div>
         <form onSubmit={handleSubmit} className="p-6 space-y-4">
@@ -245,8 +309,8 @@ function AddStaffModal({ roles, onClose, onSubmit }) {
               type="text"
               value={formData.name}
               onChange={(e) => setFormData({ ...formData, name: e.target.value })}
-              className="w-full px-4 py-3 border border-gray-300 rounded-xl focus:ring-2 focus:ring-blue-500 focus:border-transparent transition"
-              placeholder="Dr. John Doe"
+              className="w-full px-4 py-3 border border-gray-300 rounded-xl focus:ring-2 focus:ring-emerald-500 focus:border-transparent transition"
+              placeholder="John Doe"
               required
             />
           </div>
@@ -256,8 +320,8 @@ function AddStaffModal({ roles, onClose, onSubmit }) {
               type="email"
               value={formData.email}
               onChange={(e) => setFormData({ ...formData, email: e.target.value })}
-              className="w-full px-4 py-3 border border-gray-300 rounded-xl focus:ring-2 focus:ring-blue-500 focus:border-transparent transition"
-              placeholder="john@clinic.com"
+              className="w-full px-4 py-3 border border-gray-300 rounded-xl focus:ring-2 focus:ring-emerald-500 focus:border-transparent transition"
+              placeholder="john@supermarket.com"
               required
             />
           </div>
@@ -267,7 +331,7 @@ function AddStaffModal({ roles, onClose, onSubmit }) {
               type="password"
               value={formData.password}
               onChange={(e) => setFormData({ ...formData, password: e.target.value })}
-              className="w-full px-4 py-3 border border-gray-300 rounded-xl focus:ring-2 focus:ring-blue-500 focus:border-transparent transition"
+              className="w-full px-4 py-3 border border-gray-300 rounded-xl focus:ring-2 focus:ring-emerald-500 focus:border-transparent transition"
               placeholder="••••••••"
               required
               minLength={6}
@@ -278,7 +342,7 @@ function AddStaffModal({ roles, onClose, onSubmit }) {
             <select
               value={formData.businessRole}
               onChange={(e) => setFormData({ ...formData, businessRole: e.target.value })}
-              className="w-full px-4 py-3 border border-gray-300 rounded-xl focus:ring-2 focus:ring-blue-500 focus:border-transparent transition"
+              className="w-full px-4 py-3 border border-gray-300 rounded-xl focus:ring-2 focus:ring-emerald-500 focus:border-transparent transition"
               required
             >
               <option value="">Select role...</option>
@@ -297,7 +361,7 @@ function AddStaffModal({ roles, onClose, onSubmit }) {
             </button>
             <button
               type="submit"
-              className="px-6 py-3 bg-gradient-to-r from-blue-600 to-cyan-600 text-white rounded-xl hover:from-blue-700 hover:to-cyan-700 transition font-semibold shadow-lg"
+              className="px-6 py-3 bg-gradient-to-r from-emerald-600 to-green-600 text-white rounded-xl hover:from-emerald-700 hover:to-green-700 transition font-semibold shadow-lg"
             >
               Add Staff
             </button>

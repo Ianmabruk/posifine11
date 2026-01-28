@@ -44,28 +44,38 @@ export default function AdminBarDashboard() {
 
   const handleAddStaff = async (formData) => {
     try {
-      await api.post('/api/business/users', formData);
+      // Convert camelCase to snake_case for backend
+      const payload = {
+        name: formData.name,
+        email: formData.email,
+        password: formData.password,
+        business_role: formData.businessRole
+      };
+      await api.post('/api/business/users', payload);
       setShowAddStaff(false);
       loadStaff();
     } catch (error) {
       console.error('Failed to add staff:', error);
-      alert('Failed to add staff member');
+      alert('Failed to add staff member: ' + (error.response?.data?.error || error.message));
     }
   };
 
   return (
-    <div className="min-h-screen bg-gray-50">
+    <div className="min-h-screen bg-gradient-to-br from-purple-50 via-white to-pink-50">
       {/* Header */}
-      <div className="bg-gradient-to-r from-purple-600 to-indigo-600 shadow">
-        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-6">
+      <div className="bg-gradient-to-r from-purple-600 via-pink-600 to-indigo-600 shadow-lg">
+        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
           <div className="flex items-center justify-between">
             <div>
-              <h1 className="text-3xl font-bold text-white">🍻 Bar Admin Dashboard</h1>
-              <p className="text-purple-100 mt-1">Manage your bar staff and operations</p>
+              <h1 className="text-4xl font-bold text-white flex items-center">
+                <span className="text-5xl mr-3">🍻</span>
+                Bar Admin Dashboard
+              </h1>
+              <p className="text-purple-100 mt-2 text-lg">Manage your bar staff and operations</p>
             </div>
             <button
               onClick={() => setShowAddStaff(true)}
-              className="flex items-center px-4 py-2 bg-white text-purple-600 rounded-lg hover:bg-gray-100"
+              className="flex items-center px-6 py-3 bg-white text-purple-600 rounded-xl hover:bg-purple-50 shadow-lg transform transition hover:scale-105 font-semibold"
             >
               <Plus className="w-5 h-5 mr-2" />
               Add Staff
@@ -77,17 +87,22 @@ export default function AdminBarDashboard() {
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
         {/* Stats Cards */}
         <div className="grid grid-cols-1 md:grid-cols-3 gap-6 mb-8">
-          {barRoles.map((role) => {
+          {barRoles.map((role, idx) => {
             const Icon = role.icon;
             const count = staff.filter(s => s.business_role === role.value).length;
+            const gradients = [
+              'from-purple-500 to-purple-600',
+              'from-pink-500 to-pink-600',
+              'from-indigo-500 to-indigo-600'
+            ];
             return (
-              <div key={role.value} className="bg-white rounded-lg shadow p-6">
+              <div key={role.value} className={`bg-gradient-to-br ${gradients[idx]} rounded-xl shadow-lg p-6 text-white transform transition hover:scale-105`}>
                 <div className="flex items-center justify-between">
                   <div>
-                    <p className="text-sm text-gray-600">{role.label}</p>
-                    <p className="text-2xl font-bold text-gray-900 mt-1">{count}</p>
+                    <p className="text-sm text-purple-100 font-medium">{role.label}</p>
+                    <p className="text-3xl font-bold mt-2">{count}</p>
                   </div>
-                  <Icon className="w-10 h-10 text-purple-600" />
+                  <Icon className="w-12 h-12 opacity-80" />
                 </div>
               </div>
             );
@@ -96,13 +111,13 @@ export default function AdminBarDashboard() {
 
         {/* Recent Messages */}
         {messages.length > 0 && (
-          <div className="bg-white rounded-lg shadow mb-8 p-6">
-            <div className="flex items-center justify-between mb-4">
-              <h2 className="text-xl font-bold text-gray-900 flex items-center">
-                <MessageSquare className="w-6 h-6 mr-2 text-purple-600" />
+          <div className="bg-white rounded-xl shadow-lg mb-8 p-6 border border-purple-100">
+            <div className="flex items-center justify-between mb-6">
+              <h2 className="text-2xl font-bold text-gray-900 flex items-center">
+                <MessageSquare className="w-7 h-7 mr-3 text-purple-600" />
                 Recent Messages
               </h2>
-              <a href="/messages" className="text-purple-600 hover:text-purple-700">View all</a>
+              <a href="/messages" className="text-purple-600 hover:text-purple-700 font-semibold">View all →</a>
             </div>
             <div className="space-y-3">
               {messages.map((msg) => (
@@ -122,9 +137,9 @@ export default function AdminBarDashboard() {
         )}
 
         {/* Staff List */}
-        <div className="bg-white rounded-lg shadow">
-          <div className="p-6 border-b border-gray-200">
-            <h2 className="text-xl font-bold text-gray-900">Bar Staff</h2>
+        <div className="bg-white rounded-xl shadow-lg border border-purple-100">
+          <div className="p-6 border-b border-gray-200 bg-gradient-to-r from-purple-50 to-pink-50">
+            <h2 className="text-2xl font-bold text-gray-900">Bar Staff</h2>
           </div>
           <div className="p-6">
             {loading ? (
@@ -216,10 +231,10 @@ function AddStaffModal({ roles, onClose, onSubmit }) {
   };
 
   return (
-    <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
-      <div className="bg-white rounded-lg shadow-xl max-w-md w-full mx-4">
-        <div className="p-6 border-b border-gray-200">
-          <h3 className="text-xl font-bold text-gray-900">Add New Staff Member</h3>
+    <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 backdrop-blur-sm">
+      <div className="bg-white rounded-2xl shadow-2xl max-w-md w-full mx-4 transform transition-all">
+        <div className="p-6 border-b border-gray-200 bg-gradient-to-r from-purple-600 to-pink-600">
+          <h3 className="text-2xl font-bold text-white">Add New Staff Member</h3>
         </div>
         <form onSubmit={handleSubmit} className="p-6 space-y-4">
           <div>
@@ -228,8 +243,9 @@ function AddStaffModal({ roles, onClose, onSubmit }) {
               type="text"
               value={formData.name}
               onChange={(e) => setFormData({ ...formData, name: e.target.value })}
-              className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-purple-500"
+              className="w-full px-4 py-3 border border-gray-300 rounded-xl focus:ring-2 focus:ring-purple-500 focus:border-transparent transition"
               placeholder="John Doe"
+              required
             />
           </div>
           <div>
@@ -238,8 +254,9 @@ function AddStaffModal({ roles, onClose, onSubmit }) {
               type="email"
               value={formData.email}
               onChange={(e) => setFormData({ ...formData, email: e.target.value })}
-              className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-purple-500"
+              className="w-full px-4 py-3 border border-gray-300 rounded-xl focus:ring-2 focus:ring-purple-500 focus:border-transparent transition"
               placeholder="john@bar.com"
+              required
             />
           </div>
           <div>
@@ -248,8 +265,10 @@ function AddStaffModal({ roles, onClose, onSubmit }) {
               type="password"
               value={formData.password}
               onChange={(e) => setFormData({ ...formData, password: e.target.value })}
-              className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-purple-500"
+              className="w-full px-4 py-3 border border-gray-300 rounded-xl focus:ring-2 focus:ring-purple-500 focus:border-transparent transition"
               placeholder="••••••••"
+              required
+              minLength={6}
             />
           </div>
           <div>
@@ -257,7 +276,8 @@ function AddStaffModal({ roles, onClose, onSubmit }) {
             <select
               value={formData.businessRole}
               onChange={(e) => setFormData({ ...formData, businessRole: e.target.value })}
-              className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-purple-500"
+              className="w-full px-4 py-3 border border-gray-300 rounded-xl focus:ring-2 focus:ring-purple-500 focus:border-transparent transition"
+              required
             >
               <option value="">Select role...</option>
               {roles.map((role) => (
@@ -269,13 +289,13 @@ function AddStaffModal({ roles, onClose, onSubmit }) {
             <button
               type="button"
               onClick={onClose}
-              className="px-4 py-2 border border-gray-300 rounded-lg text-gray-700 hover:bg-gray-50"
+              className="px-6 py-3 border border-gray-300 rounded-xl text-gray-700 hover:bg-gray-50 transition font-semibold"
             >
               Cancel
             </button>
             <button
               type="submit"
-              className="px-4 py-2 bg-purple-600 text-white rounded-lg hover:bg-purple-700"
+              className="px-6 py-3 bg-gradient-to-r from-purple-600 to-pink-600 text-white rounded-xl hover:from-purple-700 hover:to-pink-700 transition font-semibold shadow-lg"
             >
               Add Staff
             </button>

@@ -85,8 +85,9 @@ export default function CashierPOS() {
     // Real-time event listeners for stock updates from admin
     const handleStockUpdated = (event) => {
       console.log('📦 Stock update event received:', event.detail);
-      // Refresh products list when stock is updated in admin
+      // Refresh both local product list and global context
       loadData();
+      refreshProducts();
     };
 
     const handleProductsSync = (event) => {
@@ -100,6 +101,7 @@ export default function CashierPOS() {
     const handleProductUpdated = () => {
       console.log('📝 Product update event received');
       loadData();
+      refreshProducts();
     };
 
     // Add event listeners

@@ -251,6 +251,23 @@ export default function Inventory() {
         
         showNotification(`✅ Product "${result.name}" added successfully! ${result.visibleToCashier ? 'Cashiers can now see this product.' : 'This product is hidden from cashiers.'}`, 'success');
         
+        // Dispatch events to notify cashier dashboard
+        window.dispatchEvent(new CustomEvent('productCreated', { 
+          detail: { 
+            product: result,
+            timestamp: new Date().toISOString()
+          }
+        }));
+        
+        window.dispatchEvent(new CustomEvent('stock_updated', {
+          detail: { 
+            productId: result.id,
+            quantity: result.quantity || 0,
+            product: result,
+            timestamp: Date.now()
+          }
+        }));
+        
         // Refresh data in background to ensure sync
         loadData().catch(err => console.warn('Background refresh failed:', err));
         
@@ -399,16 +416,28 @@ export default function Inventory() {
         
         setShowEditModal(false);
         
-        // Trigger real-time sync notification if enabled
+        // ALWAYS dispatch events to cashier dashboard - don't make it conditional
+        // Dispatch productUpdated event
+        window.dispatchEvent(new CustomEvent('productUpdated', { 
+          detail: { 
+            product: result,
+            originalProduct,
+            timestamp: new Date().toISOString(),
+            type: 'update'
+          }
+        }));
+        
+        // Also dispatch stock_updated event so cashier refreshes product list
+        window.dispatchEvent(new CustomEvent('stock_updated', {
+          detail: { 
+            productId: result.id,
+            quantity: result.quantity,
+            product: result,
+            timestamp: Date.now()
+          }
+        }));
+        
         if (isRealTimeProductSyncEnabled()) {
-          window.dispatchEvent(new CustomEvent('productUpdated', { 
-            detail: { 
-              product: result,
-              originalProduct,
-              timestamp: new Date().toISOString(),
-              type: 'update'
-            }
-          }));
           showNotification(`✅ Product updated and synced!`, 'success');
         } else {
           showNotification('✅ Product updated successfully!', 'success');
