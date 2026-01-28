@@ -315,18 +315,22 @@ export default function Inventory() {
         return;
       }
       
-      console.log('✅ Adding', quantityToAdd, 'units to', selectedProduct.name);
+      const currentProduct = productList.find(p => p.id === selectedProduct.id);
+      const oldQuantity = currentProduct?.quantity || 0;
+      
+      console.log(`📦 STOCK BEFORE: ${selectedProduct.name} = ${oldQuantity} units`);
+      console.log(`✅ Adding ${quantityToAdd} units to ${selectedProduct.name}`);
       
       // OPTIMISTIC UPDATE: Update product quantity immediately
-      const currentProduct = productList.find(p => p.id === selectedProduct.id);
       if (currentProduct) {
-        const newQuantity = (currentProduct.quantity || 0) + quantityToAdd;
+        const newQuantity = oldQuantity + quantityToAdd;
         setProductList(prev => 
           prev.map(p => p.id === selectedProduct.id ? { ...p, quantity: newQuantity } : p)
         );
+        console.log(`📦 OPTIMISTIC UPDATE: ${oldQuantity} → ${newQuantity}`);
       }
       
-      // Create batch record
+      // Create batch record optimistically
       const newBatch = {
         id: `batch-${Date.now()}`,
         productId: selectedProduct.id,
@@ -336,12 +340,11 @@ export default function Inventory() {
         cost: parseFloat(newStock.cost || selectedProduct.cost || 0)
       };
 
-      // Show update immediately
       setBatchList(prev => [...prev, newBatch]);
       showNotification('⚡ Adding stock...', 'info');
 
       try {
-        // Make API call in background
+        // Make API call - backend will update product quantity AND create batch
         const result = await batches.create({
           productId: selectedProduct.id,
           quantity: quantityToAdd,
@@ -350,16 +353,30 @@ export default function Inventory() {
           cost: parseFloat(newStock.cost || selectedProduct.cost || 0)
         });
         
-        console.log('✅ Stock added successfully:', result);
+        console.log('✅ BACKEND: Batch created successfully:', result);
         
-        // Refresh products from backend - global context will auto-sync to local state
-        await refreshProducts();
+        // CRITICAL: Force immediate refresh from backend to get authoritative state
+        // This ensures DB state is reflected in UI
+        console.log('🔄 Refreshing products from backend to confirm stock update...');
+        const updatedProducts = await refreshProducts();
+        
+        // Verify the update persisted
+        const updatedProduct = updatedProducts?.find(p => p.id === selectedProduct.id);
+        if (updatedProduct) {
+          console.log(`📦 STOCK AFTER DB UPDATE: ${updatedProduct.name} = ${updatedProduct.quantity} units`);
+          console.log(`✅ DB PERSISTED: Stock increased from ${oldQuantity} to ${updatedProduct.quantity}`);
+          
+          // Update local state with authoritative backend data
+          setProductList(prev => 
+            prev.map(p => p.id === selectedProduct.id ? updatedProduct : p)
+          );
+        }
         
         // Dispatch stock update event for real-time sync to cashier
         window.dispatchEvent(new CustomEvent('stock_updated', {
           detail: { 
             productId: selectedProduct.id,
-            quantity: quantityToAdd,
+            quantity: updatedProduct?.quantity || (oldQuantity + quantityToAdd),
             timestamp: Date.now()
           }
         }));
@@ -368,14 +385,16 @@ export default function Inventory() {
         setNewStock({ quantity: '', expiryDate: '', batchNumber: '', cost: '' });
         setShowAddStock(false);
         
-        showNotification(`✅ Stock added! ${selectedProduct.name} quantity increased by ${quantityToAdd}`, 'success')
+        showNotification(`✅ Stock added! ${selectedProduct.name} quantity: ${oldQuantity} → ${updatedProduct?.quantity || (oldQuantity + quantityToAdd)}`, 'success');
         
       } catch (apiError) {
+        console.error('❌ BACKEND ERROR:', apiError);
         // Rollback optimistic update on failure
         if (currentProduct) {
           setProductList(prev => 
             prev.map(p => p.id === selectedProduct.id ? currentProduct : p)
           );
+          console.log(`🔄 ROLLBACK: Restored ${selectedProduct.name} to ${oldQuantity} units`);
         }
         setBatchList(prev => prev.filter(b => b.id !== newBatch.id));
         throw apiError;

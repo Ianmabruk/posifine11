@@ -1,6 +1,7 @@
 import { useState, useEffect } from 'react';
 import { stats, sales as salesApi } from '../../services/api';
 import { DollarSign, TrendingUp, TrendingDown, ShoppingBag, Package, AlertCircle } from 'lucide-react';
+import AICharts from '../../components/AICharts';
 
 
 export default function Overview() {
@@ -243,6 +244,18 @@ export default function Overview() {
           </div>
         )}
       </div>
-    </div>
+      {/* AI Sales Forecast Section */}
+      <div className="bg-white rounded-lg shadow p-6 mt-6">
+        <div className="flex items-center justify-between mb-4">
+          <div>
+            <h2 className="text-xl font-semibold text-gray-800">🤖 AI Sales Forecast</h2>
+            <p className="text-sm text-gray-600 mt-1">Predictive analytics for upcoming periods</p>
+          </div>
+          <span className="px-3 py-1 bg-purple-100 text-purple-700 rounded-full text-xs font-semibold">
+            AI POWERED
+          </span>
+        </div>
+        <AICharts periods={4} />
+      </div>    </div>
   );
 }

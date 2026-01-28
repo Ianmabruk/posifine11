@@ -13,6 +13,7 @@ export const ProductsProvider = ({ children }) => {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
   const [lastUpdated, setLastUpdated] = useState(Date.now());
+  const [isEditing, setIsEditing] = useState(false); // Track if user is actively editing
 
   const fetchProducts = useCallback(async () => {
     if (!localStorage.getItem('token')) {
@@ -66,10 +67,21 @@ export const ProductsProvider = ({ children }) => {
     fetchProducts();
   }, []); // Only run on mount
 
-  // REMOVED: Auto-refresh interval that was causing inventory resets
-  // The 60-second interval was overwriting user changes
-  // Now we only refresh on explicit request (manual refresh, WebSocket events, or sale completion)
-  // This prevents stale data from overwriting fresh updates
+  // SMART AUTO-REFRESH: Only when NOT editing
+  // Refreshes every 30 seconds to ensure cashiers see admin updates
+  // But respects active editing state to prevent data loss
+  useEffect(() => {
+    const interval = setInterval(() => {
+      if (!isEditing && document.visibilityState === 'visible') {
+        console.log('🔄 Auto-refresh: Fetching latest products from backend...');
+        fetchProducts();
+      } else if (isEditing) {
+        console.log('⏸️ Auto-refresh: Skipped (user is editing)');
+      }
+    }, 30000); // 30 seconds
+
+    return () => clearInterval(interval);
+  }, [isEditing, fetchProducts]);
 
   // Listen for clear-data events and force immediate refetch
   useEffect(() => {
@@ -83,15 +95,22 @@ export const ProductsProvider = ({ children }) => {
     window.addEventListener('dataCleared', handleDataCleared);
     window.addEventListener('productsCleared', handleDataCleared);
     
-    return () => {
-      window.removeEventListener('dataCleared', handleDataCleared);
-      window.removeEventListener('productsCleared', handleDataCleared);
-    };
-  }, []); // No dependencies
+  
+  // Allow components to signal they're editing
+  const setEditingState = (editing) => {
+    setIsEditing(editing);
+    console.log(editing ? '✏️ Editing mode ON - auto-refresh paused' : '✅ Editing mode OFF - auto-refresh resumed');
+  };
 
-  const refreshProducts = async () => {
-    setLoading(true);
-    const freshProducts = await fetchProducts();
+  return (
+    <ProductsContext.Provider 
+      value={{ 
+        products, 
+        loading, 
+        error, 
+        lastUpdated,
+        refreshProducts,
+        setEditingState // Export so components can pause auto-refresh when editing= await fetchProducts();
     return freshProducts;
   };
 

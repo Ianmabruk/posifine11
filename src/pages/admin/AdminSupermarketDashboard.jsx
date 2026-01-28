@@ -2,6 +2,7 @@ import { useState, useEffect } from 'react';
 import { useAuth } from '../../context/AuthContext';
 import { Users, Plus, ShoppingCart, Package, DollarSign, MessageSquare, TrendingUp } from 'lucide-react';
 import api from '../../services/api';
+import ProAIAssistant from '../../components/ProAIAssistant';
 
 export default function AdminSupermarketDashboard() {
   const { user } = useAuth();

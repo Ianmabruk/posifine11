@@ -2,6 +2,7 @@ import { useState, useEffect } from 'react';
 import { useAuth } from '../../context/AuthContext';
 import { Users, Plus, Wine, DollarSign, Package, MessageSquare } from 'lucide-react';
 import api from '../../services/api';
+import ProAIAssistant from '../../components/ProAIAssistant';
 
 export default function AdminBarDashboard() {
   const { user } = useAuth();
@@ -197,6 +198,22 @@ export default function AdminBarDashboard() {
               </div>
             )}
           </div>
+        </div>
+
+        {/* Pro AI Assistant - Business Insights */}
+        <div className="mt-8">
+          <div className="bg-gradient-to-r from-purple-100 to-pink-100 rounded-xl p-6 mb-4 border border-purple-200">
+            <div className="flex items-center justify-between">
+              <div>
+                <h2 className="text-2xl font-bold text-gray-900">🤖 AI Business Assistant</h2>
+                <p className="text-gray-600 mt-1">Get intelligent insights and recommendations for your bar</p>
+              </div>
+              <span className="px-4 py-2 bg-purple-600 text-white rounded-full text-sm font-bold shadow-lg">
+                PRO FEATURE
+              </span>
+            </div>
+          </div>
+          <ProAIAssistant />
         </div>
       </div>
 

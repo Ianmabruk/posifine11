@@ -166,12 +166,9 @@ export default function CashierPOS() {
       }
     });
 
-    // Set up automatic product refresh every 30 seconds
-    const refreshInterval = setInterval(() => {
-      console.log('🔄 Auto-refreshing products...');
-      setIsAutoRefreshing(true);
-      refreshProducts().finally(() => setIsAutoRefreshing(false));
-    }, 30000);
+    // REMOVED: 30-second auto-refresh - now handled by ProductsContext smart auto-refresh
+    // This prevents duplicate refresh logic and respects editing state
+    // ProductsContext will refresh every 30s when user is not actively editing
 
     return () => {
       // Cleanup event listeners
@@ -180,7 +177,6 @@ export default function CashierPOS() {
       window.removeEventListener('productUpdated', handleProductUpdated);
       window.removeEventListener('productCreated', handleProductUpdated);
       
-      clearInterval(refreshInterval);
       try { unsub(); } catch (e) {}
       websocketService.disconnect();
     };
