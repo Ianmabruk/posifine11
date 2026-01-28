@@ -2,8 +2,11 @@
 
 const getWebSocketUrl = () => {
   const baseUrl = import.meta.env.VITE_API_BASE || 'https://posifine22.onrender.com/api';
-  // Convert https to wss, http to ws
-  return baseUrl.replace('https://', 'wss://').replace('http://', 'ws://');
+  // Convert https to wss, http to ws, and remove /api suffix for WebSocket
+  return baseUrl
+    .replace('https://', 'wss://')
+    .replace('http://', 'ws://')
+    .replace('/api', ''); // Remove /api suffix since WebSocket is at root /ws
 };
 
 class WebSocketService {

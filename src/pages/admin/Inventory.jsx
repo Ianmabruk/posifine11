@@ -302,13 +302,20 @@ export default function Inventory() {
 
   const handleAddStock = async (e) => {
     e.preventDefault();
+    console.log('📦 handleAddStock called - Form submitted');
+    console.log('📦 newStock:', newStock);
+    console.log('📦 selectedProduct:', selectedProduct);
+    
     try {
       const quantityToAdd = parseInt(newStock.quantity);
       
       if (!quantityToAdd || quantityToAdd <= 0) {
         showNotification('⚠️ Please enter a valid quantity', 'warning');
+        console.log('⚠️ Invalid quantity:', quantityToAdd);
         return;
       }
+      
+      console.log('✅ Adding', quantityToAdd, 'units to', selectedProduct.name);
       
       // OPTIMISTIC UPDATE: Update product quantity immediately
       const currentProduct = productList.find(p => p.id === selectedProduct.id);
@@ -810,8 +817,10 @@ export default function Inventory() {
                           <span className="text-gray-600">{getProductBatches(product.id).length} active</span>
                           <button 
                             onClick={() => {
+                              console.log('🔵 Add Stock clicked for product:', product.name, product.id);
                               setSelectedProduct(product);
                               setShowAddStock(true);
+                              console.log('🔵 Modal state set - showAddStock: true, selectedProduct:', product.name);
                             }}
                             className="p-1 hover:bg-blue-50 rounded text-blue-600 transition-colors"
                             title="Add Stock"
@@ -919,9 +928,14 @@ export default function Inventory() {
 
       {/* Add Stock Modal */}
       {showAddStock && selectedProduct && (
-        <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50">
-          <div className="bg-white rounded-xl p-6 w-full max-w-md">
-            <h3 className="text-xl font-bold mb-4">Add Stock for {selectedProduct.name}</h3>
+        <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50" onClick={(e) => {
+          if (e.target === e.currentTarget) {
+            setShowAddStock(false);
+            setSelectedProduct(null);
+          }
+        }}>
+          <div className="bg-white rounded-xl p-6 w-full max-w-md shadow-2xl">
+            <h3 className="text-xl font-bold mb-4 text-gray-900">Add Stock for {selectedProduct.name}</h3>
             <form onSubmit={handleAddStock} className="space-y-4">
               <input
                 type="number"
