@@ -471,8 +471,10 @@ export default function AdminDashboard() {
                       <th className="px-4 py-3 text-left text-sm font-semibold text-gray-700">Name</th>
                       <th className="px-4 py-3 text-left text-sm font-semibold text-gray-700">Email</th>
                       <th className="px-4 py-3 text-left text-sm font-semibold text-gray-700">Role</th>
+                      <th className="px-4 py-3 text-left text-sm font-semibold text-gray-700">PIN</th>
                       <th className="px-4 py-3 text-left text-sm font-semibold text-gray-700">Status</th>
                       <th className="px-4 py-3 text-left text-sm font-semibold text-gray-700">Created</th>
+                      <th className="px-4 py-3 text-left text-sm font-semibold text-gray-700">Actions</th>
                     </tr>
                   </thead>
                   <tbody>
@@ -486,12 +488,37 @@ export default function AdminDashboard() {
                           </span>
                         </td>
                         <td className="px-4 py-3 text-sm">
+                          <span className={`font-mono text-xs ${user.pin ? 'text-blue-600' : 'text-gray-400'}`}>
+                            {user.pin || 'Not Set'}
+                          </span>
+                        </td>
+                        <td className="px-4 py-3 text-sm">
                           <span className={`badge ${user.active ? 'badge-success' : 'badge-danger'}`}>
                             {user.active ? 'Active' : 'Inactive'}
                           </span>
                         </td>
                         <td className="px-4 py-3 text-sm text-gray-600">
                           {new Date(user.createdAt).toLocaleDateString()}
+                        </td>
+                        <td className="px-4 py-3 text-sm">
+                          <button
+                            onClick={() => {
+                              const newPin = prompt('Enter 4-digit PIN for ' + user.name + ':', user.pin || '');
+                              if (newPin && /^\d{4}$/.test(newPin)) {
+                                users.update(user.id, { pin: newPin })
+                                  .then(() => {
+                                    alert('PIN updated successfully!');
+                                    loadData();
+                                  })
+                                  .catch(err => alert('Failed to update PIN: ' + err.message));
+                              } else if (newPin !== null) {
+                                alert('PIN must be exactly 4 digits');
+                              }
+                            }}
+                            className="text-blue-600 hover:text-blue-700 font-medium"
+                          >
+                            Set PIN
+                          </button>
                         </td>
                       </tr>
                     ))}

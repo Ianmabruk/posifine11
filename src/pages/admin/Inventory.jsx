@@ -81,30 +81,41 @@ export default function Inventory() {
     // Connect to WebSocket for real-time stock updates
     const token = localStorage.getItem('token');
     if (token) {
+      // Debounce WebSocket updates to prevent rapid-fire glitches
+      let wsUpdateTimeout = null;
       websocketService.connect(token, (data) => {
         // When stock update received, merge with existing products (don't replace)
         if (data && data.allProducts && data.allProducts.length > 0) {
           console.log('📦 WebSocket stock update received:', data.allProducts.length, 'products');
-          setProductList(prevList => {
-            // If we have no products yet, use the new data
-            if (prevList.length === 0) {
-              return data.allProducts;
-            }
-            
-            // Merge: Keep existing products but update quantities from WebSocket
-            const productMap = new Map(prevList.map(p => [p.id, p]));
-            data.allProducts.forEach(newProduct => {
-              const existing = productMap.get(newProduct.id);
-              if (existing) {
-                // Update only quantity, keep other fields intact
-                productMap.set(newProduct.id, { ...existing, quantity: newProduct.quantity });
-              } else {
-                // Add new products
-                productMap.set(newProduct.id, newProduct);
+          
+          // Clear previous timeout
+          if (wsUpdateTimeout) clearTimeout(wsUpdateTimeout);
+          
+          // Debounce: wait 200ms before applying update
+          wsUpdateTimeout = setTimeout(() => {
+            setProductList(prevList => {
+              // If we have no products yet, use the new data
+              if (prevList.length === 0) {
+                return data.allProducts;
               }
+              
+              // Merge: Keep existing products but update quantities from WebSocket
+              const productMap = new Map(prevList.map(p => [p.id, p]));
+              data.allProducts.forEach(newProduct => {
+                const existing = productMap.get(newProduct.id);
+                if (existing) {
+                  // Only update if quantity actually changed
+                  if (existing.quantity !== newProduct.quantity) {
+                    productMap.set(newProduct.id, { ...existing, quantity: newProduct.quantity });
+                  }
+                } else {
+                  // Add new products
+                  productMap.set(newProduct.id, newProduct);
+                }
+              });
+              return Array.from(productMap.values());
             });
-            return Array.from(productMap.values());
-          });
+          }, 200);
         }
       }).catch((error) => {
         console.warn('WebSocket connection failed:', error);
@@ -148,10 +159,17 @@ export default function Inventory() {
   }, [hasLoadedInitially]);
 
   // Sync with global products whenever they change
+  // This ensures inventory always shows the latest stock from backend
   useEffect(() => {
     if (globalProducts && globalProducts.length > 0) {
       console.log('📦 Syncing from global context:', globalProducts.length, 'products');
-      setProductList(globalProducts);
+      // Update product list while preserving any local temporary states
+      setProductList(prevList => {
+        // If we have temporary products (with temp IDs), keep them
+        const tempProducts = prevList.filter(p => typeof p.id === 'string' && p.id.startsWith('temp-'));
+        // Merge with global products
+        return [...tempProducts, ...globalProducts];
+      });
     }
   }, [globalProducts]);
 

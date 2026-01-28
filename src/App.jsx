@@ -137,26 +137,42 @@ function DashboardRouter() {
   // 🎯 PRO PLAN ROUTING - Business-specific dashboards
   const isPro = user.subscription === 'pro' || user.plan === 'pro' || user.subscription === 'custom' || user.plan === 3000;
   const businessType = user.businessType || user.business_type;
-  const businessRole = user.businessRole || user.business_role || user.role;
+  const businessRole = user.businessRole || user.business_role;
   
   if (isPro && businessType) {
     // Pro users with business type → route to business-specific dashboard
-    console.log('[Dashboard Router] Pro user detected:', { businessType, role: businessRole });
+    console.log('[Dashboard Router] Pro user detected:', { businessType, businessRole, role: user.role });
     
     // Admins go to admin dashboard for their business type
     if (user.role === 'admin') {
       return <Navigate to={`/admin/${businessType}`} />;
     }
     
-    // Non-admin Pro users go to their role-specific dashboard
-    if (businessType === 'clinic') {
-      if (businessRole === 'doctor') return <Navigate to="/dashboard/clinic/doctor" />;
-      if (businessRole === 'reception') return <Navigate to="/dashboard/clinic/reception" />;
-      if (businessRole === 'pharmacy') return <Navigate to="/dashboard/clinic/pharmacy" />;
+    // Non-admin Pro users with business_role go to their role-specific dashboard
+    if (businessRole) {
+      if (businessType === 'clinic') {
+        if (businessRole === 'doctor') return <Navigate to="/dashboard/clinic/doctor" />;
+        if (businessRole === 'registrar' || businessRole === 'reception') return <Navigate to="/dashboard/clinic/reception" />;
+        if (businessRole === 'pharmacist' || businessRole === 'pharmacy') return <Navigate to="/dashboard/clinic/pharmacy" />;
+        if (businessRole === 'cashier') return <Navigate to="/dashboard/cashier" />;
+      }
+      if (businessType === 'bar') {
+        if (businessRole === 'bartender') return <Navigate to="/dashboard/bar/bartender" />;
+        if (businessRole === 'cashier') return <Navigate to="/dashboard/cashier" />;
+      }
+      if (businessType === 'hotel') {
+        if (businessRole === 'receptionist') return <Navigate to="/dashboard/hotel/reception" />;
+        if (businessRole === 'housekeeping') return <Navigate to="/dashboard/hotel/housekeeping" />;
+        if (businessRole === 'cashier') return <Navigate to="/dashboard/cashier" />;
+      }
+      if (businessType === 'supermarket') {
+        if (businessRole === 'department_head') return <Navigate to="/dashboard/supermarket/department" />;
+        if (businessRole === 'cashier') return <Navigate to="/dashboard/cashier" />;
+      }
     }
     
-    // For other business types or fallback, use ProPlanRouter
-    return <Navigate to="/pro-dashboard" />;
+    // Default fallback for Pro users without specific role routing
+    return <Navigate to="/dashboard/cashier" />;
   }
   
   // Pro users WITHOUT business type → redirect to selector

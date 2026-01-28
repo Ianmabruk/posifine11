@@ -202,18 +202,27 @@ export default function CashierPOS() {
   useEffect(() => {
     // Connect to WebSocket for real-time stock updates
     const token = localStorage.getItem('token');
+    let wsUpdateTimeout = null;
+    
     if (token) {
       websocketService.connect(token, (data) => {
         console.log('📡 WebSocket callback received:', data);
         
-        // Handle all product updates
+        // Handle all product updates with debouncing to prevent glitches
         if (data && data.allProducts) {
           console.log(`📦 Merging ${data.allProducts.length} products from WebSocket`);
-          const filtered = data.allProducts.filter(p => p.visibleToCashier !== false && !p.expenseOnly);
-          setProductList(filtered);
+          
+          // Clear previous timeout
+          if (wsUpdateTimeout) clearTimeout(wsUpdateTimeout);
+          
+          // Debounce: wait 300ms before applying update
+          wsUpdateTimeout = setTimeout(() => {
+            const filtered = data.allProducts.filter(p => p.visibleToCashier !== false && !p.expenseOnly);
+            setProductList(filtered);
+          }, 300);
         }
         
-        // Handle individual stock updates
+        // Handle individual stock updates immediately (these are usually single product updates)
         if (data && data.productId !== undefined && data.newQuantity !== undefined) {
           console.log(`📦 Stock update for product ${data.productId}: ${data.newQuantity}${data.unit || ''}`);
           setProductList(prev => {
@@ -242,6 +251,11 @@ export default function CashierPOS() {
         console.warn('⚠️ WebSocket connection failed:', error);
       });
     }
+    
+    // Cleanup timeout on unmount
+    return () => {
+      if (wsUpdateTimeout) clearTimeout(wsUpdateTimeout);
+    };
 
     const unsub = subscribeProducts((msg) => {
       try {
