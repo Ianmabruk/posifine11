@@ -186,18 +186,18 @@ export default function MainAdmin() {
     const userStr = localStorage.getItem('user') || localStorage.getItem('mainAdminUser');
     
     if (!token || !userStr) {
-      navigate('/main-admin/login');
+      navigate('/main.admin/login');
       return;
     }
 
     try {
       const userData = JSON.parse(userStr);
       if (userData.role !== 'owner') {
-        navigate('/main-admin/login');
+        navigate('/main.admin/login');
         return;
       }
     } catch (e) {
-      navigate('/main-admin/login');
+      navigate('/main.admin/login');
       return;
     }
     
@@ -307,7 +307,7 @@ export default function MainAdmin() {
   const logout = () => {
     localStorage.removeItem('mainAdminToken');
     localStorage.removeItem('mainAdminUser');
-    navigate('/main-admin/login');
+    navigate('/main.admin/login');
   };
 
   const generateDemoData = () => {

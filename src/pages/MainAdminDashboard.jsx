@@ -24,18 +24,18 @@ export default function MainAdminDashboard() {
     const userStr = localStorage.getItem('user') || localStorage.getItem('mainAdminUser') || localStorage.getItem('ownerUser');
     
     if (!token || !userStr) {
-      navigate('/main-admin/login', { replace: true });
+      navigate('/main.admin/login', { replace: true });
       return;
     }
 
     try {
       const userData = JSON.parse(userStr);
       if (userData.role !== 'owner' || userData.email !== 'ianmabruk3@gmail.com') {
-        navigate('/main-admin/login', { replace: true });
+        navigate('/main.admin/login', { replace: true });
         return;
       }
     } catch (e) {
-      navigate('/main-admin/login', { replace: true });
+      navigate('/main.admin/login', { replace: true });
       return;
     }
 
