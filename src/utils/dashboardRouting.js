@@ -44,7 +44,9 @@ export function getDashboardRoute(user) {
   // ============================================================
   // 2. PRO/CUSTOM SUBSCRIPTION with BUSINESS TYPE
   // ============================================================
-  if ((subscription === 'pro' || subscription === 'custom') && businessType) {
+  const isPro = subscription === 'pro' || subscription === 'custom' || subscription === 3400 || subscription === 3000;
+
+  if (isPro && businessType) {
     // Pro Admin with Business Type → Business-specific admin dashboard
     if (role === 'admin') {
       console.log(`[getDashboardRoute] → /admin/${businessType} (Pro Admin - ${businessType})`);
@@ -59,15 +61,15 @@ export function getDashboardRoute(user) {
     
     // Pro Cashier/User with Business Type → Business-specific cashier interface
     if (role === 'cashier') {
-      console.log(`[getDashboardRoute] → /dashboard/${businessType}/cashier (Pro Cashier - ${businessType})`);
-      return `/dashboard/${businessType}/cashier`;
+      console.log(`[getDashboardRoute] → /cashier/${businessType} (Pro Cashier - ${businessType})`);
+      return `/cashier/${businessType}`;
     }
   }
 
   // ============================================================
   // 3. PRO/CUSTOM SUBSCRIPTION WITHOUT BUSINESS TYPE
   // ============================================================
-  if ((subscription === 'pro' || subscription === 'custom') && !businessType) {
+  if (isPro && !businessType) {
     // Pro Admin without business type → Select business type first
     if (role === 'admin') {
       console.log('[getDashboardRoute] → /select-business-type (Pro Admin - No business type)');

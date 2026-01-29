@@ -7,7 +7,6 @@ import ReminderModal from './components/ReminderModal';
 import ScreenLock from './components/ScreenLock';
 import SubscriptionReminderBar from './components/SubscriptionReminderBar';
 import StockUpdateListener from './components/StockUpdateListener';
-import ProfilerPanel from './components/ProfilerPanel';
 import useInactivity from './hooks/useInactivity';
 import { BASE_API_URL } from './services/api';
 import { useState, useEffect, useCallback, lazy, Suspense } from 'react';
@@ -26,6 +25,9 @@ const BasicDashboard = lazy(() => import('./pages/BasicDashboard'));
 const BuildPOS = lazy(() => import('./pages/BuildPOS'));
 const CashierPOS = lazy(() => import('./pages/CashierPOS'));
 const BarCashierPOS = lazy(() => import('./pages/cashier/BarCashierPOS'));
+const ClinicCashierPOS = lazy(() => import('./pages/cashier/ClinicCashierPOS'));
+const HotelCashierPOS = lazy(() => import('./pages/cashier/HotelCashierPOS'));
+const SupermarketCashierPOS = lazy(() => import('./pages/cashier/SupermarketCashierPOS'));
 const HospitalCashierPOS = lazy(() => import('./pages/cashier/HospitalCashierPOS'));
 const SchoolCashierPOS = lazy(() => import('./pages/cashier/SchoolCashierPOS'));
 const KioskCashierPOS = lazy(() => import('./pages/cashier/KioskCashierPOS'));
@@ -139,7 +141,7 @@ function DashboardRouter() {
   if (!user || !user.active) return <Navigate to="/choose-subscription" />;
   
   // 🎯 PRO PLAN ROUTING - Business-specific dashboards
-  const isPro = user.subscription === 'pro' || user.plan === 'pro' || user.subscription === 'custom' || user.plan === 3000;
+  const isPro = user.subscription === 'pro' || user.plan === 'pro' || user.subscription === 'custom' || user.plan === 3000 || user.plan === 3400;
   const businessType = user.businessType || user.business_type;
   const businessRole = user.businessRole || user.business_role;
   
@@ -158,24 +160,28 @@ function DashboardRouter() {
         if (businessRole === 'doctor') return <Navigate to="/dashboard/clinic/doctor" />;
         if (businessRole === 'registrar' || businessRole === 'reception') return <Navigate to="/dashboard/clinic/reception" />;
         if (businessRole === 'pharmacist' || businessRole === 'pharmacy') return <Navigate to="/dashboard/clinic/pharmacy" />;
-        if (businessRole === 'cashier') return <Navigate to="/dashboard/cashier" />;
+        if (businessRole === 'cashier') return <Navigate to="/cashier/clinic" />;
       }
       if (businessType === 'bar') {
         if (businessRole === 'bartender') return <Navigate to="/dashboard/bar/bartender" />;
-        if (businessRole === 'cashier') return <Navigate to="/dashboard/cashier" />;
+        if (businessRole === 'cashier') return <Navigate to="/cashier/bar" />;
       }
       if (businessType === 'hotel') {
         if (businessRole === 'receptionist') return <Navigate to="/dashboard/hotel/reception" />;
         if (businessRole === 'housekeeping') return <Navigate to="/dashboard/hotel/housekeeping" />;
-        if (businessRole === 'cashier') return <Navigate to="/dashboard/cashier" />;
+        if (businessRole === 'cashier') return <Navigate to="/cashier/hotel" />;
       }
       if (businessType === 'supermarket') {
         if (businessRole === 'department_head') return <Navigate to="/dashboard/supermarket/department" />;
-        if (businessRole === 'cashier') return <Navigate to="/dashboard/cashier" />;
+        if (businessRole === 'cashier') return <Navigate to="/cashier/supermarket" />;
       }
     }
     
     // Default fallback for Pro users without specific role routing
+    if (businessType === 'clinic') return <Navigate to="/cashier/clinic" />;
+    if (businessType === 'bar') return <Navigate to="/cashier/bar" />;
+    if (businessType === 'hotel') return <Navigate to="/cashier/hotel" />;
+    if (businessType === 'supermarket') return <Navigate to="/cashier/supermarket" />;
     return <Navigate to="/dashboard/cashier" />;
   }
   
@@ -290,6 +296,9 @@ function App() {
                 
                 {/* Business-Specific Cashier Routes */}
                 <Route path="/cashier/bar" element={<ProtectedRoute><BarCashierPOS /></ProtectedRoute>} />
+                <Route path="/cashier/clinic" element={<ProtectedRoute><ClinicCashierPOS /></ProtectedRoute>} />
+                <Route path="/cashier/hotel" element={<ProtectedRoute><HotelCashierPOS /></ProtectedRoute>} />
+                <Route path="/cashier/supermarket" element={<ProtectedRoute><SupermarketCashierPOS /></ProtectedRoute>} />
                 <Route path="/cashier/hospital" element={<ProtectedRoute><HospitalCashierPOS /></ProtectedRoute>} />
                 <Route path="/cashier/school" element={<ProtectedRoute><SchoolCashierPOS /></ProtectedRoute>} />
                 <Route path="/cashier/kiosk" element={<ProtectedRoute><KioskCashierPOS /></ProtectedRoute>} />
@@ -311,7 +320,6 @@ function App() {
               </Routes>
             </Suspense>
           </BrowserRouter>
-          <ProfilerPanel />
         </ScreenLockProvider>
       </ProductsProvider>
     </AuthProvider>

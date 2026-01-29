@@ -13,7 +13,7 @@ export default function Login() {
   };
 
   return (
-    <section className="py-24 px-6 md:px-12 lg:px-20 bg-gradient-to-br from-[#f5efe6] via-[#fef8f0] to-[#f5efe6]">
+    <section className="py-24 px-6 md:px-12 lg:px-20 bg-gradient-to-br from-white via-[#f5f7fb] to-white">
       <div className="max-w-7xl mx-auto">
         <div className="grid lg:grid-cols-2 gap-16 items-center">
           {/* Left: Info */}
@@ -28,15 +28,15 @@ export default function Login() {
               initial={{ opacity: 0, scale: 0.9 }}
               whileInView={{ opacity: 1, scale: 1 }}
               viewport={{ once: true }}
-              className="inline-block px-4 py-2 bg-white border border-[#cd853f]/30 rounded-full text-sm font-semibold text-[#6b4c3b] mb-6"
+              className="inline-block px-4 py-2 bg-white border border-slate-200 rounded-full text-sm font-semibold text-slate-700 mb-6"
             >
               🔐 Secure Access
             </motion.span>
 
-            <h2 className="text-4xl md:text-5xl font-bold text-[#6b4c3b] mb-6">
+            <h2 className="text-4xl md:text-5xl font-bold text-slate-900 mb-6">
               Welcome Back
             </h2>
-            <p className="text-lg text-[#8b5a2b] mb-8 leading-relaxed">
+            <p className="text-lg text-slate-600 mb-8 leading-relaxed">
               Log in to your dashboard to manage your business, track sales, and access AI-powered insights.
             </p>
 
@@ -53,9 +53,9 @@ export default function Login() {
                   whileInView={{ opacity: 1, x: 0 }}
                   viewport={{ once: true }}
                   transition={{ delay: i * 0.1 }}
-                  className="flex items-center gap-3 text-[#6b4c3b]"
+                  className="flex items-center gap-3 text-slate-700"
                 >
-                  <div className="w-2 h-2 bg-gradient-to-r from-[#00ff88] to-[#8b5a2b] rounded-full" />
+                  <div className="w-2 h-2 bg-gradient-to-r from-[#2d4cff] to-[#22c55e] rounded-full" />
                   <span>{item}</span>
                 </motion.div>
               ))}
@@ -72,7 +72,7 @@ export default function Login() {
           >
             <form 
               onSubmit={handleSubmit}
-              className="bg-white rounded-3xl shadow-2xl p-8 md:p-10 w-full max-w-md border border-[#cd853f]/10"
+              className="bg-white rounded-3xl shadow-2xl p-8 md:p-10 w-full max-w-md border border-slate-200"
             >
               <div className="text-center mb-8">
                 <motion.div
@@ -84,14 +84,14 @@ export default function Login() {
                     repeat: Infinity,
                     ease: "linear"
                   }}
-                  className="w-16 h-16 bg-gradient-to-br from-[#6b4c3b] via-[#8b5a2b] to-[#cd853f] rounded-2xl flex items-center justify-center mx-auto mb-4 shadow-lg"
+                  className="w-16 h-16 bg-gradient-to-br from-[#2d4cff] via-[#3b82f6] to-[#22c55e] rounded-2xl flex items-center justify-center mx-auto mb-4 shadow-lg"
                 >
                   <LogIn className="w-8 h-8 text-white" />
                 </motion.div>
-                <h3 className="text-2xl font-bold text-[#6b4c3b] mb-2">
+                <h3 className="text-2xl font-bold text-slate-900 mb-2">
                   Login to Dashboard
                 </h3>
-                <p className="text-sm text-[#8b5a2b]">
+                <p className="text-sm text-slate-600">
                   Enter your credentials to continue
                 </p>
               </div>
@@ -99,34 +99,34 @@ export default function Login() {
               <div className="space-y-5">
                 {/* Username Input */}
                 <div>
-                  <label className="block text-sm font-semibold text-[#6b4c3b] mb-2">
+                  <label className="block text-sm font-semibold text-slate-700 mb-2">
                     Username
                   </label>
                   <div className="relative">
-                    <Mail className="absolute left-4 top-1/2 -translate-y-1/2 w-5 h-5 text-[#8b5a2b]" />
+                    <Mail className="absolute left-4 top-1/2 -translate-y-1/2 w-5 h-5 text-slate-500" />
                     <input
                       type="text"
                       placeholder="Enter your username"
                       value={formData.username}
                       onChange={(e) => setFormData({ ...formData, username: e.target.value })}
-                      className="w-full pl-12 pr-4 py-4 bg-[#fef8f0] border-2 border-[#cd853f]/20 rounded-2xl focus:border-[#8b5a2b] focus:outline-none transition-all text-[#6b4c3b] placeholder:text-[#8b5a2b]/50"
+                      className="w-full pl-12 pr-4 py-4 bg-white border-2 border-slate-200 rounded-2xl focus:border-[#2d4cff] focus:outline-none transition-all text-slate-900 placeholder:text-slate-400"
                     />
                   </div>
                 </div>
 
                 {/* Password Input */}
                 <div>
-                  <label className="block text-sm font-semibold text-[#6b4c3b] mb-2">
+                  <label className="block text-sm font-semibold text-slate-700 mb-2">
                     Password
                   </label>
                   <div className="relative">
-                    <Lock className="absolute left-4 top-1/2 -translate-y-1/2 w-5 h-5 text-[#8b5a2b]" />
+                    <Lock className="absolute left-4 top-1/2 -translate-y-1/2 w-5 h-5 text-slate-500" />
                     <input
                       type="password"
                       placeholder="Enter your password"
                       value={formData.password}
                       onChange={(e) => setFormData({ ...formData, password: e.target.value })}
-                      className="w-full pl-12 pr-4 py-4 bg-[#fef8f0] border-2 border-[#cd853f]/20 rounded-2xl focus:border-[#8b5a2b] focus:outline-none transition-all text-[#6b4c3b] placeholder:text-[#8b5a2b]/50"
+                      className="w-full pl-12 pr-4 py-4 bg-white border-2 border-slate-200 rounded-2xl focus:border-[#2d4cff] focus:outline-none transition-all text-slate-900 placeholder:text-slate-400"
                     />
                   </div>
                 </div>
@@ -135,7 +135,7 @@ export default function Login() {
                 <div className="text-right">
                   <button
                     type="button"
-                    className="text-sm text-[#8b5a2b] hover:text-[#6b4c3b] font-medium transition-colors"
+                    className="text-sm text-slate-500 hover:text-slate-700 font-medium transition-colors"
                   >
                     Forgot password?
                   </button>
@@ -146,20 +146,20 @@ export default function Login() {
                   type="submit"
                   whileHover={{ scale: 1.02 }}
                   whileTap={{ scale: 0.98 }}
-                  className="w-full py-4 bg-gradient-to-r from-[#6b4c3b] via-[#8b5a2b] to-[#cd853f] text-white rounded-2xl font-bold shadow-xl hover:shadow-2xl transition-all flex items-center justify-center gap-2 group"
+                  className="w-full py-4 bg-gradient-to-r from-[#2d4cff] via-[#3b82f6] to-[#22c55e] text-white rounded-2xl font-bold shadow-xl hover:shadow-2xl transition-all flex items-center justify-center gap-2 group"
                 >
                   Login to Dashboard
                   <ArrowRight className="w-5 h-5 group-hover:translate-x-1 transition-transform" />
                 </motion.button>
 
                 {/* Sign Up Link */}
-                <div className="text-center pt-4 border-t border-[#cd853f]/10">
-                  <p className="text-sm text-[#8b5a2b]">
+                <div className="text-center pt-4 border-t border-slate-200">
+                  <p className="text-sm text-slate-600">
                     Don't have an account?{" "}
                     <button
                       type="button"
                       onClick={() => navigate('/choose-subscription')}
-                      className="text-[#6b4c3b] font-bold hover:text-[#8b5a2b] transition-colors"
+                      className="text-[#2d4cff] font-bold hover:text-[#3b82f6] transition-colors"
                     >
                       Sign up free
                     </button>

@@ -10,7 +10,7 @@ export default function LandingModern() {
   const [isModalOpen, setIsModalOpen] = useState(false);
 
   return (
-    <div className="font-sans bg-[#fef8f0] text-[#6b4c3b] min-h-screen overflow-x-hidden">
+    <div className="font-sans bg-white text-slate-900 min-h-screen overflow-x-hidden">
       <Hero onOpenDemo={() => setIsModalOpen(true)} />
       <Features />
       <Pricing />

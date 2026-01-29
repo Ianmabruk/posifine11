@@ -14,14 +14,14 @@ export default function Subscription() {
   
   console.log('✅ Subscription component mounted, navigate available:', typeof navigate);
 
-  // Updated pricing: Basic=1000, Ultra=2500, Pro=3000
+  // Updated pricing: Basic=1000, Ultra=2500, Pro=3400
   const plans = [
     {
       id: 'basic',
       name: 'Basic',
       price: 1000,
       icon: Zap,
-      color: 'from-green-500 to-teal-600',
+      color: 'from-[#22c55e] to-[#16a34a]',
       popular: false,
       features: [
         '✓ Admin Dashboard + Cashier POS',
@@ -38,7 +38,7 @@ export default function Subscription() {
       name: 'Ultra',
       price: 2500,
       icon: Crown,
-      color: 'from-blue-600 to-purple-600',
+      color: 'from-[#2d4cff] to-[#3b82f6]',
       popular: true,
       features: [
         '✓ Admin Dashboard + Cashier POS',
@@ -54,9 +54,9 @@ export default function Subscription() {
     {
       id: 'pro',
       name: 'Pro',
-      price: 3000,
+      price: 3400,
       icon: Building,
-      color: 'from-purple-600 to-pink-600',
+      color: 'from-[#f59e0b] to-[#f97316]',
       popular: false,
       badge: 'NEW',
       features: [
@@ -184,13 +184,13 @@ export default function Subscription() {
   };
 
   return (
-    <div className="min-h-screen bg-gradient-to-br from-[#fef8f0] via-[#f5efe6] to-[#fef8f0] py-6 md:py-12 px-4 md:px-6">
+    <div className="min-h-screen bg-gradient-to-br from-white via-[#f5f7fb] to-white py-6 md:py-12 px-4 md:px-6">
       <div className="max-w-7xl mx-auto">
         {/* Header with Logo */}
         <div className="flex items-center justify-between mb-8">
           <button 
             onClick={() => navigate('/')}
-            className="flex items-center gap-2 text-[#8b5a2b] hover:text-[#6b4c3b] transition-colors"
+            className="flex items-center gap-2 text-slate-600 hover:text-slate-900 transition-colors"
           >
             <ArrowLeft size={20} />
             <span className="font-medium">Back to Home</span>
@@ -202,11 +202,11 @@ export default function Subscription() {
             animate={{ opacity: 1, scale: 1 }}
             transition={{ duration: 0.5 }}
           >
-            <div className="w-10 h-10 bg-gradient-to-br from-[#6b4c3b] via-[#8b5a2b] to-[#00ff88] rounded-2xl flex items-center justify-center font-bold text-white text-xl shadow-lg">
+            <div className="w-10 h-10 bg-gradient-to-br from-[#2d4cff] via-[#3b82f6] to-[#22c55e] rounded-2xl flex items-center justify-center font-bold text-white text-xl shadow-lg">
               P
             </div>
-            <span className="text-2xl font-bold text-[#6b4c3b]">
-              PosiFine
+            <span className="text-2xl font-bold text-[#2d4cff]">
+              Posifine
             </span>
           </motion.div>
         </div>
@@ -220,7 +220,7 @@ export default function Subscription() {
             initial={{ opacity: 0, scale: 0.9 }}
             animate={{ opacity: 1, scale: 1 }}
             transition={{ duration: 0.5, delay: 0.2 }}
-            className="text-3xl md:text-5xl font-bold mb-3 md:mb-4 bg-gradient-to-r from-[#6b4c3b] via-[#8b5a2b] to-[#cd853f] bg-clip-text text-transparent"
+            className="text-3xl md:text-5xl font-bold mb-3 md:mb-4 bg-gradient-to-r from-[#2d4cff] via-[#3b82f6] to-[#22c55e] bg-clip-text text-transparent"
           >
             Choose Your Plan
           </motion.h1>
@@ -228,7 +228,7 @@ export default function Subscription() {
             initial={{ opacity: 0 }}
             animate={{ opacity: 1 }}
             transition={{ duration: 0.5, delay: 0.4 }}
-            className="text-[#8b5a2b] text-base md:text-lg"
+            className="text-slate-600 text-base md:text-lg"
           >
             Pick the perfect plan and unlock your POS potential
           </motion.p>
@@ -246,13 +246,13 @@ export default function Subscription() {
                 onClick={() => setSelected(plan.id)}
                 className={`card cursor-pointer transition-all transform ${
                   selected === plan.id 
-                    ? 'ring-4 ring-[#cd853f] shadow-2xl scale-105 bg-gradient-to-br from-[#6b4c3b] via-[#8b5a2b] to-[#cd853f] text-white' 
-                    : 'bg-white hover:shadow-xl hover:scale-102 border border-[#cd853f]/30 hover:border-[#cd853f]'
+                    ? 'ring-4 ring-[#2d4cff] shadow-2xl scale-105 bg-gradient-to-br from-[#2d4cff] via-[#3b82f6] to-[#22c55e] text-white' 
+                    : 'bg-white hover:shadow-xl hover:scale-102 border border-slate-200 hover:border-[#2d4cff]'
                 } relative`}
               >
                 {plan.popular && (
                   <div className="absolute -top-3 left-1/2 -translate-x-1/2">
-                    <span className="bg-gradient-to-r from-[#6b4c3b] to-[#00ff88] text-white px-3 py-1 rounded-full text-xs font-bold shadow-lg">
+                    <span className="bg-gradient-to-r from-[#2d4cff] to-[#22c55e] text-white px-3 py-1 rounded-full text-xs font-bold shadow-lg">
                       Most Popular
                     </span>
                   </div>
@@ -262,19 +262,19 @@ export default function Subscription() {
                   <div className={`w-10 h-10 rounded-xl bg-gradient-to-br ${selected === plan.id ? 'from-white/20 to-white/10' : plan.color} flex items-center justify-center`}>
                     <Icon className="w-5 h-5 text-white" />
                   </div>
-                  <h3 className={`text-lg md:text-xl font-bold ${selected === plan.id ? 'text-white' : 'text-[#6b4c3b]'}`}>{plan.name}</h3>
+                  <h3 className={`text-lg md:text-xl font-bold ${selected === plan.id ? 'text-white' : 'text-slate-900'}`}>{plan.name}</h3>
                 </div>
                 
                 <div className="mb-4">
                   <span className="text-2xl md:text-3xl font-bold">KES {plan.price.toLocaleString()}</span>
-                  <span className={`text-xs md:text-sm ${selected === plan.id ? 'text-white/80' : 'text-[#8b5a2b]'}`}>/month</span>
+                  <span className={`text-xs md:text-sm ${selected === plan.id ? 'text-white/80' : 'text-slate-500'}`}>/month</span>
                 </div>
                 
                 <ul className="space-y-2">
                   {plan.features.map((feature, i) => (
                     <li key={i} className="flex items-start gap-2 text-xs md:text-sm">
-                      <Check className={`w-4 h-4 flex-shrink-0 mt-0.5 ${selected === plan.id ? 'text-[#00ff88]' : 'text-green-600'}`} />
-                      <span className={selected === plan.id ? 'text-white' : 'text-gray-700'}>{feature}</span>
+                      <Check className={`w-4 h-4 flex-shrink-0 mt-0.5 ${selected === plan.id ? 'text-[#22c55e]' : 'text-green-600'}`} />
+                      <span className={selected === plan.id ? 'text-white' : 'text-slate-700'}>{feature}</span>
                     </li>
                   ))}
                 </ul>
@@ -294,7 +294,7 @@ export default function Subscription() {
             onClick={handleGetStarted}
             whileHover={{ scale: 1.05, boxShadow: "0 20px 40px rgba(107, 76, 59, 0.3)" }}
             whileTap={{ scale: 0.95 }}
-            className="cursor-pointer px-8 md:px-12 py-3 md:py-4 text-base md:text-lg font-bold bg-gradient-to-r from-[#6b4c3b] via-[#8b5a2b] to-[#cd853f] text-white rounded-2xl shadow-xl hover:shadow-2xl transition-all"
+            className="cursor-pointer px-8 md:px-12 py-3 md:py-4 text-base md:text-lg font-bold bg-gradient-to-r from-[#2d4cff] via-[#3b82f6] to-[#22c55e] text-white rounded-2xl shadow-xl hover:shadow-2xl transition-all"
           >
             Get Started
           </motion.button>
@@ -303,12 +303,12 @@ export default function Subscription() {
             onClick={() => setShowDemoForm(true)}
             whileHover={{ scale: 1.02 }}
             whileTap={{ scale: 0.98 }}
-            className="cursor-pointer px-8 md:px-12 py-3 md:py-4 text-base md:text-lg font-bold border-2 border-gray-300 bg-white text-gray-700 rounded-lg hover:border-gray-400 transition-all"
+            className="cursor-pointer px-8 md:px-12 py-3 md:py-4 text-base md:text-lg font-bold border-2 border-slate-200 bg-white text-slate-700 rounded-lg hover:border-[#2d4cff] transition-all"
           >
             Request Free Demo
           </motion.button>
         </motion.div>
-        <p className="text-xs md:text-sm text-gray-500 mt-4 text-center">Secure payment • Cancel anytime</p>
+        <p className="text-xs md:text-sm text-slate-500 mt-4 text-center">Secure payment • Cancel anytime</p>
 
         {/* Demo Request Modal */}
         {showDemoForm && (
