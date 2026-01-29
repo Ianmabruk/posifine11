@@ -10,6 +10,13 @@ const BASE_API_URL = getBaseUrl();
 
 const getToken = () => localStorage.getItem('token');
 
+const toQueryString = (params = {}) => {
+  const entries = Object.entries(params).filter(([, value]) => value !== undefined && value !== null && value !== '');
+  if (!entries.length) return '';
+  const search = new URLSearchParams(entries);
+  return `?${search.toString()}`;
+};
+
 // Retry logic for network failures (handles Render free tier spindown)
 const requestWithRetry = async (endpoint, options = {}, retryCount = 0, maxRetries = 3) => {
   const token = getToken();
@@ -26,7 +33,28 @@ const requestWithRetry = async (endpoint, options = {}, retryCount = 0, maxRetri
   };
 
   try {
+    const startTime = performance.now();
     const response = await fetch(`${BASE_API_URL}${cleanEndpoint}`, config);
+    const endTime = performance.now();
+    const clientDurationMs = endTime - startTime;
+    const serverDuration = response.headers.get('X-Response-Time');
+    const requestId = response.headers.get('X-Request-Id');
+
+    if (typeof window !== 'undefined') {
+      const entry = {
+        ts: Date.now(),
+        endpoint: cleanEndpoint,
+        method: (config.method || 'GET').toUpperCase(),
+        status: response.status,
+        clientDurationMs: Number(clientDurationMs.toFixed(2)),
+        serverDurationMs: serverDuration ? parseFloat(serverDuration.replace('ms', '')) : null,
+        requestId
+      };
+      window.__perfLogs = window.__perfLogs || [];
+      window.__perfLogs.push(entry);
+      if (window.__perfLogs.length > 200) window.__perfLogs.shift();
+      window.dispatchEvent(new CustomEvent('perf_log', { detail: entry }));
+    }
 
     if (response.status === 401) {
       // For login endpoints, return the error response instead of throwing
@@ -156,7 +184,7 @@ export const users = {
 
 // Products API
 export const products = {
-  getAll: () => request('/products'),
+  getAll: (params) => request(`/products${toQueryString(params)}`),
   
   create: (productData) => request('/products', {
     method: 'POST',
@@ -204,7 +232,7 @@ export const products = {
 
 // Sales API
 export const sales = {
-  getAll: () => request('/sales'),
+  getAll: (params) => request(`/sales${toQueryString(params)}`),
   
   create: (saleData) => request('/sales', {
     method: 'POST',

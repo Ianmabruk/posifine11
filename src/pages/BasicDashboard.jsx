@@ -2,7 +2,7 @@ import { useState, useEffect } from 'react';
 import { BASE_API_URL } from '../services/api';
 import { useAuth } from '../context/AuthContext';
 import { Package, DollarSign, TrendingUp, ShoppingCart, Trash2, LogOut } from 'lucide-react';
-import { products, sales } from '../services/api';
+import { products, sales, stats } from '../services/api';
 
 export default function BasicDashboard() {
   const { user, logout } = useAuth();
@@ -20,26 +20,32 @@ export default function BasicDashboard() {
 
   const loadData = async () => {
     try {
-      const [productsData, salesData] = await Promise.all([
-        products.getAll(),
-        sales.getAll()
+      const [statsData, salesData] = await Promise.all([
+        stats.get(),
+        sales.getAll({
+          sort: '-created_at',
+          limit: 200,
+          fields: 'id,items,total,payment_method,created_at'
+        })
       ]);
 
-      const todaySales = salesData.filter(sale => 
-        new Date(sale.createdAt).toDateString() === new Date().toDateString()
-      );
+      const todaySales = (salesData || []).filter(sale => {
+        const dateValue = sale.created_at || sale.createdAt;
+        if (!dateValue) return false;
+        return new Date(dateValue).toDateString() === new Date().toDateString();
+      });
 
       const revenue = todaySales.reduce((sum, sale) => sum + sale.total, 0);
       const profit = todaySales.reduce((sum, sale) => sum + (sale.profit || 0), 0);
 
       setStats({
-        products: productsData.length,
+        products: statsData?.productsCount ?? 0,
         sales: todaySales.length,
         revenue,
-        profit
+        profit: statsData?.profit ?? profit
       });
 
-      setRecentSales(salesData.slice(-5).reverse());
+      setRecentSales((salesData || []).slice(0, 5));
     } catch (error) {
       console.error('Failed to load data:', error);
     }
@@ -156,7 +162,7 @@ export default function BasicDashboard() {
                   {recentSales.map(sale => (
                     <tr key={sale.id} className="border-t border-gray-100">
                       <td className="px-4 py-3 text-sm text-gray-900">
-                        {new Date(sale.createdAt).toLocaleDateString()}
+                        {new Date(sale.created_at || sale.createdAt).toLocaleDateString()}
                       </td>
                       <td className="px-4 py-3 text-sm text-gray-900">
                         {sale.items?.length || 0} items
@@ -165,7 +171,7 @@ export default function BasicDashboard() {
                         KSH {sale.total.toLocaleString()}
                       </td>
                       <td className="px-4 py-3 text-sm text-gray-600">
-                        {sale.paymentMethod || 'Cash'}
+                        {sale.payment_method || sale.paymentMethod || 'Cash'}
                       </td>
                     </tr>
                   ))}

@@ -13,10 +13,11 @@ export default function AdminDashboard() {
   const [newProduct, setNewProduct] = useState({ name: '', price: '', cost: '', category: 'finished', unit: 'pcs' });
   const [newUser, setNewUser] = useState({ name: '', email: '', password: 'changeme123', role: 'cashier' });
   const [lastUpdateTime, setLastUpdateTime] = useState(null);
+  const [loaded, setLoaded] = useState({ products: false, sales: false, users: false, expenses: false });
 
-  // Load data on mount
+  // Load lightweight overview on mount
   useEffect(() => {
-    loadData();
+    loadOverview();
   }, []);
 
   // Add polling for live stats (every 5 seconds)
@@ -37,29 +38,70 @@ export default function AdminDashboard() {
     return () => clearInterval(pollInterval);
   }, []);
 
-  const loadData = async () => {
+  const loadOverview = async () => {
     try {
-      const [p, s, e, st, u] = await Promise.all([
-        products.getAll(),
-        sales.getAll(),
-        expenses.getAll(),
-        stats.get(),
-        users.getAll()
-      ]);
-      
-      setData({ 
-        products: Array.isArray(p) ? p : [], 
-        sales: Array.isArray(s) ? s : [], 
-        expenses: Array.isArray(e) ? e : [], 
-        stats: st || {},
-        users: Array.isArray(u) ? u : []
-      });
+      const st = await stats.get();
+      setData(prev => ({
+        ...prev,
+        stats: st || {}
+      }));
       setLastUpdateTime(new Date().toLocaleTimeString());
     } catch (error) {
-      console.error('Failed to load data:', error);
-      setData({ products: [], sales: [], expenses: [], stats: {}, users: [] });
+      console.error('Failed to load stats:', error);
+      setData(prev => ({ ...prev, stats: {} }));
     }
   };
+
+  const loadProducts = async () => {
+    try {
+      const p = await products.getAll();
+      setData(prev => ({ ...prev, products: Array.isArray(p) ? p : [] }));
+      setLoaded(prev => ({ ...prev, products: true }));
+    } catch (error) {
+      console.error('Failed to load products:', error);
+      setData(prev => ({ ...prev, products: [] }));
+    }
+  };
+
+  const loadSales = async () => {
+    try {
+      const s = await sales.getAll({ sort: '-created_at', limit: 500 });
+      setData(prev => ({ ...prev, sales: Array.isArray(s) ? s : [] }));
+      setLoaded(prev => ({ ...prev, sales: true }));
+    } catch (error) {
+      console.error('Failed to load sales:', error);
+      setData(prev => ({ ...prev, sales: [] }));
+    }
+  };
+
+  const loadExpenses = async () => {
+    try {
+      const e = await expenses.getAll();
+      setData(prev => ({ ...prev, expenses: Array.isArray(e) ? e : [] }));
+      setLoaded(prev => ({ ...prev, expenses: true }));
+    } catch (error) {
+      console.error('Failed to load expenses:', error);
+      setData(prev => ({ ...prev, expenses: [] }));
+    }
+  };
+
+  const loadUsers = async () => {
+    try {
+      const u = await users.getAll();
+      setData(prev => ({ ...prev, users: Array.isArray(u) ? u : [] }));
+      setLoaded(prev => ({ ...prev, users: true }));
+    } catch (error) {
+      console.error('Failed to load users:', error);
+      setData(prev => ({ ...prev, users: [] }));
+    }
+  };
+
+  useEffect(() => {
+    if (activeTab === 'inventory' && !loaded.products) loadProducts();
+    if (activeTab === 'sales' && !loaded.sales) loadSales();
+    if (activeTab === 'users' && !loaded.users) loadUsers();
+    if (activeTab === 'expenses' && !loaded.expenses) loadExpenses();
+  }, [activeTab, loaded]);
 
   const handleAddProduct = async (e) => {
     e.preventDefault();
@@ -95,7 +137,8 @@ export default function AdminDashboard() {
 
       // Reload data to show new product
       console.log('🔄 Reloading inventory...');
-      await loadData();
+      await loadProducts();
+      await loadOverview();
       alert(`✅ Product "${result.name}" added successfully!`);
     } catch (error) {
       console.error('❌ Failed to add product:', error.message, error);
@@ -119,7 +162,8 @@ export default function AdminDashboard() {
       setShowAddUser(false);
 
       // Reload data to show new user
-      await loadData();
+      await loadUsers();
+      await loadOverview();
       alert(`✅ User "${result.name}" created successfully! Login: ${result.email} / changeme123`);
     } catch (error) {
       console.error('❌ Failed to create user:', error);
@@ -203,7 +247,7 @@ export default function AdminDashboard() {
             <div className="flex items-center justify-between">
               <div>
                 <p className="text-sm text-purple-100 mb-1">Products</p>
-                <p className="text-3xl font-bold">{data.products.length}</p>
+                <p className="text-3xl font-bold">{data.stats.productsCount ?? data.products.length}</p>
               </div>
               <div className="w-14 h-14 bg-white/20 rounded-2xl flex items-center justify-center">
                 <Package className="w-8 h-8" />
@@ -260,11 +304,11 @@ export default function AdminDashboard() {
                         
                         return (
                           <tr key={i} className="border-t border-gray-100 hover:bg-gray-50 transition-colors">
-                            <td className="px-4 py-3 text-sm">{new Date(sale.createdAt).toLocaleDateString()}</td>
+                            <td className="px-4 py-3 text-sm">{new Date(sale.created_at || sale.createdAt).toLocaleDateString()}</td>
                             <td className="px-4 py-3 text-sm">{sale.items?.length || 0} items</td>
                             <td className="px-4 py-3 text-sm text-orange-600 font-semibold">{deductionsSummary}</td>
                             <td className="px-4 py-3 text-sm">
-                              <span className="badge badge-success">{sale.paymentMethod || 'cash'}</span>
+                              <span className="badge badge-success">{sale.payment_method || sale.paymentMethod || 'cash'}</span>
                             </td>
                             <td className="px-4 py-3 text-sm font-semibold text-green-600">KSH {sale.total?.toLocaleString()}</td>
                           </tr>
@@ -498,7 +542,7 @@ export default function AdminDashboard() {
                           </span>
                         </td>
                         <td className="px-4 py-3 text-sm text-gray-600">
-                          {new Date(user.createdAt).toLocaleDateString()}
+                          {new Date(user.created_at || user.createdAt).toLocaleDateString()}
                         </td>
                         <td className="px-4 py-3 text-sm">
                           <button
@@ -550,11 +594,11 @@ export default function AdminDashboard() {
                       
                       return (
                         <tr key={i} className="border-t border-gray-100 hover:bg-gray-50 transition-colors">
-                          <td className="px-4 py-3 text-sm font-medium">{new Date(sale.createdAt).toLocaleString()}</td>
+                          <td className="px-4 py-3 text-sm font-medium">{new Date(sale.created_at || sale.createdAt).toLocaleString()}</td>
                           <td className="px-4 py-3 text-sm">{sale.items?.length || 0} items</td>
                           <td className="px-4 py-3 text-sm text-orange-600 font-semibold text-xs">{deductionsSummary}</td>
                           <td className="px-4 py-3 text-sm">
-                            <span className="badge badge-success">{sale.paymentMethod || 'cash'}</span>
+                            <span className="badge badge-success">{sale.payment_method || sale.paymentMethod || 'cash'}</span>
                           </td>
                           <td className="px-4 py-3 text-sm font-semibold text-green-600">KSH {sale.total?.toLocaleString()}</td>
                         </tr>
@@ -588,7 +632,7 @@ export default function AdminDashboard() {
                   <tbody>
                     {data.expenses.slice().reverse().map((expense, i) => (
                       <tr key={i} className="border-t border-gray-100 hover:bg-gray-50 transition-colors">
-                        <td className="px-4 py-3 text-sm">{new Date(expense.createdAt).toLocaleDateString()}</td>
+                        <td className="px-4 py-3 text-sm">{new Date(expense.created_at || expense.createdAt).toLocaleDateString()}</td>
                         <td className="px-4 py-3 text-sm">{expense.description}</td>
                         <td className="px-4 py-3 text-sm">
                           <span className="badge badge-warning">{expense.category || 'General'}</span>
@@ -623,7 +667,7 @@ export default function AdminDashboard() {
                       sale.stockDeductions?.products?.map((deduction, idx) => (
                         <tr key={`${sale.id}-${idx}`} className="border-t border-orange-100 hover:bg-orange-50 transition-colors">
                           <td className="px-4 py-3 font-medium text-blue-600">#{sale.id}</td>
-                          <td className="px-4 py-3 text-xs text-gray-500">{new Date(sale.createdAt).toLocaleString()}</td>
+                          <td className="px-4 py-3 text-xs text-gray-500">{new Date(sale.created_at || sale.createdAt).toLocaleString()}</td>
                           <td className="px-4 py-3">{deduction.name}</td>
                           <td className="px-4 py-3 text-gray-600">{deduction.before}</td>
                           <td className="px-4 py-3 font-semibold text-red-600">-{deduction.deducted}</td>

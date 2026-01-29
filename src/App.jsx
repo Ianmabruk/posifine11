@@ -2,38 +2,41 @@ import { BrowserRouter, Routes, Route, Navigate } from 'react-router-dom';
 import { AuthProvider, useAuth } from './context/AuthContext';
 import { ProductsProvider } from './context/ProductsContext';
 import { ScreenLockProvider, useScreenLock } from './context/ScreenLockContext';
-import AdminDashboard from './pages/admin/AdminDashboard';
-import BusinessAwareAdminRouter from './pages/BusinessAwareAdminRouter';
-import ProPlanRouter from './pages/ProPlanRouter';
-import BusinessTypeSelector from './pages/BusinessTypeSelector';
-import PaymentInput from './pages/PaymentInput';
-import BasicDashboard from './pages/BasicDashboard';
-import Landing from './pages/Landing';
-import LandingModern from './components/modern-landing/LandingModern';
-import AuthNew from './pages/AuthNew';
-import Subscription from './pages/Subscription';
-import BuildPOS from './pages/BuildPOS';
-import CashierPOS from './pages/CashierPOS';
-import BarCashierPOS from './pages/cashier/BarCashierPOS';
-import HospitalCashierPOS from './pages/cashier/HospitalCashierPOS';
-import SchoolCashierPOS from './pages/cashier/SchoolCashierPOS';
-import KioskCashierPOS from './pages/cashier/KioskCashierPOS';
-import PetrolCashierPOS from './pages/cashier/PetrolCashierPOS';
-import ShoesCashierPOS from './pages/cashier/ShoesCashierPOS';
-import MainAdmin from './pages/MainAdmin';
-import AdminClinicDashboard from './pages/admin/AdminClinicDashboard';
-import AdminBarDashboard from './pages/admin/AdminBarDashboard';
-import AdminHotelDashboard from './pages/admin/AdminHotelDashboard';
-import AdminSupermarketDashboard from './pages/admin/AdminSupermarketDashboard';
-import ClinicDoctorDashboard from './pages/dashboards/clinic/ClinicDoctorDashboard';
 import { ProtectedRoute as RouteGuard, ProPlanGuard, RoleGuard, BusinessTypeGuard, AdminGuard } from './components/RouteGuards';
 import ReminderModal from './components/ReminderModal';
 import ScreenLock from './components/ScreenLock';
 import SubscriptionReminderBar from './components/SubscriptionReminderBar';
 import StockUpdateListener from './components/StockUpdateListener';
+import ProfilerPanel from './components/ProfilerPanel';
 import useInactivity from './hooks/useInactivity';
 import { BASE_API_URL } from './services/api';
-import { useState, useEffect, useCallback } from 'react';
+import { useState, useEffect, useCallback, lazy, Suspense } from 'react';
+
+import Landing from './pages/Landing';
+import LandingModern from './components/modern-landing/LandingModern';
+import AuthNew from './pages/AuthNew';
+import Subscription from './pages/Subscription';
+
+const AdminDashboard = lazy(() => import('./pages/admin/AdminDashboard'));
+const BusinessAwareAdminRouter = lazy(() => import('./pages/BusinessAwareAdminRouter'));
+const ProPlanRouter = lazy(() => import('./pages/ProPlanRouter'));
+const BusinessTypeSelector = lazy(() => import('./pages/BusinessTypeSelector'));
+const PaymentInput = lazy(() => import('./pages/PaymentInput'));
+const BasicDashboard = lazy(() => import('./pages/BasicDashboard'));
+const BuildPOS = lazy(() => import('./pages/BuildPOS'));
+const CashierPOS = lazy(() => import('./pages/CashierPOS'));
+const BarCashierPOS = lazy(() => import('./pages/cashier/BarCashierPOS'));
+const HospitalCashierPOS = lazy(() => import('./pages/cashier/HospitalCashierPOS'));
+const SchoolCashierPOS = lazy(() => import('./pages/cashier/SchoolCashierPOS'));
+const KioskCashierPOS = lazy(() => import('./pages/cashier/KioskCashierPOS'));
+const PetrolCashierPOS = lazy(() => import('./pages/cashier/PetrolCashierPOS'));
+const ShoesCashierPOS = lazy(() => import('./pages/cashier/ShoesCashierPOS'));
+const MainAdmin = lazy(() => import('./pages/MainAdmin'));
+const AdminClinicDashboard = lazy(() => import('./pages/admin/AdminClinicDashboard'));
+const AdminBarDashboard = lazy(() => import('./pages/admin/AdminBarDashboard'));
+const AdminHotelDashboard = lazy(() => import('./pages/admin/AdminHotelDashboard'));
+const AdminSupermarketDashboard = lazy(() => import('./pages/admin/AdminSupermarketDashboard'));
+const ClinicDoctorDashboard = lazy(() => import('./pages/dashboards/clinic/ClinicDoctorDashboard'));
 
 function ProtectedRoute({ children, adminOnly = false, ultraOnly = false, ownerOnly = false }) {
   const { user, loading } = useAuth();
@@ -197,111 +200,118 @@ function App() {
       <ProductsProvider>
         <ScreenLockProvider>
           <BrowserRouter future={{ v7_startTransition: true, v7_relativeSplatPath: true }}>
-            <Routes>
-              <Route path="/" element={<LandingModern />} />
-              <Route path="/landing-old" element={<Landing />} />
-              <Route path="/get-started" element={<LandingModern />} />
-              <Route path="/choose-subscription" element={<Subscription />} />
-              <Route path="/auth/login" element={<AuthNew />} />
-              <Route path="/auth/signup" element={<AuthNew />} />
-              <Route path="/plans" element={<Navigate to="/choose-subscription" />} />
-              <Route path="/build-pos" element={<BuildPOS />} />
-              
-              {/* Owner Main Admin Routes */}
-              <Route path="/main.admin/*" element={<MainAdmin />} />
-              <Route path="/main-admin" element={<ProtectedRoute ownerOnly><MainAdmin /></ProtectedRoute>} />
-              
-              {/* Pro Plan Business Type Selection */}
-              <Route path="/select-business-type" element={<ProtectedRoute adminOnly><BusinessTypeSelector /></ProtectedRoute>} />
-              
-              {/* Pro Plan Business-Specific Dashboard (DEPRECATED - use /admin/{businessType}) */}
-              <Route path="/pro-dashboard" element={<ProtectedRoute adminOnly><ProPlanRouter /></ProtectedRoute>} />
-              
-              {/* Pro Plan Admin Dashboards */}
-              <Route path="/admin/clinic" element={
-                <RouteGuard>
-                  <ProPlanGuard>
-                    <BusinessTypeGuard requiredType="clinic">
-                      <AdminGuard>
-                        <AdminClinicDashboard />
-                      </AdminGuard>
-                    </BusinessTypeGuard>
-                  </ProPlanGuard>
-                </RouteGuard>
-              } />
-              <Route path="/admin/bar" element={
-                <RouteGuard>
-                  <ProPlanGuard>
-                    <BusinessTypeGuard requiredType="bar">
-                      <AdminGuard>
-                        <AdminBarDashboard />
-                      </AdminGuard>
-                    </BusinessTypeGuard>
-                  </ProPlanGuard>
-                </RouteGuard>
-              } />
-              <Route path="/admin/hotel" element={
-                <RouteGuard>
-                  <ProPlanGuard>
-                    <BusinessTypeGuard requiredType="hotel">
-                      <AdminGuard>
-                        <AdminHotelDashboard />
-                      </AdminGuard>
-                    </BusinessTypeGuard>
-                  </ProPlanGuard>
-                </RouteGuard>
-              } />
-              <Route path="/admin/supermarket" element={
-                <RouteGuard>
-                  <ProPlanGuard>
-                    <BusinessTypeGuard requiredType="supermarket">
-                      <AdminGuard>
-                        <AdminSupermarketDashboard />
-                      </AdminGuard>
-                    </BusinessTypeGuard>
-                  </ProPlanGuard>
-                </RouteGuard>
-              } />
-              
-              {/* Pro Plan Role Dashboards */}
-              <Route path="/dashboard/clinic/doctor" element={
-                <RouteGuard>
-                  <ProPlanGuard>
-                    <BusinessTypeGuard requiredType="clinic">
-                      <RoleGuard allowedRoles={['doctor']}>
-                        <ClinicDoctorDashboard />
-                      </RoleGuard>
-                    </BusinessTypeGuard>
-                  </ProPlanGuard>
-                </RouteGuard>
-              } />
-              
-              {/* Regular User Routes */}
-              <Route path="/dashboard" element={<ProtectedRoute><DashboardRouter /></ProtectedRoute>} />
-              <Route path="/dashboard/cashier" element={<ProtectedRoute><CashierPOS /></ProtectedRoute>} />
-              
-              {/* Business-Specific Cashier Routes */}
-              <Route path="/cashier/bar" element={<ProtectedRoute><BarCashierPOS /></ProtectedRoute>} />
-              <Route path="/cashier/hospital" element={<ProtectedRoute><HospitalCashierPOS /></ProtectedRoute>} />
-              <Route path="/cashier/school" element={<ProtectedRoute><SchoolCashierPOS /></ProtectedRoute>} />
-              <Route path="/cashier/kiosk" element={<ProtectedRoute><KioskCashierPOS /></ProtectedRoute>} />
-              <Route path="/cashier/petrol" element={<ProtectedRoute><PetrolCashierPOS /></ProtectedRoute>} />
-              <Route path="/cashier/shoes" element={<ProtectedRoute><ShoesCashierPOS /></ProtectedRoute>} />
-              
-              {/* Admin Dashboard - ORIGINAL OLD version with tabs */}
-              <Route path="/admin/*" element={<ProtectedRoute adminOnly><AdminDashboard /></ProtectedRoute>} />
-              <Route path="/admin" element={<ProtectedRoute adminOnly><AdminDashboard /></ProtectedRoute>} />
-              
-              {/* Legacy redirects */}
-              <Route path="/login" element={<Navigate to="/auth/login" />} />
-              <Route path="/signup" element={<Navigate to="/auth/signup" />} />
-              <Route path="/subscription" element={<Navigate to="/choose-subscription" />} />
-              <Route path="/payment" element={<Navigate to="/choose-subscription" />} />
-              
-              {/* OLD Cashier route - direct access to old CashierPOS */}
-              <Route path="/cashier" element={<ProtectedRoute><CashierPOS /></ProtectedRoute>} />
-            </Routes>
+            <Suspense fallback={
+              <div className="min-h-screen flex items-center justify-center">
+                <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-blue-600"></div>
+              </div>
+            }>
+              <Routes>
+                <Route path="/" element={<LandingModern />} />
+                <Route path="/landing-old" element={<Landing />} />
+                <Route path="/get-started" element={<LandingModern />} />
+                <Route path="/choose-subscription" element={<Subscription />} />
+                <Route path="/auth/login" element={<AuthNew />} />
+                <Route path="/auth/signup" element={<AuthNew />} />
+                <Route path="/plans" element={<Navigate to="/choose-subscription" />} />
+                <Route path="/build-pos" element={<BuildPOS />} />
+                
+                {/* Owner Main Admin Routes */}
+                <Route path="/main.admin/*" element={<MainAdmin />} />
+                <Route path="/main-admin" element={<ProtectedRoute ownerOnly><MainAdmin /></ProtectedRoute>} />
+                
+                {/* Pro Plan Business Type Selection */}
+                <Route path="/select-business-type" element={<ProtectedRoute adminOnly><BusinessTypeSelector /></ProtectedRoute>} />
+                
+                {/* Pro Plan Business-Specific Dashboard (DEPRECATED - use /admin/{businessType}) */}
+                <Route path="/pro-dashboard" element={<ProtectedRoute adminOnly><ProPlanRouter /></ProtectedRoute>} />
+                
+                {/* Pro Plan Admin Dashboards */}
+                <Route path="/admin/clinic" element={
+                  <RouteGuard>
+                    <ProPlanGuard>
+                      <BusinessTypeGuard requiredType="clinic">
+                        <AdminGuard>
+                          <AdminClinicDashboard />
+                        </AdminGuard>
+                      </BusinessTypeGuard>
+                    </ProPlanGuard>
+                  </RouteGuard>
+                } />
+                <Route path="/admin/bar" element={
+                  <RouteGuard>
+                    <ProPlanGuard>
+                      <BusinessTypeGuard requiredType="bar">
+                        <AdminGuard>
+                          <AdminBarDashboard />
+                        </AdminGuard>
+                      </BusinessTypeGuard>
+                    </ProPlanGuard>
+                  </RouteGuard>
+                } />
+                <Route path="/admin/hotel" element={
+                  <RouteGuard>
+                    <ProPlanGuard>
+                      <BusinessTypeGuard requiredType="hotel">
+                        <AdminGuard>
+                          <AdminHotelDashboard />
+                        </AdminGuard>
+                      </BusinessTypeGuard>
+                    </ProPlanGuard>
+                  </RouteGuard>
+                } />
+                <Route path="/admin/supermarket" element={
+                  <RouteGuard>
+                    <ProPlanGuard>
+                      <BusinessTypeGuard requiredType="supermarket">
+                        <AdminGuard>
+                          <AdminSupermarketDashboard />
+                        </AdminGuard>
+                      </BusinessTypeGuard>
+                    </ProPlanGuard>
+                  </RouteGuard>
+                } />
+                
+                {/* Pro Plan Role Dashboards */}
+                <Route path="/dashboard/clinic/doctor" element={
+                  <RouteGuard>
+                    <ProPlanGuard>
+                      <BusinessTypeGuard requiredType="clinic">
+                        <RoleGuard allowedRoles={['doctor']}>
+                          <ClinicDoctorDashboard />
+                        </RoleGuard>
+                      </BusinessTypeGuard>
+                    </ProPlanGuard>
+                  </RouteGuard>
+                } />
+                
+                {/* Regular User Routes */}
+                <Route path="/dashboard" element={<ProtectedRoute><DashboardRouter /></ProtectedRoute>} />
+                <Route path="/dashboard/cashier" element={<ProtectedRoute><CashierPOS /></ProtectedRoute>} />
+                
+                {/* Business-Specific Cashier Routes */}
+                <Route path="/cashier/bar" element={<ProtectedRoute><BarCashierPOS /></ProtectedRoute>} />
+                <Route path="/cashier/hospital" element={<ProtectedRoute><HospitalCashierPOS /></ProtectedRoute>} />
+                <Route path="/cashier/school" element={<ProtectedRoute><SchoolCashierPOS /></ProtectedRoute>} />
+                <Route path="/cashier/kiosk" element={<ProtectedRoute><KioskCashierPOS /></ProtectedRoute>} />
+                <Route path="/cashier/petrol" element={<ProtectedRoute><PetrolCashierPOS /></ProtectedRoute>} />
+                <Route path="/cashier/shoes" element={<ProtectedRoute><ShoesCashierPOS /></ProtectedRoute>} />
+                
+                {/* Admin Dashboard - ORIGINAL OLD version with tabs */}
+                <Route path="/admin/*" element={<ProtectedRoute adminOnly><AdminDashboard /></ProtectedRoute>} />
+                <Route path="/admin" element={<ProtectedRoute adminOnly><AdminDashboard /></ProtectedRoute>} />
+                
+                {/* Legacy redirects */}
+                <Route path="/login" element={<Navigate to="/auth/login" />} />
+                <Route path="/signup" element={<Navigate to="/auth/signup" />} />
+                <Route path="/subscription" element={<Navigate to="/choose-subscription" />} />
+                <Route path="/payment" element={<Navigate to="/choose-subscription" />} />
+                
+                {/* OLD Cashier route - direct access to old CashierPOS */}
+                <Route path="/cashier" element={<ProtectedRoute><CashierPOS /></ProtectedRoute>} />
+              </Routes>
+            </Suspense>
           </BrowserRouter>
+          <ProfilerPanel />
         </ScreenLockProvider>
       </ProductsProvider>
     </AuthProvider>

@@ -67,6 +67,19 @@ export const ProductsProvider = ({ children }) => {
     fetchProducts();
   }, []); // Only run on mount
 
+  // Re-fetch when user changes to avoid cross-account data mixing
+  useEffect(() => {
+    if (!user) {
+      setProducts([]);
+      setError(null);
+      setLoading(false);
+      return;
+    }
+
+    setLoading(true);
+    fetchProducts();
+  }, [user?.id]);
+
   // SMART AUTO-REFRESH: Only when NOT editing
   // Refreshes every 30 seconds to ensure cashiers see admin updates
   // But respects active editing state to prevent data loss

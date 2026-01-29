@@ -11,6 +11,17 @@ export const AuthProvider = ({ children }) => {
   const [isInitialized, setIsInitialized] = useState(false);
   const [appSettings, setAppSettings] = useState({});
 
+  const normalizeUser = (rawUser) => {
+    if (!rawUser) return rawUser;
+    const active = rawUser.active ?? rawUser.is_active ?? rawUser.account_active ?? true;
+    const plan = rawUser.plan ?? rawUser.subscription ?? rawUser.account_plan;
+    return {
+      ...rawUser,
+      active,
+      plan
+    };
+  };
+
   useEffect(() => {
     initializeAuth();
   }, []);
@@ -22,7 +33,7 @@ export const AuthProvider = ({ children }) => {
       if (saved) {
         try {
           const parsed = JSON.parse(saved);
-          setUser(parsed);
+          setUser(normalizeUser(parsed));
         } catch (e) {
           console.warn('Failed to parse user from localStorage', e);
         }
@@ -55,8 +66,9 @@ export const AuthProvider = ({ children }) => {
           });
           if (resp.ok) {
             const data = await resp.json();
-            setUser(data);
-            localStorage.setItem('user', JSON.stringify(data));
+            const normalized = normalizeUser(data);
+            setUser(normalized);
+            localStorage.setItem('user', JSON.stringify(normalized));
           } else {
             // Token invalid or server returned error — clear token and optionally fallback
             throw new Error('Invalid token');
@@ -83,18 +95,20 @@ export const AuthProvider = ({ children }) => {
     try {
       // If payload already contains token & user (caller passed the auth response), just set state
       if (payload && payload.token && payload.user) {
+        const normalized = normalizeUser(payload.user);
         localStorage.setItem('token', payload.token);
-        localStorage.setItem('user', JSON.stringify(payload.user));
-        setUser(payload.user);
+        localStorage.setItem('user', JSON.stringify(normalized));
+        setUser(normalized);
         return payload;
       }
 
       // Otherwise assume credentials were provided and call API
       const response = await auth.login(payload);
       if (response.token && response.user) {
+        const normalized = normalizeUser(response.user);
         localStorage.setItem('token', response.token);
-        localStorage.setItem('user', JSON.stringify(response.user));
-        setUser(response.user);
+        localStorage.setItem('user', JSON.stringify(normalized));
+        setUser(normalized);
         return response;
       }
       throw new Error('Invalid response from server');
@@ -108,9 +122,10 @@ export const AuthProvider = ({ children }) => {
     try {
       const response = await auth.signup(userData);
       if (response.token && response.user) {
+        const normalized = normalizeUser(response.user);
         localStorage.setItem('token', response.token);
-        localStorage.setItem('user', JSON.stringify(response.user));
-        setUser(response.user);
+        localStorage.setItem('user', JSON.stringify(normalized));
+        setUser(normalized);
         return response;
       }
       throw new Error('Invalid response from server');
@@ -124,8 +139,9 @@ export const AuthProvider = ({ children }) => {
   const updateUser = async (updated) => {
     try {
       // Persist locally first for immediate UI update
-      localStorage.setItem('user', JSON.stringify(updated));
-      setUser(updated);
+      const normalized = normalizeUser(updated);
+      localStorage.setItem('user', JSON.stringify(normalized));
+      setUser(normalized);
       // Notify other listeners in same tab
       window.dispatchEvent(new Event('localStorageUpdated'));
 
