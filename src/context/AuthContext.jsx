@@ -187,7 +187,7 @@ export const AuthProvider = ({ children }) => {
    * This ensures consistent redirects across the application
    * 
    * Role hierarchy:
-   * - 'owner' (Main Admin/Super Admin) → /main-admin
+  * - 'owner' (Main Admin/Super Admin) → /main.admin
    * - 'admin' (Regular Business Admin) → /admin
    * - 'cashier' (POS Staff) → /cashier
    */
@@ -195,7 +195,7 @@ export const AuthProvider = ({ children }) => {
     const role = userRole || user?.role;
     
     if (role === 'owner') {
-      return '/main-admin';
+      return '/main.admin';
     } else if (role === 'admin') {
       return '/admin';
     } else if (role === 'cashier') {

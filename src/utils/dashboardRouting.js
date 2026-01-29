@@ -34,11 +34,11 @@ export function getDashboardRoute(user) {
   });
 
   // ============================================================
-  // 1. OWNER/SUPER ADMIN - Always goes to main-admin
+  // 1. OWNER/SUPER ADMIN - Always goes to /main.admin
   // ============================================================
   if (role === 'owner') {
-    console.log('[getDashboardRoute] → /main-admin (Owner)');
-    return '/main-admin';
+    console.log('[getDashboardRoute] → /main.admin (Owner)');
+    return '/main.admin';
   }
 
   // ============================================================

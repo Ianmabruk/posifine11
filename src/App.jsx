@@ -221,9 +221,8 @@ function App() {
                 <Route path="/plans" element={<Navigate to="/choose-subscription" />} />
                 <Route path="/build-pos" element={<BuildPOS />} />
                 
-                {/* Owner Main Admin Routes */}
-                <Route path="/main.admin/*" element={<MainAdmin />} />
-                <Route path="/main-admin" element={<ProtectedRoute ownerOnly><MainAdmin /></ProtectedRoute>} />
+                {/* Owner Main Admin Routes (strict /main.admin) */}
+                <Route path="/main.admin/*" element={<ProtectedRoute ownerOnly><MainAdmin /></ProtectedRoute>} />
                 
                 {/* Pro Plan Business Type Selection */}
                 <Route path="/select-business-type" element={<ProtectedRoute adminOnly><BusinessTypeSelector /></ProtectedRoute>} />

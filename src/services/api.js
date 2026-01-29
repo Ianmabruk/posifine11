@@ -464,6 +464,36 @@ export const mainAdmin = {
       body: JSON.stringify({ plan })
     });
   },
+  createUser: (userData) => {
+    const token = localStorage.getItem('token') || localStorage.getItem('ownerToken') || localStorage.getItem('mainAdminToken');
+    return request('/main-admin/users', {
+      method: 'POST',
+      headers: {
+        'Authorization': `Bearer ${token}`
+      },
+      body: JSON.stringify(userData)
+    });
+  },
+  resetPassword: (userId, tempPassword) => {
+    const token = localStorage.getItem('token') || localStorage.getItem('ownerToken') || localStorage.getItem('mainAdminToken');
+    return request(`/main-admin/users/${userId}/reset-password`, {
+      method: 'POST',
+      headers: {
+        'Authorization': `Bearer ${token}`
+      },
+      body: JSON.stringify({ temp_password: tempPassword })
+    });
+  },
+  sendEmail: (payload) => {
+    const token = localStorage.getItem('token') || localStorage.getItem('ownerToken') || localStorage.getItem('mainAdminToken');
+    return request('/main-admin/send-email', {
+      method: 'POST',
+      headers: {
+        'Authorization': `Bearer ${token}`
+      },
+      body: JSON.stringify(payload)
+    });
+  },
   clearData: (type) => {
     const token = localStorage.getItem('token') || localStorage.getItem('ownerToken') || localStorage.getItem('mainAdminToken');
     return request('/main-admin/system/clear-data', {
